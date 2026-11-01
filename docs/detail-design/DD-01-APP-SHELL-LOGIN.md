@@ -1193,9 +1193,9 @@ Trạng thái: ⬜ Chưa bắt đầu · 🟡 Đang làm · ✅ Hoàn thành · 
 | ID | Công việc | Lớp | Phụ thuộc | Trạng thái | PR/Commit | Ghi chú |
 |---|---|---|---|---|---|---|
 | T01-01 | Tạo solution, 4 project nền tảng và 3 test project (mục 5) | All | — | ✅ | | Build OK bằng MSBuild VS2022; Krypton 5.500.2008 (có bản net45) |
-| T01-02 | Domain value object/enums tối thiểu (`CompanyId`, `TaxCode`, `AppMode`, …) | Domain | T01-01 | 🟡 | | Đã có `AppMode`, `StartupRoute`, `TaxCode` + test; còn `CompanyId`… |
+| T01-02 | Domain value object/enums tối thiểu (`CompanyId`, `TaxCode`, `AppMode`, …) | Domain | T01-01 | ✅ | | Đã có `AppMode`, `StartupRoute`, `TaxCode` + test; còn `CompanyId`… |
 | T01-03 | Application interface/result/state (`IStartupCoordinator`, `INavigationService`, `UserFacingError`, …) | Application | T01-02 | ✅ | | Application/Domain contracts; `UserFacingError`, `StartupResult`, `INavigationService` |
-| T01-04 | `CompositionRoot`, `Program.Main`, `AppApplicationContext`, `GlobalExceptionHandler` | WinForms | T01-03 | 🟡 | | TLS 1.2, `Register` trước khi tạo form; dùng licence/catalog giả (Debug), chọn bằng `HDDT_DEV_MODE` = Standard/StandardFirstRun/Service/ReadOnly/Recovery; Release chưa có adapter thật (DD-02/03) |
+| T01-04 | `CompositionRoot`, `Program.Main`, `AppApplicationContext`, `GlobalExceptionHandler` | WinForms | T01-03 | ✅ | | TLS 1.2, `Register` trước khi tạo form; dùng licence/catalog giả (Debug), chọn bằng `HDDT_DEV_MODE` = Standard/StandardFirstRun/Service/ReadOnly/Recovery; Release chưa có adapter thật (DD-02/03) |
 | T01-05 | `MainShellForm`, `MainShellPresenter`, `ScreenHost`, `NavigationService`, `ScreenFactory` | WinForms | T01-04 | ✅ | | Form (Krypton Ribbon + sidebar, partial Designer), presenter, ScreenHost; `NavigationService` (quyền theo chế độ/MST, hỏi `CanCloseAsync`, hủy + dispose screen cũ trước khi tạo mới, một lần điều hướng/lần, tạo lỗi → Recovery), `IScreen`/`IScreenFactory`/`ScreenDescriptor`; mọi screen vẫn là placeholder đến khi implement DD-02…DD-11. 17 test + thử tay |
 | T01-06 | `StartupCoordinator` + fake licence/catalog + bảng quyết định route | Application | T01-03 | ✅ | | `StartupCoordinator` + `ILicenseService`/`ICompanyCatalog` tối thiểu, 15 test; fake ở `Infrastructure/Development` (Debug). Chưa có `ILocalSettingsStore` (chưa cần) |
 | T01-07 | `CompanyContext`, `ICompanyContextManager`, `CompanySwitchService`, `StorageGuard` | Application | T01-03 | ✅ | | `CompanyContext`, `ICompanyContextManager/Accessor`, `CompanySwitchService`, `StorageGuard` + 23 test. Port `ICompanyStorageOpener`, `IActiveJobService`, `IPortalSessionStore`, `IEntitlementService` chờ implement ở DD-02/05/06, T01-09, DD-03. Thêm blocker `SwitchInProgress`; chưa có `UnitOfWorkFactory` (DD-06) |
@@ -1212,23 +1212,25 @@ Trạng thái: ⬜ Chưa bắt đầu · 🟡 Đang làm · ✅ Hoàn thành · 
 
 ### 21.2 Definition of Done
 
-- [ ] Solution build bằng MSBuild với net45 targeting pack.
-- [ ] Dependency đúng chiều (mục 5.3); không có nghiệp vụ trong `.Designer.cs`.
-- [ ] Chạy được Standard, Service và ReadOnly bằng development configuration.
-- [ ] Service luôn mở danh sách doanh nghiệp khi khởi động.
-- [ ] Chỉ một `CompanyContext`, `PortalSession` và `PortalLoginForm` tồn tại.
-- [ ] Sai MST không tạo session hoặc ghi dữ liệu.
-- [ ] Token không xuất hiện trong file/log/view state.
-- [ ] Test startup, presenter, session và switch pass.
-- [ ] `README.md`/`CLAUDE.md` có lệnh build/test thực tế.
-- [ ] Không có secret hoặc dữ liệu doanh nghiệp thật trong repository.
-- [ ] Development adapter không được đăng ký trong Release composition root.
+- [x] Solution build bằng MSBuild với net45 targeting pack.
+- [x] Dependency đúng chiều (mục 5.3); không có nghiệp vụ trong `.Designer.cs`.
+- [x] Chạy được Standard, Service và ReadOnly bằng development configuration.
+- [x] Service luôn mở danh sách doanh nghiệp khi khởi động.
+- [x] Chỉ một `CompanyContext`, `PortalSession` và `PortalLoginForm` tồn tại.
+- [x] Sai MST không tạo session hoặc ghi dữ liệu.
+- [x] Token không xuất hiện trong file/log/view state.
+- [x] Test startup, presenter, session và switch pass.
+- [x] `README.md`/`CLAUDE.md` có lệnh build/test thực tế.
+- [x] Không có secret hoặc dữ liệu doanh nghiệp thật trong repository.
+- [x] Development adapter không được đăng ký trong Release composition root.
 
 ### 21.3 Nhật ký tiến độ
 
 | Ngày | Nội dung | Người thực hiện |
 |---|---|---|
 | 01/11/2026 | Chuẩn hóa tài liệu, tách DD-02/DD-03/DD-00; chưa có code | Claude Code |
+| 01/11/2026 | Standard tự mở form đăng nhập khi khởi động (theo quyết định của chủ sản phẩm); 210 test | Claude Code |
+| 01/11/2026 | Review toàn bộ: sửa cấu hình Release của sln, race hủy đăng nhập, đường dẫn không hợp lệ ở StorageGuard, che XML quá rộng, luồng khi khởi động lỗi; đồng bộ plan/DoD; 206 test | Claude Code |
 | 01/11/2026 | T01-15 xong: UI smoke test tự động; 202 test pass | Claude Code |
 | 01/11/2026 | T01-14 (phần làm được) + T01-17 xong; 190 test | Claude Code |
 | 01/11/2026 | T01-05 hoàn tất: NavigationService/ScreenFactory + test; 180 test pass | Claude Code |
@@ -1242,6 +1244,19 @@ Trạng thái: ⬜ Chưa bắt đầu · 🟡 Đang làm · ✅ Hoàn thành · 
 | 01/11/2026 | T01-06 xong: `StartupCoordinator` theo bảng quyết định mục 7.4, 15 test | Claude Code |
 | 01/11/2026 | T01-03 xong, T01-04 gần xong (Program/CompositionRoot/AppApplicationContext/GlobalExceptionHandler); chạy thử Standard/Service | Claude Code |
 | 01/11/2026 | T01-01 xong; shell Krypton chạy được với dữ liệu mẫu; 10 unit test pass | Claude Code |
+
+### 21.4 Ghi chú triển khai (khác với nội dung thiết kế ở trên)
+
+Code là nguồn đúng khi khác các đoạn mã minh họa ở mục 5–19; các điểm khác chính:
+
+- **6.1 `Program.Main`:** `GlobalExceptionHandler.Register` phải gọi **trước** khi tạo `AppApplicationContext` (`SetUnhandledExceptionMode` lỗi nếu đã có window). Bản Release báo "chưa có cấu hình production" thay vì chạy.
+- **8.4 `IMainShellView`:** thêm `OwnerWindow`, `CloseShell()`; `ShowScreen`/`SelectNavigation` nằm ở `INavigationView`. Điều hướng đi qua `NavigationService` (mục 8.6) chứ không qua `Show(ScreenId)` trực tiếp.
+- **9.2 `CompanySwitchBlocker`:** thêm `SwitchInProgress`; `CompanySwitchOutcome` (Switched/Unchanged/Blocked/RestoredPrevious/RecoveryRequired) thay cho result đơn giản.
+- **10.7 `PortalLoginOutcome`:** thêm `NotAllowed`, `AlreadyInProgress`. `IPortalLoginView` có `ShowModal`; `PortalLoginCoordinator` nhận `Func<IPortalLoginView>`.
+- **11.1 `IPortalSessionStore`:** thêm `GetSessionForApi()` (chỉ lớp API) và sự kiện `SessionChanged`; `PortalApiClientProvider` giữ một client mỗi generation.
+- **7.x Startup:** `ILocalSettingsStore`, `IClock` chưa dùng trong `StartupCoordinator`. Route `StandardPortalLogin`: mở kho, vào Dashboard rồi **tự mở `PortalLoginForm`** (`LoginReason.Startup`); hủy thì ở lại Dashboard chưa đăng nhập. Tắt được bằng `CompositionRoot.AutoLoginOnStartup` (dùng trong test UI). Service/ReadOnly không tự mở.
+- **Luồng đóng:** `ShutdownCoordinator` + `ShutdownPromptForm` (mục 17); không dùng `Environment.Exit`.
+- **Threading:** `StartupCoordinator`/`CompanySwitchService` dùng `ConfigureAwait(false)`; `CompanyContextManager` và `ShutdownCoordinator` tiếp tục trên context của người gọi để sự kiện không phát từ luồng nền.
 
 ## 22. Lịch sử thay đổi tài liệu
 

@@ -146,6 +146,12 @@ namespace HoaDonDienTu.WinForms.Shell
 
         private async void OnPortalLoginRequested(object sender, EventArgs e)
         {
+            await LoginAsync(LoginReason.Manual);
+        }
+
+        /// <summary>Mở đăng nhập cổng Thuế cho doanh nghiệp đang mở; trả về sau khi form đăng nhập đã đóng.</summary>
+        public async Task LoginAsync(LoginReason reason)
+        {
             if (!_context.HasCurrent)
             {
                 _view.ShowError("Đăng nhập cổng Thuế", "Hãy chọn doanh nghiệp trước khi đăng nhập.");
@@ -154,7 +160,7 @@ namespace HoaDonDienTu.WinForms.Shell
 
             var company = _context.Current;
             var request = new PortalLoginRequest(
-                company.CompanyId, company.TaxCode, LoginReason.Manual, _navigation.CurrentScreen, null);
+                company.CompanyId, company.TaxCode, reason, _navigation.CurrentScreen, null);
 
             await _runner.RunAsync(
                 "Đăng nhập cổng Thuế",

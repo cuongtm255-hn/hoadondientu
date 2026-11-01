@@ -258,6 +258,21 @@ namespace HoaDonDienTu.WinForms.Tests
         }
 
         [Test]
+        public void Cancel_WhileVerifying_LateSuccessDoesNotLeaveASession()
+        {
+            _auth.Pending = new System.Threading.Tasks.TaskCompletionSource<PortalLoginResult>();
+            _view.RaiseShown();
+            _browser.RaiseCandidate();
+            Assert.That(_presenter.State, Is.EqualTo(PortalLoginState.VerifyingPortalSession));
+
+            _view.RaiseCancel();
+            _auth.Pending.SetResult(FakeAuth.SuccessFor(_company, new PortalSessionMaterial(null, null, Secrets.Token)));
+
+            Assert.That(_presenter.Result.Outcome, Is.EqualTo(PortalLoginOutcome.Cancelled));
+            Assert.That(_store.HasActiveSession, Is.False, "Phiên không được lưu sau khi người dùng đã hủy");
+        }
+
+        [Test]
         public void Cancel_AfterFinish_Ignored()
         {
             _view.RaiseShown();

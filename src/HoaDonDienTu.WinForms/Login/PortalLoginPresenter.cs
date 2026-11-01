@@ -24,6 +24,7 @@ namespace HoaDonDienTu.WinForms.Login
         private bool _initialized;
         private bool _browserReady;
         private bool _finished;
+        private bool _disposed;
 
         public PortalLoginPresenter(
             IPortalLoginView view,
@@ -73,6 +74,7 @@ namespace HoaDonDienTu.WinForms.Login
 
         public void Dispose()
         {
+            _disposed = true;
             if (_initialized)
             {
                 _initialized = false;
@@ -200,6 +202,9 @@ namespace HoaDonDienTu.WinForms.Login
 
         private async Task HandleVerificationAsync(PortalLoginResult result)
         {
+            // Người dùng đã hủy (hoặc form đã đóng) trong lúc xác minh: kết quả muộn không được lưu phiên.
+            if (_finished || _disposed || _cancellation.IsCancellationRequested) return;
+
             if (result.Succeeded && !SessionMatchesRequest(result.Session))
             {
                 result = PortalLoginResult.Failure(PortalLoginOutcome.TaxCodeMismatch, null);
@@ -290,6 +295,7 @@ namespace HoaDonDienTu.WinForms.Login
 
         private void SetState(PortalLoginState state, string step, string message, bool busy, bool error, bool canRetry)
         {
+            if (_finished || _disposed) return;
             State = state;
             _view.ShowState(new PortalLoginViewState
             {

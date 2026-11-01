@@ -64,7 +64,8 @@ namespace HoaDonDienTu.Application.Companies
             if (target == null) throw new ArgumentNullException("target");
             if (Current != null) throw new InvalidOperationException("Phải đóng context hiện tại trước khi mở context mới.");
 
-            var context = await _opener.OpenAsync(target, cancellationToken).ConfigureAwait(false);
+            // Tiếp tục trên context của người gọi (UI) để ContextChanged không bị phát từ luồng nền.
+            var context = await _opener.OpenAsync(target, cancellationToken).ConfigureAwait(true);
 
             // Chỉ cập nhật context sau khi mở thành công.
             Current = context;

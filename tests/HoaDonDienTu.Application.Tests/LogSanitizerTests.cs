@@ -47,6 +47,16 @@ namespace HoaDonDienTu.Application.Tests
         }
 
         [Test]
+        public void Sanitize_GenericTypeNames_AreNotTreatedAsXml_ButSecretsStillMasked()
+        {
+            var output = LogSanitizer.Sanitize("Cannot convert List<int> to string, token=abc123");
+
+            Assert.That(output, Does.Contain("List<int>"));
+            Assert.That(output, Does.Not.Contain("abc123"));
+            Assert.That(output, Does.Not.Contain(LogSanitizer.XmlMask));
+        }
+
+        [Test]
         public void Sanitize_NullOrEmpty_Passthrough()
         {
             Assert.That(LogSanitizer.Sanitize(null), Is.Null);

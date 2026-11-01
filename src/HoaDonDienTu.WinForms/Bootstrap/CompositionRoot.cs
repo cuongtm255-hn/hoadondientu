@@ -34,6 +34,10 @@ namespace HoaDonDienTu.WinForms.Bootstrap
         public ICompanyContextManager ContextManager { get; private set; }
         public IPortalSessionStore SessionStore { get; private set; }
         public IPortalLoginCoordinator PortalLoginCoordinator { get; private set; }
+
+        /// <summary>Standard: tự mở form đăng nhập sau khi khởi động (DD-01 mục 7.4). Test UI tắt để không bị chặn bởi hộp thoại modal.</summary>
+        public bool AutoLoginOnStartup { get; set; } = true;
+
         public IUserErrorMapper ErrorMapper { get; private set; }
         public IUiOperationRunner OperationRunner { get; private set; }
         public IUserErrorPresenter ErrorPresenter { get; private set; }

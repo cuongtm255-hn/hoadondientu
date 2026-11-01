@@ -62,7 +62,8 @@ namespace HoaDonDienTu.WinForms.Login
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
             // Đóng bằng nút X được coi là Hủy để presenter xóa phiên trước khi đóng.
-            if (!_closingByPresenter)
+            // Tắt Windows hoặc đóng từ bên ngoài không được bị hộp thoại này chặn.
+            if (!_closingByPresenter && (e.CloseReason == CloseReason.UserClosing || e.CloseReason == CloseReason.None))
             {
                 e.Cancel = true;
                 Raise(CancelRequested);

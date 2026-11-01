@@ -68,9 +68,25 @@ namespace HoaDonDienTu.Application.Companies
         private static bool IsUnderRoot(string path, string root)
         {
             if (string.IsNullOrEmpty(path)) return false;
-            var fullPath = System.IO.Path.GetFullPath(path);
-            var fullRoot = System.IO.Path.GetFullPath(root).TrimEnd('\\', '/') + System.IO.Path.DirectorySeparatorChar;
-            return fullPath.StartsWith(fullRoot, StringComparison.OrdinalIgnoreCase);
+            try
+            {
+                var fullPath = System.IO.Path.GetFullPath(path);
+                var fullRoot = System.IO.Path.GetFullPath(root).TrimEnd('\\', '/') + System.IO.Path.DirectorySeparatorChar;
+                return fullPath.StartsWith(fullRoot, StringComparison.OrdinalIgnoreCase);
+            }
+            catch (ArgumentException)
+            {
+                // Ký tự không hợp lệ: đường dẫn không an toàn để ghi.
+                return false;
+            }
+            catch (NotSupportedException)
+            {
+                return false;
+            }
+            catch (System.IO.PathTooLongException)
+            {
+                return false;
+            }
         }
     }
 }

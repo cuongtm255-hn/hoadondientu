@@ -110,6 +110,14 @@ namespace HoaDonDienTu.WinForms.Tests
         }
 
         [Test]
+        public void LoginAsync_Startup_UsesStartupReason()
+        {
+            _presenter.LoginAsync(LoginReason.Startup).GetAwaiter().GetResult();
+
+            Assert.That(_login.LastRequest.Reason, Is.EqualTo(LoginReason.Startup));
+        }
+
+        [Test]
         public void PortalLogin_Success_UpdatesHeader()
         {
             _login.Handler = req =>

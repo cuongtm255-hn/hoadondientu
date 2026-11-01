@@ -16,12 +16,30 @@ namespace HoaDonDienTu.WinForms
             System.Windows.Forms.Application.EnableVisualStyles();
             System.Windows.Forms.Application.SetCompatibleTextRenderingDefault(false);
 
-            using (var compositionRoot = CompositionRoot.Create())
+            CompositionRoot compositionRoot;
+            try
+            {
+                compositionRoot = CompositionRoot.Create();
+            }
+            catch (NotSupportedException)
+            {
+                // Bản Release chưa có adapter production (DD-02, DD-03, T01-16): báo rõ thay vì để process chết không lời.
+                MessageBox.Show(
+                    "Bản này chưa có cấu hình production (licence, kho dữ liệu, đăng nhập cổng Thuế). Hãy dùng bản Debug để thử.",
+                    "Hóa đơn điện tử",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+                return;
+            }
+
+            using (compositionRoot)
             {
                 // Phải đăng ký trước khi tạo bất kỳ form nào (SetUnhandledExceptionMode không được gọi sau khi có window).
                 GlobalExceptionHandler.Register(compositionRoot.Logger);
                 using (var applicationContext = new AppApplicationContext(compositionRoot))
-                System.Windows.Forms.Application.Run(applicationContext);
+                {
+                    System.Windows.Forms.Application.Run(applicationContext);
+                }
             }
         }
     }

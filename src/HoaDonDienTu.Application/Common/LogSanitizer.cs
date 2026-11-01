@@ -14,7 +14,10 @@ namespace HoaDonDienTu.Application.Common
         private const string SecretKeys =
             "password|passwd|pwd|matkhau|token|access_token|refresh_token|id_token|captcha|ckey|secret|apikey|api_key|licensekey|license_key";
 
-        private static readonly Regex Xml = new Regex(@"<[?A-Za-z][^>]*>[\s\S]*", RegexOptions.Compiled);
+        // Chỉ coi là XML khi có khai báo <?xml hoặc một thẻ mở có thẻ đóng tương ứng; kiểu "List<int>" không bị che.
+        private static readonly Regex Xml = new Regex(
+            @"<\?xml[\s\S]*|<([A-Za-z][\w:.\-]*)(?:\s[^<>]*)?>[\s\S]*?</\1\s*>[\s\S]*",
+            RegexOptions.Compiled);
 
         private static readonly Regex AuthorizationHeader = new Regex(
             @"\b(proxy-authorization|authorization)\b\s*[:=]\s*(?:(?:bearer|basic)\s+)?[^\s,;]+",

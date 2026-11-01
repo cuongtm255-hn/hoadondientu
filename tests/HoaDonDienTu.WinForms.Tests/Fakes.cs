@@ -89,10 +89,12 @@ namespace HoaDonDienTu.WinForms.Tests
     {
         public int Calls;
         public Func<CompanyContext, PortalSessionMaterial, PortalLoginResult> Handler;
+        public TaskCompletionSource<PortalLoginResult> Pending;
 
         public Task<PortalLoginResult> VerifyAsync(CompanyContext company, PortalSessionMaterial candidate, CancellationToken cancellationToken)
         {
             Calls++;
+            if (Pending != null) return Pending.Task;
             return Task.FromResult(Handler(company, candidate));
         }
 

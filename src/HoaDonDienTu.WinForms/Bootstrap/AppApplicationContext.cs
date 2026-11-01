@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using System.Windows.Forms;
+using HoaDonDienTu.Application.Authentication;
 using HoaDonDienTu.Application.Common;
 using HoaDonDienTu.Application.Navigation;
 using HoaDonDienTu.Application.Startup;
@@ -69,6 +70,22 @@ namespace HoaDonDienTu.WinForms.Bootstrap
                 var correlationId = CorrelationId.New();
                 _compositionRoot.Logger.Error("Khởi động thất bại [" + correlationId + "]", ex);
                 _compositionRoot.ErrorPresenter.Show(_compositionRoot.ErrorMapper.Map(ex, "Khởi động", correlationId));
+                await ShowRecoveryAfterStartupFailureAsync();
+            }
+        }
+
+        /// <summary>Khởi động lỗi giữa chừng: khóa mọi hành động và vào màn hình khôi phục thay vì kẹt ở màn hình khởi tạo.</summary>
+        private async System.Threading.Tasks.Task ShowRecoveryAfterStartupFailureAsync()
+        {
+            try
+            {
+                _mainShell.ApplyMode(new ShellModeViewState { LicenseLabel = "Cần khôi phục" });
+                _mainShell.ShowOperation(new OperationViewState { Text = "Khởi động thất bại", IsBusy = false });
+                await _presenter.ShowAsync(ScreenId.Recovery);
+            }
+            catch (Exception ex)
+            {
+                _compositionRoot.Logger.Error("Không hiển thị được màn hình khôi phục", ex);
             }
         }
 
@@ -92,6 +109,12 @@ namespace HoaDonDienTu.WinForms.Bootstrap
             else if (result.Mode == AppMode.Standard) target = ScreenId.Dashboard;
             else target = ScreenId.CompanyList;
             await _presenter.ShowAsync(target);
+
+            // Standard: mở đăng nhập ngay; hủy thì ở lại Dashboard (chưa đăng nhập) và đăng nhập sau bằng nút Đăng nhập.
+            if (result.Route == StartupRoute.StandardPortalLogin && _compositionRoot.AutoLoginOnStartup)
+            {
+                await _presenter.LoginAsync(LoginReason.Startup);
+            }
         }
 
         private void OnMainShellClosed(object sender, FormClosedEventArgs e)

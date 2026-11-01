@@ -56,11 +56,33 @@ namespace HoaDonDienTu.WinForms.Tests
             Environment.SetEnvironmentVariable("HDDT_DEV_MODE", mode);
             Environment.SetEnvironmentVariable("HDDT_DEV_JOB", job);
             _root = CompositionRoot.Create();
+            // Các test khác tự bấm đăng nhập; riêng test auto-login dùng StartWithAutoLogin.
+            _root.AutoLoginOnStartup = false;
             _context = new AppApplicationContext(_root);
             _form = (MainShellForm)_context.MainForm;
             _form.Show();
-            Assert.That(WaitFor(() => ContentTitle() != null && ContentTitle() != "Đang khởi tạo..."), Is.True,
-                "Shell không khởi động xong");
+            Assert.That(WaitFor(IsReady), Is.True, "Shell không khởi động xong");
+        }
+
+        private bool IsReady()
+        {
+            return ContentTitle() != null && ContentTitle() != "Đang khởi tạo...";
+        }
+
+        /// <summary>Khởi động với đăng nhập tự mở; <paramref name="script"/> điều khiển hộp thoại xuất hiện lúc khởi động.</summary>
+        private void StartWithAutoLogin(string mode, Func<Form, bool> script)
+        {
+            Environment.SetEnvironmentVariable("HDDT_DEV_MODE", mode);
+            Environment.SetEnvironmentVariable("HDDT_DEV_JOB", null);
+            _root = CompositionRoot.Create();
+            Assert.That(_root.AutoLoginOnStartup, Is.True, "Mặc định phải tự mở đăng nhập");
+            _context = new AppApplicationContext(_root);
+            _form = (MainShellForm)_context.MainForm;
+            RunDialogScript(() =>
+            {
+                _form.Show();
+                WaitFor(IsReady);
+            }, script);
         }
 
         [Test]
@@ -73,6 +95,45 @@ namespace HoaDonDienTu.WinForms.Tests
             Assert.That(Control<KryptonCheckButton>("navDownload").Enabled, Is.True);
             Assert.That(Control<KryptonCheckButton>("navCompanies").Visible, Is.False, "Standard ẩn menu doanh nghiệp");
             Assert.That(Control<KryptonButton>("btnCompanyContext").Values.Text, Does.StartWith("CÔNG TY MẪU"));
+        }
+
+        [Test]
+        public void Standard_AutoOpensLoginAtStartup_CorrectTaxCodeLogsIn()
+        {
+            var sawDialog = false;
+
+            StartWithAutoLogin("Standard", dialog =>
+            {
+                sawDialog = dialog is PortalLoginForm;
+                return sawDialog && PressText(dialog, "Đăng nhập đúng MST");
+            });
+
+            Assert.That(sawDialog, Is.True, "Form đăng nhập phải tự mở khi khởi động Standard");
+            Assert.That(WaitFor(() => _root.SessionStore.HasActiveSession), Is.True);
+            Assert.That(ContentTitle(), Is.EqualTo("Tổng quan"));
+        }
+
+        [Test]
+        public void Standard_AutoLogin_Cancel_StaysOnDashboardLoggedOut()
+        {
+            StartWithAutoLogin("Standard", dialog => PressText(dialog, "Hủy"));
+
+            Assert.That(ContentTitle(), Is.EqualTo("Tổng quan"));
+            Assert.That(_root.SessionStore.HasActiveSession, Is.False);
+            Assert.That(Control<KryptonButton>("btnPortalLogin").Enabled, Is.True, "Vẫn đăng nhập lại được bằng nút");
+        }
+
+        [Test]
+        public void Service_DoesNotAutoOpenLogin()
+        {
+            Environment.SetEnvironmentVariable("HDDT_DEV_MODE", "Service");
+            _root = CompositionRoot.Create();
+            _context = new AppApplicationContext(_root);
+            _form = (MainShellForm)_context.MainForm;
+            _form.Show();
+
+            Assert.That(WaitFor(IsReady), Is.True, "Service không được bị chặn bởi hộp thoại đăng nhập");
+            Assert.That(System.Windows.Forms.Application.OpenForms.Cast<Form>().Any(f => f is PortalLoginForm), Is.False);
         }
 
         [Test]

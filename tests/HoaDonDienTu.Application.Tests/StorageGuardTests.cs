@@ -68,6 +68,15 @@ namespace HoaDonDienTu.Application.Tests
             Assert.Throws<StorageGuardException>(() => guard.EnsureCanWrite(Id, Mst, path, AppFeature.NewDownload, false));
         }
 
+        [TestCase(@"C:\data\A\bad?name.xml")]
+        [TestCase(@"C:\data\A\bad|name.xml")]
+        public void InvalidPathCharacters_RejectedAsGuardException(string path)
+        {
+            var guard = Guard(true, Mst, true, AppMode.Service);
+
+            Assert.Throws<StorageGuardException>(() => guard.EnsureCanWrite(Id, Mst, path, AppFeature.NewDownload, false));
+        }
+
         [Test]
         public void ReadOnlyMode_NewDownload_Denied()
         {
