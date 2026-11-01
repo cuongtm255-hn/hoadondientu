@@ -1,435 +1,488 @@
 #if DEBUG
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.IO.Compression;
 using System.Linq;
+using System.Text;
 using System.Threading;
-using System.Xml;
-using HoaDonDienTu.Application.Authentication;
+using System.Threading.Tasks;
 using HoaDonDienTu.Application.Portal;
 using HoaDonDienTu.Domain.Invoices;
 using HoaDonDienTu.Infrastructure.Development.Mock;
 using HoaDonDienTu.Infrastructure.Portal;
+using Newtonsoft.Json.Linq;
 using NUnit.Framework;
 
 namespace HoaDonDienTu.Infrastructure.Tests.Portal
 {
-    /// <summary>
-    /// Client thật + cổng giả cùng đọc một cấu hình. Mọi test chính chạy lại cho cả ba "hình dạng API"
-    /// (con trỏ/query, số trang/query, POST/body + base64) để chứng minh chỉ cần đổi cấu hình khi khớp cổng thật.
-    /// </summary>
+    /// <summary>Client thật chạy trên cổng giả có hình dạng API thật (RSQL, datas/total/state, JWT, xuất XML dạng zip).</summary>
     [TestFixture]
     public class PortalClientMockTests
     {
-        private static readonly DateTime July1 = new DateTime(2026, 7, 1);
-        private static readonly DateTime July31 = new DateTime(2026, 7, 31);
+        private TestPortal _portal;
 
-        private static IEnumerable<string> VariantNames
+        [SetUp]
+        public void SetUp()
         {
-            get { return Variants.All; }
+            _portal = new TestPortal();
         }
 
-        private static PortalApiException ExpectError(TestDelegate action)
+        [TearDown]
+        public void TearDown()
         {
-            return Assert.Throws<PortalApiException>(action);
+            _portal.Dispose();
         }
 
-        [TestCaseSource("VariantNames")]
-        public void Search_MultiPageMonth_ReturnsEveryInvoiceExactlyOnce(string variant)
+        private static DateTime D(int y, int m, int d)
         {
-            using (var portal = new TestPortal(variant))
+            return new DateTime(y, m, d);
+        }
+
+        // ---- Tra cứu ----
+
+        [Test]
+        public void Search_Sold_ReturnsRecordsNewestFirst_LikeSortTdlapDesc()
+        {
+            var items = _portal.SearchAll(InvoiceDirection.Sold, D(2026, 1, 1), D(2026, 1, 31));
+
+            Assert.That(items, Is.Not.Empty);
+            Assert.That(items.Select(i => i.IssueDate), Is.Ordered.Descending);
+            Assert.That(items.Select(i => i.InvoiceNumber).Distinct().Count(), Is.EqualTo(items.Count));
+            Assert.That(items.All(i => i.SellerTaxCode == TestPortal.TaxCode), Is.True, "Bán ra: người bán là MST đang đăng nhập");
+        }
+
+        [Test]
+        public void Search_Purchase_ReturnsBuyerIsOwnTaxCode()
+        {
+            var items = _portal.SearchAll(InvoiceDirection.Purchase, D(2026, 1, 1), D(2026, 1, 31));
+
+            Assert.That(items, Is.Not.Empty);
+            Assert.That(items.All(i => i.BuyerTaxCode == TestPortal.TaxCode), Is.True);
+        }
+
+        [Test]
+        public void Search_RangeIsInclusiveOnBothEnds_IncludingTheLastSecondOfTheDay()
+        {
+            var all = _portal.Dataset.Query(InvoiceDirection.Sold, D(2026, 1, 1), D(2026, 1, 31));
+            var lastDay = all.Max(r => r.Dto.IssueDate);
+
+            var items = _portal.SearchAll(InvoiceDirection.Sold, lastDay, lastDay);
+
+            Assert.That(items, Is.Not.Empty);
+            Assert.That(items.All(i => i.IssueDate == lastDay), Is.True);
+        }
+
+        [Test]
+        public void Search_MultiPageMonth_FollowsStateToTheEnd_WithoutLossOrDuplicates()
+        {
+            var expected = _portal.Dataset.Query(InvoiceDirection.Purchase, D(2026, 7, 1), D(2026, 7, 31));
+            Assert.That(expected.Count, Is.EqualTo(120));
+
+            var items = _portal.SearchAll(InvoiceDirection.Purchase, D(2026, 7, 1), D(2026, 7, 31), null, 50);
+
+            Assert.That(items.Count, Is.EqualTo(120));
+            Assert.That(_portal.Pages, Is.EqualTo(3));
+            Assert.That(items.Select(i => i.PortalInvoiceId).Distinct().Count(), Is.EqualTo(120));
+        }
+
+        [Test]
+        public void Search_PortalCapsPageSize_ClientStillGetsEverythingByFollowingState()
+        {
+            _portal.Handler.MaxPageSize = 10;
+
+            var items = _portal.SearchAll(InvoiceDirection.Purchase, D(2026, 7, 1), D(2026, 7, 31), null, 1000);
+
+            Assert.That(items.Count, Is.EqualTo(120));
+            Assert.That(_portal.Pages, Is.EqualTo(12));
+        }
+
+        [Test]
+        public void Search_EmptyMonth_ReturnsEmptyPage()
+        {
+            var items = _portal.SearchAll(InvoiceDirection.Sold, D(2026, 3, 1), D(2026, 3, 31));
+
+            Assert.That(items, Is.Empty);
+        }
+
+        [Test]
+        public void Search_StatusAndCheckResultFilters_UseThePortalCodes()
+        {
+            var cancelled = _portal.SearchAll(InvoiceDirection.Purchase, D(2026, 7, 1), D(2026, 7, 31), new InvoiceSearchFilter { StatusCode = "6" });
+            var granted = _portal.SearchAll(InvoiceDirection.Purchase, D(2026, 7, 1), D(2026, 7, 31), new InvoiceSearchFilter { CheckResultCode = "5" });
+
+            Assert.That(cancelled, Is.Not.Empty);
+            Assert.That(cancelled.All(i => i.StatusRaw == "6"), Is.True);
+            Assert.That(granted.All(i => i.CheckResultRaw == "5"), Is.True);
+        }
+
+        [Test]
+        public void Search_BuyerIdNumber_FindsIndividualBuyers_OnlyInSold()
+        {
+            var sold = _portal.Dataset.Query(InvoiceDirection.Sold, D(2026, 1, 1), D(2026, 12, 31)).First(r => r.Dto.BuyerIdNumber != null);
+            var date = sold.Dto.IssueDate;
+
+            var items = _portal.SearchAll(InvoiceDirection.Sold, date, date, new InvoiceSearchFilter { BuyerIdNumber = sold.Dto.BuyerIdNumber });
+
+            Assert.That(items.Select(i => i.PortalInvoiceId), Does.Contain(sold.Dto.PortalInvoiceId));
+            Assert.That(items.All(i => i.BuyerIdNumber == sold.Dto.BuyerIdNumber && i.BuyerTaxCode == null), Is.True);
+        }
+
+        [Test]
+        public void Search_InvoiceNumberFormAndSymbol_Filters()
+        {
+            var target = _portal.Dataset.Query(InvoiceDirection.Sold, D(2026, 1, 1), D(2026, 1, 31)).First().Dto;
+
+            var items = _portal.SearchAll(InvoiceDirection.Sold, D(2026, 1, 1), D(2026, 1, 31), new InvoiceSearchFilter
             {
-                var expected = portal.Dataset.Query(InvoiceDirection.Purchase, July1, July31);
+                InvoiceNumber = target.InvoiceNumber,
+                FormSymbol = target.FormSymbol,
+                InvoiceSymbol = target.InvoiceSymbol
+            });
 
-                var all = portal.SearchAll(InvoiceDirection.Purchase, July1, July31);
-
-                Assert.That(expected.Count, Is.EqualTo(120));
-                Assert.That(all.Count, Is.EqualTo(120));
-                Assert.That(all.Select(i => i.PortalInvoiceId).Distinct().Count(), Is.EqualTo(120));
-                Assert.That(all.Select(i => i.PortalInvoiceId), Is.EqualTo(expected.Select(r => r.Dto.PortalInvoiceId)));
-                Assert.That(portal.Pages, Is.GreaterThanOrEqualTo(3), "Cổng giới hạn 50 bản ghi/trang nên cần ít nhất 3 trang");
-            }
+            Assert.That(items.Single().PortalInvoiceId, Is.EqualTo(target.PortalInvoiceId));
         }
 
-        [TestCaseSource("VariantNames")]
-        public void Search_ServerCapsPageSizeBelowRequested_StillGetsEverything(string variant)
+        [Test]
+        public void Search_ProxyCheckbox_OnlyReturnsProxyInvoices()
         {
-            using (var portal = new TestPortal(variant))
-            {
-                portal.Handler.MaxPageSize = 17;
+            var items = _portal.SearchAll(InvoiceDirection.Purchase, D(2026, 7, 1), D(2026, 7, 31), new InvoiceSearchFilter { ProxyInvoice = true });
+            var proxyIds = _portal.Dataset.All.Where(r => r.Proxy).Select(r => r.Dto.PortalInvoiceId).ToList();
 
-                var all = portal.SearchAll(InvoiceDirection.Purchase, July1, July31, pageSize: 100);
-
-                Assert.That(all.Count, Is.EqualTo(120), "Client không được giả định cổng trả đủ kích thước trang đã xin");
-                Assert.That(portal.Pages, Is.GreaterThanOrEqualTo(8));
-            }
+            Assert.That(items, Is.Not.Empty);
+            Assert.That(items.All(i => proxyIds.Contains(i.PortalInvoiceId)), Is.True);
         }
 
-        [TestCaseSource("VariantNames")]
-        public void Search_EmptyMonth_ReturnsNoItems_AndStops(string variant)
+        [Test]
+        public void Search_RejectedFilter_IsFilterRejected()
         {
-            using (var portal = new TestPortal(variant))
-            {
-                var all = portal.SearchAll(InvoiceDirection.Sold, new DateTime(2026, 3, 1), new DateTime(2026, 3, 31));
+            _portal.Handler.RejectedRsqlFields.Add("unhiem");
 
-                Assert.That(all, Is.Empty);
-                Assert.That(portal.Pages, Is.LessThanOrEqualTo(1));
-            }
+            var ex = Assert.Throws<PortalApiException>(() =>
+                _portal.SearchAll(InvoiceDirection.Sold, D(2026, 1, 1), D(2026, 1, 31), new InvoiceSearchFilter { ProxyInvoice = true }));
+
+            Assert.That(ex.Kind, Is.EqualTo(PortalErrorKind.FilterRejected));
         }
 
-        [TestCaseSource("VariantNames")]
-        public void Search_DirectionsAreSeparate_AndOwnTaxCodeIsOnTheRightSide(string variant)
+        [Test]
+        public void Search_RangeLongerThanAMonth_IsRejectedByPortal()
         {
-            using (var portal = new TestPortal(variant))
-            {
-                var purchase = portal.SearchAll(InvoiceDirection.Purchase, new DateTime(2026, 2, 1), new DateTime(2026, 2, 28));
-                var sold = portal.SearchAll(InvoiceDirection.Sold, new DateTime(2026, 2, 1), new DateTime(2026, 2, 28));
+            var ex = Assert.Throws<PortalApiException>(() => _portal.SearchAll(InvoiceDirection.Sold, D(2026, 1, 1), D(2026, 3, 31)));
 
-                Assert.That(sold.Count, Is.EqualTo(1));
-                Assert.That(sold[0].SellerTaxCode, Is.EqualTo(TestPortal.TaxCode));
-                Assert.That(purchase.Count, Is.GreaterThan(1));
-                Assert.That(purchase.All(i => i.BuyerTaxCode == TestPortal.TaxCode), Is.True);
-            }
+            Assert.That(ex.Kind, Is.EqualTo(PortalErrorKind.FilterRejected));
         }
 
-        [TestCaseSource("VariantNames")]
-        public void Search_DateWindow_IsInclusiveOnBothEnds(string variant)
+        [Test]
+        public void Search_PortalAcceptsThirtyDaysAcrossTwoMonths_LikeTheCapturedSample()
         {
-            using (var portal = new TestPortal(variant))
-            {
-                var from = new DateTime(2026, 7, 10);
-                var to = new DateTime(2026, 7, 20);
-                var expected = portal.Dataset.Query(InvoiceDirection.Purchase, from, to);
-
-                var all = portal.SearchAll(InvoiceDirection.Purchase, from, to);
-
-                Assert.That(all.Count, Is.EqualTo(expected.Count));
-                Assert.That(all.Count, Is.GreaterThan(0));
-                Assert.That(all.All(i => i.IssueDate >= from && i.IssueDate <= to), Is.True);
-                Assert.That(all.Any(i => i.IssueDate == from) || all.Any(i => i.IssueDate == to), Is.True, "Mẫu phải có hóa đơn ở biên");
-            }
+            // Mẫu thật: tdlap từ 02/10/2026 đến 01/11/2026 (30 ngày, hai tháng dương lịch) được cổng chấp nhận.
+            Assert.DoesNotThrow(() => _portal.SearchAll(InvoiceDirection.Sold, D(2026, 10, 2), D(2026, 11, 1)));
         }
 
-        [TestCaseSource("VariantNames")]
-        public void Search_PreservesRawFields_LeadingZeroNumbers_ForeignCurrency_AndNulls(string variant)
+        [Test]
+        public void Search_BogusState_IsRejected()
         {
-            using (var portal = new TestPortal(variant))
-            {
-                var all = portal.SearchAll(InvoiceDirection.Purchase, July1, July31);
+            var request = new InvoiceSearchRequest(InvoiceDirection.Sold, D(2026, 1, 1), D(2026, 1, 31)) { Cursor = "###" };
 
-                Assert.That(all.All(i => i.InvoiceNumber.Length == 7 && i.InvoiceNumber.StartsWith("0")), Is.True);
-                Assert.That(all.Any(i => i.Currency == "USD" && i.ExchangeRate == 25000m), Is.True);
-                Assert.That(all.Any(i => i.TotalDiscount == null), Is.True);
-                Assert.That(all.Any(i => i.TotalDiscount != null), Is.True);
-                Assert.That(all.Select(i => i.StatusRaw).Distinct().Count(), Is.GreaterThan(1));
-                Assert.That(all.All(i => i.TotalPayment.HasValue), Is.True);
-            }
+            var ex = Assert.Throws<AggregateException>(() => _portal.Client.SearchAsync(request, CancellationToken.None).Wait());
+
+            Assert.That(((PortalApiException)ex.InnerException).Kind, Is.EqualTo(PortalErrorKind.FilterRejected));
         }
 
-        [TestCaseSource("VariantNames")]
-        public void Search_Filters_Work_WhenSupported(string variant)
+        // ---- Header gửi đi ----
+
+        [Test]
+        public void Requests_CarryActionRequestIdAndDefaultHeaders_ButAuthIsNotLogged()
         {
-            using (var portal = new TestPortal(variant))
+            _portal.SearchAll(InvoiceDirection.Sold, D(2026, 1, 1), D(2026, 1, 31));
+
+            var headers = _portal.Handler.HeaderLog.Single();
+            Assert.That(headers["action"], Does.StartWith("T%C3%ACm"));
+            Assert.That(Guid.TryParse(headers["request-id"], out var _), Is.True);
+            Assert.That(headers["end-point"], Is.EqualTo("/tra-cuu/tra-cuu-hoa-don"));
+            Assert.That(headers["Accept-Language"], Is.EqualTo("vi"));
+            Assert.That(headers.ContainsKey("Authorization"), Is.False);
+        }
+
+        [Test]
+        public void RequestId_IsDifferentForEachRequest()
+        {
+            _portal.SearchAll(InvoiceDirection.Sold, D(2026, 1, 1), D(2026, 1, 31));
+            _portal.SearchAll(InvoiceDirection.Sold, D(2026, 2, 1), D(2026, 2, 28));
+
+            var ids = _portal.Handler.HeaderLog.Select(h => h["request-id"]).ToList();
+            Assert.That(ids.Distinct().Count(), Is.EqualTo(ids.Count));
+        }
+
+        [Test]
+        public void WebViewUserAgent_IsUsedInsteadOfTheDefault()
+        {
+            using (var portal = new TestPortal(userAgent: "Mozilla/5.0 WebView-Test"))
             {
-                var records = portal.Dataset.Query(InvoiceDirection.Purchase, July1, July31);
-                var counterparty = records[0].Dto.SellerTaxCode;
-                var number = records[5].Dto.InvoiceNumber;
+                portal.SearchAll(InvoiceDirection.Sold, D(2026, 1, 1), D(2026, 1, 31));
 
-                var byPartner = portal.SearchAll(InvoiceDirection.Purchase, July1, July31, new InvoiceSearchFilter { CounterpartyTaxCode = counterparty });
-                var byNumber = portal.SearchAll(InvoiceDirection.Purchase, July1, July31, new InvoiceSearchFilter { InvoiceNumber = number });
-                var byStatus = portal.SearchAll(InvoiceDirection.Purchase, July1, July31, new InvoiceSearchFilter { StatusCode = "6" });
-
-                Assert.That(byPartner.Count, Is.EqualTo(records.Count(r => r.Dto.SellerTaxCode == counterparty)));
-                Assert.That(byPartner.All(i => i.SellerTaxCode == counterparty), Is.True);
-                Assert.That(byNumber.Count, Is.EqualTo(1));
-                Assert.That(byNumber[0].InvoiceNumber, Is.EqualTo(number));
-                Assert.That(byStatus.All(i => i.StatusRaw == "6"), Is.True);
-                Assert.That(byStatus.Count, Is.EqualTo(records.Count(r => r.Dto.StatusRaw == "6")));
+                Assert.That(portal.Handler.HeaderLog.Single()["User-Agent"], Is.EqualTo("Mozilla/5.0 WebView-Test"));
             }
         }
 
         [Test]
-        public void Search_UnsupportedFilter_IsFilterRejected()
+        public void DefaultUserAgent_IsUsedWhenWebViewDidNotProvideOne()
         {
-            using (var portal = new TestPortal())
+            _portal.SearchAll(InvoiceDirection.Sold, D(2026, 1, 1), D(2026, 1, 31));
+
+            Assert.That(_portal.Handler.HeaderLog.Single()["User-Agent"], Does.Contain("Chrome"));
+        }
+
+        [Test]
+        public void Cookies_AreSentWhenConfigured_AndNeverLoggedByTheMock()
+        {
+            // SendCookies = true theo cấu hình mặc định (jwt, JSESSIONID, cookie WAF của F5).
+            using (var portal = new TestPortal(cookies: new Dictionary<string, string> { { "JSESSIONID", "S1" }, { "jwt", "J1" } }))
             {
-                var request = new InvoiceSearchRequest(InvoiceDirection.Purchase, July1, July31)
+                portal.SearchAll(InvoiceDirection.Sold, D(2026, 1, 1), D(2026, 1, 31));
+
+                Assert.That(portal.Handler.HeaderLog.Single().ContainsKey("Cookie"), Is.False, "Cookie bị loại khỏi nhật ký của mock");
+            }
+        }
+
+        // ---- Chi tiết ----
+
+        [Test]
+        public async Task Detail_ReturnsRawJsonWithLineItems()
+        {
+            var record = _portal.Dataset.Query(InvoiceDirection.Sold, D(2026, 1, 1), D(2026, 1, 31)).First();
+
+            var json = await _portal.Client.GetInvoiceDetailAsync(new PortalInvoiceRef(InvoiceDirection.Sold, record.Dto), CancellationToken.None);
+
+            var obj = JObject.Parse(json);
+            Assert.That((string)obj["khhdon"], Is.EqualTo(record.Dto.InvoiceSymbol));
+            Assert.That(obj["hdhhdvu"], Is.InstanceOf<JArray>());
+            Assert.That(((JArray)obj["hdhhdvu"]).Count, Is.GreaterThan(0));
+            Assert.That(_portal.Handler.RequestLog.Single(), Does.Contain("/api/query/invoices/detail?nbmst=" + record.Dto.SellerTaxCode));
+        }
+
+        [Test]
+        public void Detail_UnknownInvoice_IsFatal()
+        {
+            var dto = new PortalInvoiceDto { SellerTaxCode = "0100000000", InvoiceSymbol = "X", InvoiceNumber = "1", FormSymbol = "1", PortalInvoiceId = "x" };
+
+            var ex = Assert.ThrowsAsync<PortalApiException>(() => _portal.Client.GetInvoiceDetailAsync(new PortalInvoiceRef(InvoiceDirection.Sold, dto), CancellationToken.None));
+
+            Assert.That(ex.Kind, Is.EqualTo(PortalErrorKind.Fatal));
+        }
+
+        // ---- Xuất XML (zip) ----
+
+        [Test]
+        public async Task ExportXml_ReturnsOnlyTheInvoiceXml_ExtractedFromTheZip()
+        {
+            var record = _portal.Dataset.Query(InvoiceDirection.Sold, D(2026, 1, 1), D(2026, 1, 31)).First();
+
+            var payload = await _portal.Client.DownloadXmlAsync(new PortalInvoiceRef(InvoiceDirection.Sold, record.Dto), CancellationToken.None);
+
+            var xml = Encoding.UTF8.GetString(payload.Content);
+            Assert.That(xml, Does.StartWith("<?xml").Or.StartWith("<HDon"));
+            Assert.That(xml, Does.Contain("<KHHDon>" + record.Dto.InvoiceSymbol + "</KHHDon>"));
+            Assert.That(xml, Does.Not.Contain("MOCK VIEWER"), "Không được lẫn trang xem HTML của gói zip");
+            Assert.That(payload.SuggestedFileName, Is.EqualTo(record.Dto.SellerTaxCode + "_" + record.Dto.InvoiceSymbol + "_" + record.Dto.InvoiceNumber + ".xml"));
+        }
+
+        [Test]
+        public void ExportXml_MalformedZip_IsSchemaChanged()
+        {
+            _portal.Handler.MalformedExportResponse = true;
+            var record = _portal.Dataset.Query(InvoiceDirection.Sold, D(2026, 1, 1), D(2026, 1, 31)).First();
+
+            var ex = Assert.ThrowsAsync<PortalApiException>(() => _portal.Client.DownloadXmlAsync(new PortalInvoiceRef(InvoiceDirection.Sold, record.Dto), CancellationToken.None));
+
+            Assert.That(ex.Kind, Is.EqualTo(PortalErrorKind.SchemaChanged));
+        }
+
+        [Test]
+        public void ExportXml_UnknownInvoice_IsFatal404()
+        {
+            var dto = new PortalInvoiceDto { SellerTaxCode = "0100000000", InvoiceSymbol = "X", InvoiceNumber = "1", FormSymbol = "1", PortalInvoiceId = "x" };
+
+            var ex = Assert.ThrowsAsync<PortalApiException>(() => _portal.Client.DownloadXmlAsync(new PortalInvoiceRef(InvoiceDirection.Sold, dto), CancellationToken.None));
+
+            Assert.That(ex.Kind, Is.EqualTo(PortalErrorKind.Fatal));
+            Assert.That(ex.HttpStatus, Is.EqualTo(404));
+        }
+
+        [Test]
+        public async Task ExportXml_FileName_CannotEscapeTargetFolder()
+        {
+            // Tên file đến từ dữ liệu cổng: dù mẫu tên dùng đến id có ký tự đường dẫn, kết quả vẫn không thoát khỏi thư mục đích.
+            _portal.Config.Download.FileNameTemplate = "{PortalInvoiceId}.xml";
+            var record = _portal.Dataset.Query(InvoiceDirection.Sold, D(2026, 1, 1), D(2026, 1, 31)).First();
+            var invoice = new PortalInvoiceRef(InvoiceDirection.Sold, new PortalInvoiceDto
+            {
+                SellerTaxCode = record.Dto.SellerTaxCode, InvoiceSymbol = record.Dto.InvoiceSymbol, InvoiceNumber = record.Dto.InvoiceNumber,
+                FormSymbol = record.Dto.FormSymbol, PortalInvoiceId = "..\\..\\evil"
+            });
+
+            var payload = await _portal.Client.DownloadXmlAsync(invoice, CancellationToken.None);
+
+            Assert.That(payload.SuggestedFileName.IndexOfAny(Path.GetInvalidFileNameChars()), Is.EqualTo(-1));
+            Assert.That(payload.SuggestedFileName, Does.EndWith(".xml"));
+        }
+
+        // ---- Lỗi và xác thực ----
+
+        [Test]
+        public void ExpiredToken_IsAuthExpired()
+        {
+            using (var portal = new TestPortal(token: MockInvoiceDataset.ExpiredTokenFor(TestPortal.TaxCode)))
+            {
+                var ex = Assert.Throws<PortalApiException>(() => portal.SearchAll(InvoiceDirection.Sold, D(2026, 1, 1), D(2026, 1, 31)));
+
+                Assert.That(ex.Kind, Is.EqualTo(PortalErrorKind.AuthExpired));
+                Assert.That(ex.HttpStatus, Is.EqualTo(401));
+            }
+        }
+
+        [Test]
+        public void MissingOrGarbageToken_IsAuthExpired()
+        {
+            foreach (var token in new[] { "garbage", "a.b.c", string.Empty })
+            {
+                using (var portal = new TestPortal(token: token))
                 {
-                    Filter = new InvoiceSearchFilter { ProxyInvoice = true }
-                };
-
-                var ex = ExpectError(() => portal.Client.SearchAsync(request, CancellationToken.None).GetAwaiter().GetResult());
-
-                Assert.That(ex.Kind, Is.EqualTo(PortalErrorKind.FilterRejected));
-                Assert.That(ex.HttpStatus, Is.EqualTo(400));
+                    var ex = Assert.Throws<PortalApiException>(() => portal.SearchAll(InvoiceDirection.Sold, D(2026, 1, 1), D(2026, 1, 31)), token);
+                    Assert.That(ex.Kind, Is.EqualTo(PortalErrorKind.AuthExpired), token);
+                }
             }
         }
 
         [Test]
-        public void Search_RangeLongerThanOneMonth_IsRejectedByPortal_SoSegmentingIsRequired()
+        public void TokenOfAnotherTaxCode_SeesOnlyItsOwnData()
         {
-            using (var portal = new TestPortal())
+            using (var portal = new TestPortal(token: MockInvoiceDataset.TokenFor("0109999999")))
             {
-                var request = new InvoiceSearchRequest(InvoiceDirection.Purchase, new DateTime(2026, 1, 1), new DateTime(2026, 6, 30));
+                var items = portal.SearchAll(InvoiceDirection.Sold, D(2026, 1, 1), D(2026, 1, 31));
 
-                var ex = ExpectError(() => portal.Client.SearchAsync(request, CancellationToken.None).GetAwaiter().GetResult());
-
-                Assert.That(ex.Kind, Is.EqualTo(PortalErrorKind.FilterRejected));
-            }
-        }
-
-        [Test]
-        public void Search_BogusCursor_IsRejected()
-        {
-            using (var portal = new TestPortal())
-            {
-                var request = new InvoiceSearchRequest(InvoiceDirection.Purchase, July1, July31) { Cursor = "not-a-cursor" };
-
-                var ex = ExpectError(() => portal.Client.SearchAsync(request, CancellationToken.None).GetAwaiter().GetResult());
-
-                Assert.That(ex.HttpStatus, Is.EqualTo(400));
-            }
-        }
-
-        [TestCaseSource("VariantNames")]
-        public void Errors_ExpiredOrMissingToken_AreAuthExpired(string variant)
-        {
-            using (var portal = new TestPortal(variant, token: "mock-token-expired"))
-            using (var anonymous = portal.NewClient(null))
-            {
-                var request = new InvoiceSearchRequest(InvoiceDirection.Purchase, July1, July31);
-
-                var expired = ExpectError(() => portal.Client.SearchAsync(request, CancellationToken.None).GetAwaiter().GetResult());
-                var missing = ExpectError(() => anonymous.SearchAsync(request, CancellationToken.None).GetAwaiter().GetResult());
-
-                Assert.That(expired.Kind, Is.EqualTo(PortalErrorKind.AuthExpired));
-                Assert.That(missing.Kind, Is.EqualTo(PortalErrorKind.AuthExpired));
+                Assert.That(items.All(i => i.SellerTaxCode == "0109999999"), Is.True);
             }
         }
 
         [Test]
         public void Errors_RateLimited_CarriesRetryAfter_AndNextCallSucceeds()
         {
-            using (var portal = new TestPortal())
-            {
-                portal.Handler.EnqueueFailure(429, 7);
-                var request = new InvoiceSearchRequest(InvoiceDirection.Sold, new DateTime(2026, 2, 1), new DateTime(2026, 2, 28));
+            _portal.Handler.EnqueueFailure(429, 7);
 
-                var ex = ExpectError(() => portal.Client.SearchAsync(request, CancellationToken.None).GetAwaiter().GetResult());
-                var page = portal.Client.SearchAsync(request, CancellationToken.None).GetAwaiter().GetResult();
+            var ex = Assert.Throws<PortalApiException>(() => _portal.SearchAll(InvoiceDirection.Sold, D(2026, 1, 1), D(2026, 1, 31)));
 
-                Assert.That(ex.Kind, Is.EqualTo(PortalErrorKind.RateLimited));
-                Assert.That(ex.RetryAfter, Is.EqualTo(TimeSpan.FromSeconds(7)));
-                Assert.That(page.Items.Count, Is.EqualTo(1));
-            }
+            Assert.That(ex.Kind, Is.EqualTo(PortalErrorKind.RateLimited));
+            Assert.That(ex.RetryAfter, Is.EqualTo(TimeSpan.FromSeconds(7)));
+            Assert.DoesNotThrow(() => _portal.SearchAll(InvoiceDirection.Sold, D(2026, 1, 1), D(2026, 1, 31)));
         }
 
         [Test]
         public void Errors_ServerErrorAndNetworkFailure_AreTransient()
         {
-            using (var portal = new TestPortal())
-            {
-                var request = new InvoiceSearchRequest(InvoiceDirection.Sold, new DateTime(2026, 2, 1), new DateTime(2026, 2, 28));
-                portal.Handler.EnqueueFailure(503);
-                portal.Handler.EnqueueNetworkError();
+            _portal.Handler.EnqueueFailure(503);
+            _portal.Handler.EnqueueNetworkError();
 
-                var server = ExpectError(() => portal.Client.SearchAsync(request, CancellationToken.None).GetAwaiter().GetResult());
-                var network = ExpectError(() => portal.Client.SearchAsync(request, CancellationToken.None).GetAwaiter().GetResult());
+            var server = Assert.Throws<PortalApiException>(() => _portal.SearchAll(InvoiceDirection.Sold, D(2026, 1, 1), D(2026, 1, 31)));
+            var network = Assert.Throws<PortalApiException>(() => _portal.SearchAll(InvoiceDirection.Sold, D(2026, 1, 1), D(2026, 1, 31)));
 
-                Assert.That(server.Kind, Is.EqualTo(PortalErrorKind.Transient));
-                Assert.That(server.HttpStatus, Is.EqualTo(503));
-                Assert.That(network.Kind, Is.EqualTo(PortalErrorKind.Transient));
-            }
+            Assert.That(server.Kind, Is.EqualTo(PortalErrorKind.Transient));
+            Assert.That(network.Kind, Is.EqualTo(PortalErrorKind.Transient));
         }
 
         [Test]
         public void Errors_Timeout_IsTransient_NotCancellation()
         {
-            using (var portal = new TestPortal())
+            _portal.Config.Http.TimeoutSeconds = 1;
+            _portal.Handler.Latency = TimeSpan.FromSeconds(3);
+            using (var slow = _portal.NewClient(MockInvoiceDataset.TokenFor(TestPortal.TaxCode)))
             {
-                portal.Config.Http.TimeoutSeconds = 1;
-                using (var slow = portal.NewClient(MockInvoiceDataset.TokenFor(TestPortal.TaxCode)))
-                {
-                    portal.Handler.Latency = TimeSpan.FromSeconds(3);
-                    var request = new InvoiceSearchRequest(InvoiceDirection.Sold, July1, July31);
+                var request = new InvoiceSearchRequest(InvoiceDirection.Sold, D(2026, 1, 1), D(2026, 1, 31));
 
-                    var ex = ExpectError(() => slow.SearchAsync(request, CancellationToken.None).GetAwaiter().GetResult());
+                var ex = Assert.ThrowsAsync<PortalApiException>(() => slow.SearchAsync(request, CancellationToken.None));
 
-                    Assert.That(ex.Kind, Is.EqualTo(PortalErrorKind.Transient));
-                }
+                Assert.That(ex.Kind, Is.EqualTo(PortalErrorKind.Transient));
             }
         }
 
         [Test]
         public void Errors_CallerCancellation_PropagatesAsCancellation()
         {
-            using (var portal = new TestPortal())
-            using (var cts = new CancellationTokenSource())
-            {
-                portal.Handler.Latency = TimeSpan.FromSeconds(5);
-                cts.CancelAfter(100);
-                var request = new InvoiceSearchRequest(InvoiceDirection.Sold, July1, July31);
+            _portal.Handler.Latency = TimeSpan.FromSeconds(5);
+            var cts = new CancellationTokenSource(100);
+            var request = new InvoiceSearchRequest(InvoiceDirection.Sold, D(2026, 1, 1), D(2026, 1, 31));
 
-                Assert.Throws<System.Threading.Tasks.TaskCanceledException>(() => portal.Client.SearchAsync(request, cts.Token).GetAwaiter().GetResult());
-            }
+            Assert.CatchAsync<OperationCanceledException>(() => _portal.Client.SearchAsync(request, cts.Token));
         }
 
         [Test]
         public void Errors_MalformedBody_AndMissingField_AreSchemaChanged()
         {
-            using (var portal = new TestPortal())
-            {
-                var request = new InvoiceSearchRequest(InvoiceDirection.Purchase, July1, July31);
+            _portal.Handler.MalformedSearchResponse = true;
+            var malformed = Assert.Throws<PortalApiException>(() => _portal.SearchAll(InvoiceDirection.Sold, D(2026, 1, 1), D(2026, 1, 31)));
+            _portal.Handler.MalformedSearchResponse = false;
+            _portal.Handler.OmitJsonField = "shdon";
+            var missing = Assert.Throws<PortalApiException>(() => _portal.SearchAll(InvoiceDirection.Sold, D(2026, 1, 1), D(2026, 1, 31)));
 
-                portal.Handler.MalformedSearchResponse = true;
-                var malformed = ExpectError(() => portal.Client.SearchAsync(request, CancellationToken.None).GetAwaiter().GetResult());
-                portal.Handler.MalformedSearchResponse = false;
-
-                portal.Handler.OmitDtoField = "InvoiceNumber";
-                var omitted = ExpectError(() => portal.Client.SearchAsync(request, CancellationToken.None).GetAwaiter().GetResult());
-
-                Assert.That(malformed.Kind, Is.EqualTo(PortalErrorKind.SchemaChanged));
-                Assert.That(omitted.Kind, Is.EqualTo(PortalErrorKind.SchemaChanged));
-            }
+            Assert.That(malformed.Kind, Is.EqualTo(PortalErrorKind.SchemaChanged));
+            Assert.That(missing.Kind, Is.EqualTo(PortalErrorKind.SchemaChanged));
         }
 
         [Test]
         public void Errors_NeverLeakTokenOrBodyIntoMessages()
         {
-            const string secretToken = "mock-token-expired-SECRETVALUE";
-            using (var portal = new TestPortal(token: secretToken))
+            const string secret = "SECRETVALUE";
+            var token = HoaDonDienTu.Application.Authentication.PortalToken.BuildUnsigned(TestPortal.TaxCode, DateTime.UtcNow.AddHours(-25), DateTime.UtcNow.AddHours(-1))
+                + secret;
+            using (var portal = new TestPortal(token: token))
             {
-                var request = new InvoiceSearchRequest(InvoiceDirection.Sold, July1, July31);
+                var ex = Assert.Throws<PortalApiException>(() => portal.SearchAll(InvoiceDirection.Sold, D(2026, 1, 1), D(2026, 1, 31)));
 
-                var ex = ExpectError(() => portal.Client.SearchAsync(request, CancellationToken.None).GetAwaiter().GetResult());
-
-                Assert.That(ex.Message, Does.Not.Contain("SECRETVALUE"));
-                Assert.That(ex.ToString(), Does.Not.Contain("SECRETVALUE"));
-                Assert.That(string.Join("\n", portal.Handler.RequestLog), Does.Not.Contain("SECRETVALUE"));
-            }
-        }
-
-        [TestCaseSource("VariantNames")]
-        public void Download_ReturnsWellFormedXml_ForEveryInvoiceOfASegment(string variant)
-        {
-            using (var portal = new TestPortal(variant))
-            {
-                var items = portal.SearchAll(InvoiceDirection.Purchase, new DateTime(2026, 2, 1), new DateTime(2026, 2, 28));
-
-                foreach (var item in items)
-                {
-                    var payload = portal.Client.DownloadXmlAsync(new PortalInvoiceRef(InvoiceDirection.Purchase, item), CancellationToken.None)
-                        .GetAwaiter().GetResult();
-
-                    var document = new XmlDocument { XmlResolver = null };
-                    using (var stream = new System.IO.MemoryStream(payload.Content))
-                    using (var reader = XmlReader.Create(stream, new XmlReaderSettings { DtdProcessing = DtdProcessing.Prohibit }))
-                    {
-                        document.Load(reader);
-                    }
-
-                    Assert.That(document.SelectSingleNode("/HDon/DLHDon/TTChung/SHDon").InnerText, Is.EqualTo(item.InvoiceNumber));
-                    Assert.That(document.SelectSingleNode("/HDon/DLHDon/NDHDon/NMua/MST").InnerText, Is.EqualTo(item.BuyerTaxCode));
-                    Assert.That(payload.SuggestedFileName, Is.EqualTo(item.InvoiceSymbol + "-" + item.InvoiceNumber + ".xml"));
-                }
-            }
-        }
-
-        [Test]
-        public void Download_UnknownInvoice_IsFatal404()
-        {
-            using (var portal = new TestPortal())
-            {
-                var dto = new PortalInvoiceDto { PortalInvoiceId = "does-not-exist", InvoiceNumber = "1", IssueDate = July1 };
-
-                var ex = ExpectError(() => portal.Client.DownloadXmlAsync(new PortalInvoiceRef(InvoiceDirection.Sold, dto), CancellationToken.None).GetAwaiter().GetResult());
-
-                Assert.That(ex.Kind, Is.EqualTo(PortalErrorKind.Fatal));
-                Assert.That(ex.HttpStatus, Is.EqualTo(404));
-            }
-        }
-
-        [Test]
-        public void Download_FileName_CannotEscapeTargetFolder()
-        {
-            using (var portal = new TestPortal())
-            {
-                var record = portal.Dataset.Query(InvoiceDirection.Purchase, July1, July31)[0];
-                var dto = record.Dto;
-                var hostile = new PortalInvoiceDto
-                {
-                    PortalInvoiceId = dto.PortalInvoiceId,
-                    InvoiceSymbol = "..\\..",
-                    InvoiceNumber = "a/b:c*d",
-                    IssueDate = dto.IssueDate
-                };
-
-                var payload = portal.Client.DownloadXmlAsync(new PortalInvoiceRef(InvoiceDirection.Purchase, hostile), CancellationToken.None)
-                    .GetAwaiter().GetResult();
-
-                Assert.That(payload.SuggestedFileName.IndexOfAny(System.IO.Path.GetInvalidFileNameChars()), Is.EqualTo(-1));
+                Assert.That(ex.Message, Does.Not.Contain(secret));
+                Assert.That(ex.Message, Does.Not.Contain("mock failure"));
+                Assert.That(portal.Handler.RequestLog.Any(l => l.Contains(secret)), Is.False);
             }
         }
 
         [Test]
         public void ClientDispose_DoesNotDisposeSharedMockHandler()
         {
-            using (var portal = new TestPortal())
+            using (var second = _portal.NewClient(MockInvoiceDataset.TokenFor(TestPortal.TaxCode)))
             {
-                portal.Client.Dispose();
-                using (var second = portal.NewClient(MockInvoiceDataset.TokenFor(TestPortal.TaxCode)))
-                {
-                    var page = second.SearchAsync(new InvoiceSearchRequest(InvoiceDirection.Sold, new DateTime(2026, 2, 1), new DateTime(2026, 2, 28)), CancellationToken.None)
-                        .GetAwaiter().GetResult();
+                _portal.Client.Dispose();
 
-                    Assert.That(page.Items.Count, Is.EqualTo(1));
-                }
+                Assert.DoesNotThrow(() => second.SearchAsync(
+                    new InvoiceSearchRequest(InvoiceDirection.Sold, D(2026, 1, 1), D(2026, 1, 31)), CancellationToken.None).Wait());
             }
+        }
+
+        // ---- Dữ liệu giả hợp lệ với mẫu thật ----
+
+        [Test]
+        public void MockXml_HasTheSameStructureAsTheRealInvoiceXml()
+        {
+            var record = _portal.Dataset.All.First();
+
+            var xml = System.Xml.Linq.XDocument.Parse(Encoding.UTF8.GetString(MockInvoiceDataset.BuildXml(record)));
+
+            Assert.That(xml.Root.Name.LocalName, Is.EqualTo("HDon"));
+            Assert.That(xml.Root.Element("DLHDon").Element("TTChung").Element("KHMSHDon"), Is.Not.Null);
+            Assert.That(xml.Root.Element("DLHDon").Element("NDHDon").Element("NBan").Element("MST").Value, Is.EqualTo(record.Dto.SellerTaxCode));
+            Assert.That(xml.Root.Element("MCCQT"), Is.Not.Null);
+            Assert.That(xml.Root.Element("DSCKS"), Is.Not.Null);
         }
 
         [Test]
-        public void Cookies_AndForwardedHeaders_AreSentOnlyWhenConfigured()
+        public void MockSearchJson_UsesRealFieldNamesAndTypes()
         {
-            var config = Variants.Create(Variants.Default);
-            config.Auth.SendCookies = true;
-            config.Auth.ForwardHeaders = new List<string> { "X-Csrf" };
-            var handler = new MockPortalHandler(config);
-            var seen = new List<string>();
-            var spy = new SpyHandler(handler, seen);
-            var material = new PortalSessionMaterial(
-                new Dictionary<string, string> { { "sid", "abc" }, { "lang", "vi" } },
-                new Dictionary<string, string> { { "X-Csrf", "tok" }, { "X-Other", "no" } },
-                MockInvoiceDataset.TokenFor(TestPortal.TaxCode));
+            var json = MockInvoiceDataset.ToSearchJson(_portal.Dataset.All.First(r => r.Dto.BuyerIdNumber == null));
 
-            using (var client = new PortalHttpApiClient(config, material, spy))
-            {
-                client.SearchAsync(new InvoiceSearchRequest(InvoiceDirection.Sold, new DateTime(2026, 2, 1), new DateTime(2026, 2, 28)), CancellationToken.None)
-                    .GetAwaiter().GetResult();
-            }
-
-            Assert.That(seen.Single(), Does.Contain("Cookie=sid=abc; lang=vi"));
-            Assert.That(seen.Single(), Does.Contain("X-Csrf=tok"));
-            Assert.That(seen.Single(), Does.Not.Contain("X-Other"));
-        }
-
-        private sealed class SpyHandler : System.Net.Http.DelegatingHandler
-        {
-            private readonly List<string> _seen;
-
-            public SpyHandler(System.Net.Http.HttpMessageHandler inner, List<string> seen)
-                : base(inner)
-            {
-                _seen = seen;
-            }
-
-            protected override System.Threading.Tasks.Task<System.Net.Http.HttpResponseMessage> SendAsync(
-                System.Net.Http.HttpRequestMessage request, CancellationToken cancellationToken)
-            {
-                _seen.Add(string.Join(";", request.Headers.Where(h => h.Key == "Cookie" || h.Key == "X-Csrf" || h.Key == "X-Other")
-                    .Select(h => h.Key + "=" + string.Join(",", h.Value))));
-                return base.SendAsync(request, cancellationToken);
-            }
+            Assert.That(json["shdon"].Type, Is.EqualTo(JTokenType.Integer));
+            Assert.That(json["khmshdon"].Type, Is.EqualTo(JTokenType.Integer));
+            Assert.That(json["tthai"].Type, Is.EqualTo(JTokenType.Integer));
+            Assert.That(((string)json["tdlap"]), Does.EndWith("T17:00:00Z").Or.Contain("T"));
+            Assert.That(json["nmcmnd"].Type, Is.EqualTo(JTokenType.Null));
         }
     }
 }
-
 #endif

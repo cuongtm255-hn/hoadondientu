@@ -37,7 +37,10 @@ public sealed class ExportScope      // tập kết quả hiện tại (ArchiveQ
 }
 ```
 
-- Bố cục: tiêu đề, phạm vi ngày, đúng **19 cột** theo thứ tự mục 9.1 SRS (FR-EXPORT-001, AC-08); so với `DANH SÁCH HÓA ĐƠN.xlsx` (gate G-04).
+- Bố cục (mẫu thật `DANH SÁCH HÓA ĐƠN.xlsx`, [api-samples mục 5](../api-samples/README.md)): một sheet; `A3:S3` gộp ô **"DANH SÁCH HÓA ĐƠN"**; `A4:S4` gộp ô **"Từ ngày dd/MM/yyyy đến ngày dd/MM/yyyy"**; dòng 6 tiêu đề; dữ liệu từ dòng 7; đúng **19 cột** A–S (FR-EXPORT-001, AC-08):
+  `STT · Ký hiệu mẫu số · Ký hiệu hóa đơn · Số hóa đơn · Ngày lập · MST người bán/MST người xuất hàng · Tên người bán/Tên người xuất hàng · MST người mua/MST người nhận hàng · Tên người mua/Tên người nhận hàng · Địa chỉ người mua · Tổng tiền chưa thuế · Tổng tiền thuế · Tổng tiền chiết khấu thương mại · Tổng tiền phí · Tổng tiền thanh toán · Đơn vị tiền tệ · Tỷ giá · Trạng thái hóa đơn · Kết quả kiểm tra hóa đơn`.
+- Nguồn từng cột: `khmshdon, khhdon, shdon, tdlap (dd/MM/yyyy, giờ VN), nbmst, nbten, nmmst (cá nhân: nmcmnd), nmten, nmdchi, tgtcthue, tgtthue, ttcktmai, tgtphi, tgtttbso, dvtte, tgia`; hai cột cuối là **nhãn** của `tthai` ("Hóa đơn mới"…) và `ttxly` ("Đã cấp mã hóa đơn"…) từ `PortalOptions`. Cột M/N để trống khi không có giá trị. Độ rộng cột theo mẫu (A≈8, B–D≈11,7, E≈19,5, F–J≈31,3, K–L≈11,7, M–O≈19,5, P–Q≈11,7, R≈19,5, S≈50,8).
+- Khác với cổng: ứng dụng xuất cả khoảng nhiều tháng (kỳ tháng/quý/năm/tùy chọn) từ dữ liệu đã lưu, không bị giới hạn một tháng như API `export-excel` của cổng.
 - Kiểu dữ liệu: số tiền là numeric; ngày là kiểu ngày sắp xếp được; ký hiệu mẫu số/ký hiệu/số hóa đơn là text để giữ số 0 đầu (FR-EXPORT-002).
 - Ghi rõ phạm vi (toàn bộ kết quả hay các dòng chọn) trong file (FR-EXPORT-003).
 - STT là số thứ tự hiển thị trong file xuất (BR-015).
@@ -45,7 +48,7 @@ public sealed class ExportScope      // tập kết quả hiện tại (ArchiveQ
 
 ## 4. Xuất ZIP XML
 
-- ZIP chứa XML của **phiên bản hiện hành** của các hóa đơn được chọn (FR-EXPORT-004).
+- ZIP chứa XML của **phiên bản hiện hành** của các hóa đơn được chọn (FR-EXPORT-004). Cổng xuất mỗi hóa đơn thành một zip gồm `invoice.xml` + trình xem (`invoice.html`, `details.js`, ảnh); ứng dụng gom **chỉ các `invoice.xml`** (byte nguyên văn, giữ chữ ký số) vào một zip, tên file `<MST người bán>_<ký hiệu>_<số>.xml`.
 - Kèm `manifest.json`/`manifest.csv`: khóa hóa đơn, tên file, SHA-256, trạng thái thành công/lỗi (FR-EXPORT-005).
 - Nếu có XML thiếu/lỗi: hỏi người dùng `Xuất phần hợp lệ` hay `Hủy`; manifest ghi rõ các dòng bị bỏ qua (FR-EXPORT-006).
 - Có thể kiểm tra lại hash của từng file khi đóng gói để bảo đảm không đóng gói file hỏng.
@@ -83,7 +86,7 @@ Trạng thái: ⬜ Chưa bắt đầu · 🟡 Đang làm · ✅ Hoàn thành · 
 | ID | Công việc | Lớp | Phụ thuộc | Trạng thái | PR/Commit | Ghi chú |
 |---|---|---|---|---|---|---|
 | T09-01 | `ExportScope`, `ExportFileNamer`, `ExportRecord` | Application | T07-01 | ⬜ | | |
-| T09-02 | Đối chiếu mẫu Excel của cổng (cột, kiểu, tiêu đề) | Docs/Test | G-04 | ⛔ | | Gate G-04 |
+| T09-02 | Đối chiếu mẫu Excel của cổng (cột, kiểu, tiêu đề) | Docs/Test | G-04 | ✅ | | Đã đối chiếu mẫu: bố cục, ô gộp, 19 cột, kiểu dữ liệu, độ rộng cột ghi ở mục 3 và api-samples mục 5. So sánh file do ứng dụng xuất với mẫu thực hiện cùng T09-03 |
 | T09-03 | `ExcelInvoiceWriter` (stream, 19 cột) | Infra | G-09, T09-02 | ⛔ | | Chờ chọn thư viện |
 | T09-04 | `ZipInvoiceWriter` + manifest + chính sách file lỗi | Infra | T06-05 | ⬜ | | |
 | T09-05 | `InvoiceExportService` (tiến độ, hủy, atomic, không ghi đè) | Application | T09-03, T09-04 | ⬜ | | |

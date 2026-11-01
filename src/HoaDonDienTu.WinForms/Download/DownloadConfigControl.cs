@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using ComponentFactory.Krypton.Toolkit;
+using HoaDonDienTu.Application.Portal;
 using HoaDonDienTu.Domain.Invoices;
 
 namespace HoaDonDienTu.WinForms.Download
@@ -9,7 +10,6 @@ namespace HoaDonDienTu.WinForms.Download
     /// <summary>SCR-03 Tải hóa đơn: chọn chiều hóa đơn, kỳ, bộ lọc và xem kế hoạch chia theo tháng. Chỉ hiển thị và phát sự kiện.</summary>
     public partial class DownloadConfigControl : KryptonPanel, IDownloadConfigView
     {
-        private const string All = "Tất cả";
         private bool _suppress;
 
         public DownloadConfigControl()
@@ -18,11 +18,10 @@ namespace HoaDonDienTu.WinForms.Download
 
             for (var m = 1; m <= 12; m++) cboMonth.Items.Add("Tháng " + m);
             for (var q = 1; q <= 4; q++) cboQuarter.Items.Add("Quý " + q);
-            foreach (var combo in new[] { cboStatus, cboCheckResult, cboFormSymbol })
-            {
-                combo.Items.Add(All);
-                combo.Text = All;
-            }
+            // Giá trị dropdown đúng như form "Tra cứu hóa đơn" của cổng; mục "Tất cả" có mã rỗng và không được gửi.
+            Fill(cboStatus, PortalOptions.InvoiceStatuses);
+            Fill(cboCheckResult, PortalOptions.CheckResults);
+            Fill(cboFormSymbol, PortalOptions.FormSymbols);
 
             cboMonth.SelectedIndex = 0;
             cboQuarter.SelectedIndex = 0;
@@ -48,6 +47,7 @@ namespace HoaDonDienTu.WinForms.Download
                 From = dtpFrom.Value.Date,
                 To = dtpTo.Value.Date,
                 CounterpartyTaxCode = txtCounterparty.Text,
+                BuyerIdNumber = txtBuyerId.Text,
                 InvoiceNumber = txtInvoiceNumber.Text,
                 StatusCode = Combo(cboStatus),
                 CheckResultCode = Combo(cboCheckResult),
@@ -80,6 +80,7 @@ namespace HoaDonDienTu.WinForms.Download
         public void ShowSupportedFilters(ISet<string> supportedFields)
         {
             SetVisible(supportedFields, "CounterpartyTaxCode", lblCounterparty, txtCounterparty);
+            SetVisible(supportedFields, "BuyerIdNumber", lblBuyerId, txtBuyerId);
             SetVisible(supportedFields, "InvoiceNumber", lblInvoiceNumber, txtInvoiceNumber);
             SetVisible(supportedFields, "StatusCode", lblStatus, cboStatus);
             SetVisible(supportedFields, "CheckResultCode", lblCheckResult, cboCheckResult);
@@ -97,11 +98,12 @@ namespace HoaDonDienTu.WinForms.Download
             try
             {
                 txtCounterparty.Text = string.Empty;
+                txtBuyerId.Text = string.Empty;
                 txtInvoiceNumber.Text = string.Empty;
                 txtInvoiceSymbol.Text = string.Empty;
-                cboStatus.Text = All;
-                cboCheckResult.Text = All;
-                cboFormSymbol.Text = All;
+                cboStatus.SelectedIndex = 0;
+                cboCheckResult.SelectedIndex = 0;
+                cboFormSymbol.SelectedIndex = 0;
                 chkProxy.Checked = false;
             }
             finally
@@ -182,10 +184,27 @@ namespace HoaDonDienTu.WinForms.Download
             dtpTo.Visible = custom;
         }
 
+        private static void Fill(KryptonComboBox combo, IList<PortalOption> options)
+        {
+            foreach (var option in options) combo.Items.Add(option);
+            combo.SelectedIndex = 0;
+        }
+
+        /// <summary>Mã của mục đang chọn (rỗng với "Tất cả").</summary>
         private static string Combo(KryptonComboBox combo)
         {
-            var text = (combo.Text ?? string.Empty).Trim();
-            return text == All ? string.Empty : text;
+            var option = combo.SelectedItem as PortalOption;
+            return option == null ? string.Empty : option.Code;
+        }
+
+        public void ShowDirectionLabels(InvoiceDirection direction)
+        {
+            lblCounterparty.Values.Text = direction == InvoiceDirection.Purchase ? "MST người bán" : "MST người mua";
+        }
+
+        public void ShowFilterMessage(string message)
+        {
+            lblFilterMessage.Text = message ?? string.Empty;
         }
 
         private static void SetVisible(ISet<string> supported, string field, params System.Windows.Forms.Control[] controls)

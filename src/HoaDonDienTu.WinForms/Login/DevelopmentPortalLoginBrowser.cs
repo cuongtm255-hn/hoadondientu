@@ -57,11 +57,29 @@ namespace HoaDonDienTu.WinForms.Login
             return Task.FromResult(true);
         }
 
+        /// <summary>
+        /// Mô phỏng đúng đường đi của bản thật: trang đăng nhập gọi <c>POST /api/security-taxpayer/authenticate</c>, WebView ghi lại request/response
+        /// cùng cookie rồi <see cref="PortalAuthCapture"/> rút ra token, tên đăng nhập, cookie và User-Agent. Không có mật khẩu hay CAPTCHA nào được tạo ra.
+        /// </summary>
         public Task<PortalSessionMaterial> CaptureSessionAsync(CancellationToken cancellationToken)
         {
-            // Token giả mang MST của tài khoản vừa "đăng nhập"; cổng giả đọc MST từ token để trả về qua API hồ sơ.
-            var token = _simulatedTaxCode == null ? "mock-token-expired" : MockInvoiceDataset.TokenFor(_simulatedTaxCode);
-            return Task.FromResult(new PortalSessionMaterial(null, null, token));
+            var token = _simulatedTaxCode == null
+                ? MockInvoiceDataset.ExpiredTokenFor(_expectedTaxCode())
+                : MockInvoiceDataset.TokenFor(_simulatedTaxCode);
+            var username = _simulatedTaxCode ?? _expectedTaxCode();
+
+            PortalAuthCapture capture;
+            if (!PortalAuthCapture.TryCreate(
+                    "{\"username\":\"" + username + "\"}",
+                    "{\"token\":\"" + token + "\"}",
+                    new System.Collections.Generic.Dictionary<string, string> { { "jwt", token }, { "JSESSIONID", "MOCKSESSION" } },
+                    "Mozilla/5.0 (Debug WebView)",
+                    out capture))
+            {
+                return Task.FromResult(new PortalSessionMaterial(null, null, null));
+            }
+
+            return Task.FromResult(capture.ToMaterial());
         }
 
         public void Dispose()

@@ -15,15 +15,38 @@ namespace HoaDonDienTu.Application.Authentication
             IDictionary<string, string> cookies,
             IDictionary<string, string> headers,
             string bearerToken)
+            : this(cookies, headers, bearerToken, null)
+        {
+        }
+
+        public PortalSessionMaterial(
+            IDictionary<string, string> cookies,
+            IDictionary<string, string> headers,
+            string bearerToken,
+            string userAgent)
         {
             Cookies = new Dictionary<string, string>(cookies ?? new Dictionary<string, string>());
             Headers = new Dictionary<string, string>(headers ?? new Dictionary<string, string>());
             BearerToken = bearerToken;
+            UserAgent = userAgent;
         }
 
         public IDictionary<string, string> Cookies { get; private set; }
         public IDictionary<string, string> Headers { get; private set; }
         public string BearerToken { get; private set; }
+
+        /// <summary>User-Agent của WebView đã đăng nhập; các lần gọi API dùng lại để khớp với phiên (có thể null).</summary>
+        public string UserAgent { get; private set; }
+
+        /// <summary>Claim của token nếu nó là JWT hợp lệ; null khi không đọc được.</summary>
+        public PortalToken Token
+        {
+            get
+            {
+                PortalToken parsed;
+                return PortalToken.TryParse(BearerToken, out parsed) ? parsed : null;
+            }
+        }
 
         public override string ToString()
         {

@@ -43,18 +43,11 @@ namespace HoaDonDienTu.Infrastructure.Portal
             }
         }
 
-        /// <summary>Lấy MST của tài khoản đang đăng nhập để đối chiếu với MST đang hoạt động (FR-AUTH-011).</summary>
-        public async Task<string> GetProfileTaxCodeAsync(CancellationToken cancellationToken)
-        {
-            var body = await SendForStringAsync(PortalRequestBuilder.BuildProfile(_config), cancellationToken).ConfigureAwait(false);
-            return PortalResponseParser.ParseProfileTaxCode(_config, body);
-        }
-
         public async Task<InvoicePage> SearchAsync(InvoiceSearchRequest request, CancellationToken cancellationToken)
         {
             if (request == null) throw new ArgumentNullException("request");
             var body = await SendForStringAsync(PortalRequestBuilder.BuildSearch(_config, request), cancellationToken).ConfigureAwait(false);
-            return PortalResponseParser.ParseSearch(_config, body, request.Cursor);
+            return PortalResponseParser.ParseSearch(_config, body);
         }
 
         public async Task<InvoiceXmlPayload> DownloadXmlAsync(PortalInvoiceRef invoice, CancellationToken cancellationToken)
@@ -62,16 +55,8 @@ namespace HoaDonDienTu.Infrastructure.Portal
             if (invoice == null) throw new ArgumentNullException("invoice");
             var message = PortalRequestBuilder.BuildDownload(_config, invoice);
 
-            byte[] content;
-            if (_config.Download.ResponseMode == "JsonBase64")
-            {
-                var body = await SendForStringAsync(message, cancellationToken).ConfigureAwait(false);
-                content = PortalResponseParser.ParseBase64Content(_config, body);
-            }
-            else
-            {
-                content = await SendForBytesAsync(message, cancellationToken).ConfigureAwait(false);
-            }
+            var content = await SendForBytesAsync(message, cancellationToken).ConfigureAwait(false);
+            if (_config.Download.ResponseMode == "Zip" && content.Length > 0) content = PortalResponseParser.ExtractXml(_config.Download, content);
 
             if (content.Length == 0)
             {
@@ -79,6 +64,18 @@ namespace HoaDonDienTu.Infrastructure.Portal
             }
 
             return new InvoiceXmlPayload(content, FileName(invoice));
+        }
+
+        /// <summary>
+        /// Chi tiết hóa đơn dạng JSON nguyên văn (có danh sách hàng hóa <c>hdhhdvu</c>), dùng cho xem và in hóa đơn.
+        /// Giữ nguyên chuỗi để lớp chuẩn hóa (DD-06) tự đọc; ở đây không giả định cấu trúc.
+        /// </summary>
+        public async Task<string> GetInvoiceDetailAsync(PortalInvoiceRef invoice, CancellationToken cancellationToken)
+        {
+            if (invoice == null) throw new ArgumentNullException("invoice");
+            var body = await SendForStringAsync(PortalRequestBuilder.BuildDetail(_config, invoice), cancellationToken).ConfigureAwait(false);
+            PortalResponseParser.ParseJson(body);
+            return body;
         }
 
         public void Dispose()
@@ -89,6 +86,7 @@ namespace HoaDonDienTu.Infrastructure.Portal
         private string FileName(PortalInvoiceRef invoice)
         {
             var name = (_config.Download.FileNameTemplate ?? "{PortalInvoiceId}.xml")
+                .Replace("{SellerTaxCode}", invoice.SellerTaxCode ?? string.Empty)
                 .Replace("{InvoiceSymbol}", invoice.InvoiceSymbol ?? string.Empty)
                 .Replace("{InvoiceNumber}", invoice.InvoiceNumber ?? string.Empty)
                 .Replace("{PortalInvoiceId}", invoice.PortalInvoiceId ?? string.Empty);
@@ -160,6 +158,19 @@ namespace HoaDonDienTu.Infrastructure.Portal
         private void ApplyAuthentication(HttpRequestMessage message)
         {
             var auth = _config.Auth;
+
+            // User-Agent của WebView đã đăng nhập được ưu tiên: lớp bảo vệ của cổng có thể gắn phiên với trình duyệt.
+            if (!string.IsNullOrEmpty(_material.UserAgent))
+            {
+                message.Headers.UserAgent.Clear();
+                message.Headers.UserAgent.ParseAdd(_material.UserAgent);
+            }
+
+            if (!string.IsNullOrEmpty(_config.Http.RequestIdHeader))
+            {
+                message.Headers.TryAddWithoutValidation(_config.Http.RequestIdHeader, Guid.NewGuid().ToString());
+            }
+
             if (!string.IsNullOrEmpty(_material.BearerToken))
             {
                 var value = string.IsNullOrEmpty(auth.Scheme) ? _material.BearerToken : auth.Scheme + " " + _material.BearerToken;

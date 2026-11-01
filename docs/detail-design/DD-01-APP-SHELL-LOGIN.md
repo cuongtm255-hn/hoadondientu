@@ -706,7 +706,7 @@ sequenceDiagram
     F->>B: CaptureSessionAsync
     B-->>F: PortalSessionMaterial
     F->>A: VerifyAsync(context, candidate)
-    A->>A: Gọi API xác minh phiên/MST
+    A->>A: Đọc claim sub/exp của JWT, đối chiếu MST (không gọi mạng)
     alt MST khớp
         A-->>F: Success + PortalSession
         F->>S: Set(session)
@@ -720,6 +720,22 @@ sequenceDiagram
 ```
 
 Điều hướng khỏi trang login không đủ để xác nhận thành công.
+
+### 10.6a Ghi lại API đăng nhập của cổng (đã đối chiếu traffic thật)
+
+Trang đăng nhập của cổng gọi `POST /api/security-taxpayer/authenticate` với `{username, password, cvalue, ckey}` và nhận `{"token": "<JWT>"}` ([api-samples mục 2](../api-samples/README.md)).
+Adapter WebView (T01-16) phải ghi lại cuộc gọi này và dựng `PortalSessionMaterial` qua `PortalAuthCapture`:
+
+| Ghi lại | Cách làm | Lưu |
+|---|---|---|
+| Phản hồi đăng nhập | hook XHR/fetch của trang hoặc sự kiện mạng của WebView | `token` (chỉ trong bộ nhớ) |
+| Request đăng nhập | chỉ để lấy `username` | **không** đọc `password`, `cvalue`, `ckey`; không lưu, không log |
+| Cookie | kho cookie của host cổng sau khi có token | `jwt`, `JSESSIONID`, cookie WAF `TS…`/`f5avraaaaaaaaaaaaaaaa_session_` |
+| User-Agent | của WebView | dùng lại khi gọi API |
+
+- MST xác minh bằng claim `sub` của JWT, hết hạn theo `exp` (`PortalToken`, `PortalAuthenticationService`); không có API hồ sơ.
+- Các lần gọi API sau gửi `Authorization: Bearer <token>`, `Cookie`, `User-Agent`, `action`, `end-point`, `request-id` như trình duyệt.
+- Token/cookie hết hạn → 401/403 → `AuthExpired` → mở lại WebView; `PortalAuthCapture.ToString()` và `PortalSessionMaterial.ToString()` che mọi bí mật.
 
 ### 10.7 Authentication service
 
@@ -1207,7 +1223,8 @@ Trạng thái: ⬜ Chưa bắt đầu · 🟡 Đang làm · ✅ Hoàn thành · 
 | T01-13 | Unit test Startup, MainShellPresenter, PortalLoginPresenter, CompanySwitchService (mục 19.1–19.4) | Tests | T01-06..T01-09 | ✅ | | Startup (16), CompanySwitchService (11), StorageGuard (7) ở Application.Tests; `tests/HoaDonDienTu.WinForms.Tests` mới: `PortalLoginPresenter` (18), `PortalLoginCoordinator` (7, gate một form), `MainShellPresenter` (13), `ShellModeMapper` (5). `PortalLoginCoordinator` nhận `Func<IPortalLoginView>` để test được. Mục 19.2 "navigation bị từ chối khi screen không thể đóng" đã được phủ bởi `NavigationServiceTests` (T01-05) |
 | T01-14 | Integration test (mục 19.5) | Tests | T01-11 | 🟡 | | `CompanyLifecycleIntegrationTests` (10) + `AtomicJsonWriterTests`: thư mục độc lập theo MST, Service không giữ hai context, phiên bị xóa khi chuyển/thất bại, client/generation cũ vô hiệu, guard chặn ghi sai thư mục, ReadOnly mở kho nhưng không tải, đóng app dọn dẹp. **Còn chờ:** hai SQLite độc lập, DPAPI/chữ ký licence (DD-03), HTTP handler độc lập, DB locked/schema sai (DD-06) |
 | T01-15 | UI smoke test (mục 19.6) | Tests | T01-13 | ✅ | | `ShellUiSmokeTests` (12, `Category("UiSmoke")`): dựng `AppApplicationContext` thật với adapter giả Debug, bấm control bằng `PerformClick`, điều khiển hộp thoại modal bằng timer. Phủ: Standard/Service/ReadOnly/Recovery/FirstRun, menu, đăng nhập (hủy/đúng/sai MST), đóng app (dọn dẹp, tác vụ đang chạy: tạm dừng/ở lại). Cần desktop tương tác; bỏ qua bằng `TestCategory!=UiSmoke`. Mục "bật licence hiện menu không cài lại" chờ DD-03 |
-| T01-16 | Thay development adapter bằng production adapter đã xác minh | Infra | DD-00 G-01, G-02 | 🟡 | | Release đã có composition thật (dữ liệu %LOCALAPPDATA%\HoaDonDienTu\data, licence thật, cổng Thuế HTTP thật, không cổng giả) và khởi động được; **đăng nhập cổng Thuế chưa có**: `UnavailablePortalLoginBrowser` báo rõ lý do, tải hóa đơn báo chưa có (`UnavailableDownloadSessionStarter`). Còn chờ ADR WebView (G-01) + API discovery (G-02) |
+| T01-16 | Thay development adapter bằng production adapter đã xác minh | Infra | DD-00 G-01, G-02 | 🟡 | | Release đã có composition thật (dữ liệu %LOCALAPPDATA%\HoaDonDienTu\data, licence thật, cổng Thuế HTTP thật, không cổng giả) và khởi động được; **đăng nhập cổng Thuế chưa có** (cần WebView): `UnavailablePortalLoginBrowser` báo rõ lý do. Hợp đồng đăng nhập thật đã biết và đã có `PortalAuthCapture`/`PortalToken`/xác minh JWT (T01-18). Còn chờ ADR WebView (G-01) |
+| T01-18 | Ghi lại API đăng nhập thật: `PortalToken` (JWT), `PortalAuthCapture`, xác minh MST bằng `sub`/`exp`, `PortalSessionMaterial` thêm User-Agent | Application/Infra | G-02 | ✅ | | 20 test; dev browser mô phỏng đúng đường đi (JWT + cookie + UA); không còn gọi API hồ sơ |
 | T01-17 | Cập nhật `CLAUDE.md`/`README.md` với lệnh build/test thực tế | Docs | T01-01 | ✅ | | README có lệnh build/test/chạy thử và biến `HDDT_DEV_*` |
 
 ### 21.2 Definition of Done

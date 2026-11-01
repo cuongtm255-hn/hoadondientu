@@ -6,6 +6,10 @@ namespace HoaDonDienTu.Application.Authentication
     /// <summary>Client API cổng Thuế cho đúng một generation của phiên (tra cứu, tải XML).</summary>
     public interface IPortalApiClient : HoaDonDienTu.Application.Portal.IPortalInvoiceClient, IDisposable
     {
+        /// <summary>Chi tiết hóa đơn dạng JSON nguyên văn (kèm danh sách hàng hóa) cho xem và in hóa đơn.</summary>
+        /// <exception cref="HoaDonDienTu.Application.Portal.PortalApiException"/>
+        System.Threading.Tasks.Task<string> GetInvoiceDetailAsync(
+            HoaDonDienTu.Application.Portal.PortalInvoiceRef invoice, System.Threading.CancellationToken cancellationToken);
     }
 
     public interface IPortalApiClientFactory

@@ -5,17 +5,33 @@ using HoaDonDienTu.Domain.Invoices;
 namespace HoaDonDienTu.Application.Portal
 {
     /// <summary>
-    /// Bộ lọc tra cứu (FR-SEARCH-007). Chỉ trường nào API cổng Thuế hỗ trợ mới được gửi đi; trường chưa cấu hình
-    /// tên tham số bị bỏ qua và UI không nên hiển thị (DD-04 T04-06).
+    /// Bộ lọc tra cứu theo form "Tra cứu hóa đơn" của cổng Thuế (spec.xlsx, sample-api-web.md mục 2). Mọi trường để trống nghĩa là
+    /// "Tất cả" và không được gửi lên cổng. Khoảng ngày lập luôn bắt buộc nên nằm ở <see cref="InvoiceSearchRequest"/>.
     /// </summary>
     public sealed class InvoiceSearchFilter
     {
+        /// <summary>Bán ra: MST người mua (<c>nmmst</c>). Mua vào: MST người bán (<c>nbmst</c>).</summary>
         public string CounterpartyTaxCode { get; set; }
+
+        /// <summary>CCCD người mua (<c>nmcmnd</c>); chỉ có ở tra cứu hóa đơn bán ra.</summary>
+        public string BuyerIdNumber { get; set; }
+
+        /// <summary>Mã trạng thái hóa đơn <c>tthai</c> "1".."6" (xem <see cref="PortalOptions.InvoiceStatuses"/>); rỗng là Tất cả.</summary>
         public string StatusCode { get; set; }
+
+        /// <summary>Mã kết quả kiểm tra <c>ttxly</c> "0".."8" (xem <see cref="PortalOptions.CheckResults"/>); rỗng là Tất cả.</summary>
         public string CheckResultCode { get; set; }
+
+        /// <summary>Số hóa đơn (<c>shdon</c>), giữ dạng text.</summary>
         public string InvoiceNumber { get; set; }
+
+        /// <summary>Ký hiệu mẫu số hóa đơn <c>khmshdon</c> "1".."9" (xem <see cref="PortalOptions.FormSymbols"/>).</summary>
         public string FormSymbol { get; set; }
+
+        /// <summary>Ký hiệu hóa đơn <c>khhdon</c>, ví dụ C26TBN.</summary>
         public string InvoiceSymbol { get; set; }
+
+        /// <summary>Hóa đơn ủy nhiệm (<c>unhiem</c>); chỉ gửi khi true, giống checkbox của cổng.</summary>
         public bool? ProxyInvoice { get; set; }
     }
 
@@ -61,6 +77,10 @@ namespace HoaDonDienTu.Application.Portal
         public string SellerTaxCode { get; set; }
         public string SellerName { get; set; }
         public string BuyerTaxCode { get; set; }
+
+        /// <summary>CCCD người mua khi người mua là cá nhân (<c>nmcmnd</c>); cổng điền vào cột MST người mua trên bảng kê.</summary>
+        public string BuyerIdNumber { get; set; }
+
         public string BuyerName { get; set; }
         public string BuyerAddress { get; set; }
         public decimal? TotalBeforeTax { get; set; }

@@ -74,6 +74,15 @@ public static class BusinessKey
 - Trạng thái và kết quả kiểm tra lưu cả giá trị chuẩn hóa và giá trị nguồn; bảng ánh xạ có unit test.
 - Mapping nằm trong Application/Infrastructure, độc lập với UI; thay đổi schema API được xử lý ở adapter (NFR-MNT-002).
 
+### 5.1 Nguồn dữ liệu thật (đã đối chiếu mẫu)
+
+- **Khóa nghiệp vụ:** cổng định danh hóa đơn bằng bộ **(MST người bán `nbmst`, ký hiệu mẫu số `khmshdon`, ký hiệu `khhdon`, số `shdon`)**; `id` (GUID) chỉ là mã nội bộ của cổng. `BusinessKey` nên dựa vào bộ này (+ `Direction`), `PortalInvoiceId` lưu thêm để đối chiếu. Số hóa đơn từ cổng là số nguyên (`40`) — lưu dạng text, định dạng lại khi cần.
+- **Ngày lập:** `tdlap` là UTC của 0 giờ ngày lập theo giờ VN (`2026-10-30T17:00:00Z` = 31/10/2026); `PortalInvoiceDto.IssueDate` đã là ngày giờ VN, lưu dạng ngày.
+- **Người mua cá nhân:** `nmmst` null và có `nmcmnd`; cột "MST người mua" của bảng kê lấy MST, nếu null thì lấy CCCD.
+- **Trạng thái:** `tthai` 1–6 và `ttxly` 0–8 (bảng ánh xạ nhãn trong `PortalOptions`); lưu cả mã nguồn.
+- **XML nguyên văn:** `invoice.xml` trong gói xuất XML là hóa đơn đã ký (XMLDSig của người bán và cơ quan thuế); lưu **byte nguyên văn**, băm SHA-256, không định dạng lại. Phần tử chính: `TTChung` (KHMSHDon, KHHDon, SHDon, NLap, DVTTe, TGia, HTTToan), `NDHDon/NBan|NMua`, `DSHHDVu/HHDVu*`, `TToan` (TgTCThue, TgTThue, TgTTTBSo, TgTTTBChu, THTTLTSuat), `MCCQT`, `DSCKS`.
+- **Chi tiết JSON:** API chi tiết cho thêm `hdhhdvu[]` (hàng hóa), `thttltsuat[]`, `qrcode`; dùng cho SCR-06 khi chưa có XML hoặc để đối chiếu.
+
 ## 6. Quy trình lưu một hóa đơn
 
 ```text
@@ -123,7 +132,7 @@ Trạng thái: ⬜ Chưa bắt đầu · 🟡 Đang làm · ✅ Hoàn thành · 
 | T06-01 | Domain: `NormalizedInvoice`, `BusinessKey`, trạng thái/kết quả kiểm tra, `InvoiceFileNamer` | Domain | T01-02 | ⬜ | | |
 | T06-02 | Schema + `CompanyDatabaseInitializer` + `SchemaVersionReader` + migration framework | Infra | G-08 | ⛔ | | Chờ chọn SQLite provider |
 | T06-03 | Repository `Invoice`/`InvoiceVersion`/`FileAsset` + unit-of-work factory | Infra | T06-02 | ⬜ | | |
-| T06-04 | `IInvoiceNormalizer` + mapping từ DTO cổng | Application/Infra | G-02 | ⬜ | | Hết chặn: đầu vào là `PortalInvoiceDto` (19 trường SRS 9.1, giá trị nguồn giữ nguyên) — mapping trạng thái/kết quả kiểm tra là giả định cho tới khi có dữ liệu thật |
+| T06-04 | `IInvoiceNormalizer` + mapping từ DTO cổng | Application/Infra | G-02 | ⬜ | | Hết chặn: đầu vào là `PortalInvoiceDto` (19 trường + `BuyerIdNumber`) đã khớp mẫu thật; xem mục 5.1 về khóa nghiệp vụ, múi giờ và người mua cá nhân |
 | T06-05 | `InvoiceStorageService.UpsertAsync` (file tạm, hash, phiên bản hóa) | Application | T06-01, T06-03 | ⬜ | | |
 | T06-06 | `IFileIntegrityChecker` + quét file mồ côi | Application | T06-05 | ⬜ | | |
 | T06-07 | Tạo cấu trúc thư mục kho + kiểm tra quyền/dung lượng (`CompanyStorageValidator`) | Infra | T02-03 | ⬜ | | Dùng chung DD-02 |

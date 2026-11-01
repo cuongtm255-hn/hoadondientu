@@ -23,7 +23,7 @@ namespace HoaDonDienTu.WinForms.Download
     {
         private static readonly string[] FilterFields =
         {
-            "CounterpartyTaxCode", "InvoiceNumber", "StatusCode", "CheckResultCode", "FormSymbol", "InvoiceSymbol", "ProxyInvoice"
+            "CounterpartyTaxCode", "BuyerIdNumber", "InvoiceNumber", "StatusCode", "CheckResultCode", "FormSymbol", "InvoiceSymbol", "ProxyInvoice"
         };
 
         private readonly IDownloadConfigView _view;
@@ -42,6 +42,7 @@ namespace HoaDonDienTu.WinForms.Download
         private readonly IClock _clock;
         private StorageProbeResult _storage = StorageProbeResult.Failed("chưa kiểm tra");
         private bool _initialized;
+        private InvoiceDirection? _shownDirection;
 
         public DownloadConfigPresenter(
             IDownloadConfigView view,
@@ -100,13 +101,7 @@ namespace HoaDonDienTu.WinForms.Download
             _session.SessionChanged += OnSessionChanged;
 
             _view.ApplyDefaults(_clock.UtcNow);
-            var supported = new HashSet<string>();
-            foreach (var field in FilterFields)
-            {
-                if (_capabilities.SupportsFilter(field)) supported.Add(field);
-            }
-
-            _view.ShowSupportedFilters(supported);
+            ShowFiltersFor(_view.ReadInput().Direction);
             RefreshStorage();
             Refresh();
         }
@@ -126,14 +121,39 @@ namespace HoaDonDienTu.WinForms.Download
         public void Refresh()
         {
             var input = _view.ReadInput();
+            ShowFiltersFor(input.Direction);
             var spec = ToSpec(input);
             var validation = _splitter.Validate(spec);
 
             _view.ShowPeriodMessages(validation.Errors, validation.Warnings);
             _view.ShowPlan(validation.IsValid ? _splitter.Split(spec) : new List<DateSegment>());
 
+            var filterErrors = InvoiceFilterValidator.Validate(ToFilter(input));
+            _view.ShowFilterMessage(string.Join(" ", filterErrors));
+
             var decision = _policy.Evaluate(validation, _storage);
+            if (decision.CanStart && filterErrors.Count > 0)
+            {
+                _view.ShowStartState(false, "Bộ lọc có giá trị chưa hợp lệ: " + filterErrors[0]);
+                return;
+            }
+
             _view.ShowStartState(decision.CanStart, decision.Reason);
+        }
+
+        /// <summary>Mỗi chiều có bộ trường lọc riêng (CCCD người mua chỉ có ở tra cứu bán ra); chỉ cập nhật khi chiều đổi.</summary>
+        private void ShowFiltersFor(InvoiceDirection direction)
+        {
+            if (_shownDirection == direction) return;
+            _shownDirection = direction;
+            var supported = new HashSet<string>();
+            foreach (var field in FilterFields)
+            {
+                if (_capabilities.SupportsFilter(direction, field)) supported.Add(field);
+            }
+
+            _view.ShowDirectionLabels(direction);
+            _view.ShowSupportedFilters(supported);
         }
 
         private void RefreshStorage()
@@ -170,6 +190,12 @@ namespace HoaDonDienTu.WinForms.Download
             if (!decision.CanStart)
             {
                 _view.ShowStartState(false, decision.Reason);
+                return;
+            }
+
+            if (InvoiceFilterValidator.Validate(ToFilter(input)).Count > 0)
+            {
+                Refresh();
                 return;
             }
 
@@ -210,6 +236,9 @@ namespace HoaDonDienTu.WinForms.Download
             return new InvoiceSearchFilter
             {
                 CounterpartyTaxCode = Clean(input.CounterpartyTaxCode),
+
+                // CCCD người mua chỉ có ở tra cứu bán ra; ô bị ẩn ở chiều mua vào nên không để giá trị cũ lọt vào kế hoạch.
+                BuyerIdNumber = input.Direction == InvoiceDirection.Sold ? Clean(input.BuyerIdNumber) : null,
                 InvoiceNumber = Clean(input.InvoiceNumber),
                 StatusCode = Clean(input.StatusCode),
                 CheckResultCode = Clean(input.CheckResultCode),

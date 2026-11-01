@@ -70,7 +70,8 @@ public interface IDownloadOrchestrator
     Task<IList<DownloadSessionSummary>> GetUnfinishedAsync(CancellationToken ct);
 }
 
-// Adapter cổng Thuế — hình dạng chốt sau G-02; tầng Application chỉ biết các DTO này
+// Adapter cổng Thuế — tầng Application chỉ biết các DTO này. Hóa đơn được định danh bằng khóa tổng hợp
+// (nbmst, khhdon, shdon, khmshdon); xuất XML trả file zip, adapter chỉ trả invoice.xml (api-samples mục 4)
 public interface IPortalInvoiceClient
 {
     Task<InvoicePage> SearchAsync(InvoiceSearchRequest request, CancellationToken ct); // direction, DateSegment, filter, cursor/page
@@ -155,12 +156,12 @@ Trạng thái: ⬜ Chưa bắt đầu · 🟡 Đang làm · ✅ Hoàn thành · 
 | T05-03 | `DownloadOrchestrator` (tuần tự, checkpoint, pause/resume/cancel) với client giả | Application | T05-01, T05-02 | ✅ | | `DownloadOrchestrator`: tuần tự theo đoạn, cursor/trang, checkpoint sau từng hóa đơn, pause/cancel/retry đoạn, chạy lại từ checkpoint không trùng |
 | T05-04 | `IRetryPolicy`, `IRateLimiter` (cấu hình hạ tầng) | Infra | T05-03 | 🟡 | | `IRetryPolicy` + `DefaultRetryPolicy` (3 lần, gấp đôi mỗi lần, theo Retry-After khi 429) và `IRateLimiter`/`MinIntervalRateLimiter`; giá trị mặc định chờ G-05 |
 | T05-05 | Xử lý `AuthExpired` → `WaitingForLogin` → login lại → resume | Application | T01-08, T05-03 | 🟡 | | Hết token (hoặc chưa đăng nhập) → `WaitingForLogin`, giữ checkpoint, chạy lại sau đăng nhập; việc mở đăng nhập do UI (SCR-04) làm |
-| T05-06 | `PortalInvoiceClient` thật (search, tải XML, phân loại lỗi) | Infra | G-02, T01-09 | 🟡 | | `PortalHttpApiClient` theo `PortalApiConfig` + cổng giả (`MockPortalHandler`), 3 hình dạng API, phân loại lỗi, nhịp gọi; 96 test. **Chưa khớp cổng thật** (xem [api-samples](../api-samples/README.md), [ADR 0001](../decisions/0001-portal-api-contract.md)) |
+| T05-06 | `PortalInvoiceClient` thật (search, tải XML, phân loại lỗi) | Infra | G-02, T01-09 | ✅ | | `PortalHttpApiClient` đã **khớp traffic thật** cho đăng nhập/bán ra/chi tiết/xuất XML: tra cứu RSQL (`search=tdlap=ge=…;…`), `datas/total/state`, ngày UTC→giờ VN, khóa tổng hợp, zip → `invoice.xml`, header `action/request-id/end-point/cookie/user-agent`, `GetInvoiceDetailAsync`; cổng giả mô phỏng đúng hình dạng đó. ⚠ còn: mua vào, `state`, `size` tối đa (xem [api-samples](../api-samples/README.md)) |
 | T05-07 | Tích hợp chuyển MST/đóng ứng dụng (pause + checkpoint) | Application | T01-07, T05-03 | 🟡 | | `DownloadJobService : IActiveJobService` (HasRunning/Wait/Pause/Cancel); chưa nối vào `CompositionRoot` |
 | T05-08 | `DownloadProgressControl` + presenter (SCR-04) | WinForms | T05-03 | ⬜ | | |
 | T05-09 | Khôi phục phiên chưa hoàn tất khi khởi động | Application | T05-02 | 🟡 | | `GetUnfinishedAsync` + phiên bị ngắt (Running không có lượt chạy) chạy tiếp được; chưa gọi khi khởi động |
 | T05-10 | Unit test (mục 7.1) | Tests | T05-03..T05-05 | ✅ | | 76 test (state machine, nhiều trang, retry/backoff, 429, schema, auth, pause/resume, cancel, kho đầy, guard, tuần tự) |
-| T05-11 | Integration test + UAT cổng thật (mục 7.2–7.3) | Tests | T05-06 | ⛔ | | |
+| T05-11 | Integration test + UAT cổng thật (mục 7.2–7.3) | Tests | T05-06 | ⛔ | | Integration + UAT cổng thật (mục 7.2–7.3): mẫu bán ra đã có để làm test (RealSamples); còn cần traffic mua vào, nhiều trang và 401/429 thật |
 
 ### 8.2 Nhật ký tiến độ
 

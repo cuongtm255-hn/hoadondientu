@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using HoaDonDienTu.Application.Abstractions;
 using HoaDonDienTu.Application.Authentication;
 using HoaDonDienTu.Application.Common;
@@ -138,7 +139,18 @@ namespace HoaDonDienTu.WinForms.Bootstrap
             IDownloadSessionStarter starter;
             ILicenseServer licenseServer;
             ILicenseSignatureVerifier licenseVerifier;
-            var portalConfig = LoadPortalApiConfig();
+            PortalApiConfig portalConfig;
+            try
+            {
+                portalConfig = LoadPortalApiConfig();
+            }
+            catch (PortalApiConfigException ex)
+            {
+                // File portal-api.json cũ (schema cũ) hoặc sai cấu trúc không được làm ứng dụng không mở được: dùng mặc định và ghi log.
+                Logger.Warning("portal-api.json không hợp lệ, dùng cấu hình mặc định: " + ex.Errors.FirstOrDefault());
+                portalConfig = PortalApiConfigDefaults.Create();
+            }
+
 #if DEBUG
             var text = Environment.GetEnvironmentVariable("HDDT_DEV_MODE") ?? "Standard";
             var licenseStatus = LicenseStatus.None;
@@ -271,7 +283,7 @@ namespace HoaDonDienTu.WinForms.Bootstrap
                 contextManager,
                 entitlement,
                 SessionStore,
-                new PortalAuthenticationService(portalConfig, Clock, portalHandler),
+                new PortalAuthenticationService(Clock),
                 loginBrowser,
                 () => new PortalLoginForm(),
                 Logger);

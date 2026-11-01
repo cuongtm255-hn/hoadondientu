@@ -1,10 +1,11 @@
 using System;
 using System.IO;
 using HoaDonDienTu.Application.Downloads;
+using HoaDonDienTu.Domain.Invoices;
 
 namespace HoaDonDienTu.Infrastructure.Portal.Config
 {
-    /// <summary>Bộ lọc nào được hỗ trợ là do cấu hình quyết định: có tên tham số tức là cổng hỗ trợ (FR-SEARCH-007).</summary>
+    /// <summary>Bộ lọc nào được hỗ trợ là do cấu hình quyết định: có tên tham số tức là cổng hỗ trợ (FR-SEARCH-007). Mỗi chiều (mua vào/bán ra) có bộ trường riêng.</summary>
     public sealed class PortalApiConfigCapabilities : IPortalCapabilities
     {
         private readonly PortalApiConfig _config;
@@ -15,10 +16,11 @@ namespace HoaDonDienTu.Infrastructure.Portal.Config
             _config = config;
         }
 
-        public bool SupportsFilter(string filterField)
+        public bool SupportsFilter(InvoiceDirection direction, string filterField)
         {
             string name;
-            var map = _config.Search == null ? null : _config.Search.FilterParameters;
+            var search = _config.Search;
+            var map = search == null ? null : (direction == InvoiceDirection.Purchase ? search.PurchaseFilterFields : search.SoldFilterFields);
             return map != null && map.TryGetValue(filterField, out name) && !string.IsNullOrWhiteSpace(name);
         }
     }

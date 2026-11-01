@@ -1,104 +1,144 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "verified": false,
-  "notes": "NHÁP tự định nghĩa, chưa đối chiếu cổng Thuế thật (G-02). Sửa file này cho khớp traffic thực tế; không cần đổi code.",
+  "notes": "Đối chiếu thật: đăng nhập, tra cứu bán ra (tdlap/tthai/ttxly/khmshdon/shdon/khhdon/unhiem/nmmst/nmcmnd), xem chi tiết, xuất XML (zip), xuất Excel. CHƯA có mẫu thật: tra cứu mua vào (đường dẫn /purchase và tên trường nbmst là suy luận), trang kế tiếp qua tham số state khi tổng > size, kích thước trang tối đa, chữ ký action của mua vào.",
   "baseUrl": "https://hoadondientu.gdt.gov.vn",
   "auth": {
+    "authenticatePath": "/api/security-taxpayer/authenticate",
+    "tokenResponsePath": "token",
     "headerName": "Authorization",
     "scheme": "Bearer",
-    "sendCookies": false,
+    "sendCookies": true,
     "forwardHeaders": []
   },
   "http": {
     "timeoutSeconds": 60,
-    "userAgent": "HoaDonDienTu/1.0",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
     "defaultHeaders": {
-      "Accept": "application/json"
-    }
-  },
-  "profile": {
-    "endpoint": {
-      "method": "GET",
-      "path": "/api/v1/profile"
+      "Accept": "application/json, text/plain, */*",
+      "Accept-Language": "vi",
+      "end-point": "/tra-cuu/tra-cuu-hoa-don",
+      "Referer": "https://hoadondientu.gdt.gov.vn/tra-cuu/tra-cuu-hoa-don"
     },
-    "taxCodePath": "data.taxCode",
-    "namePath": "data.name"
+    "requestIdHeader": "request-id",
+    "actionHeader": "action"
   },
   "search": {
     "purchase": {
       "method": "GET",
-      "path": "/api/v1/invoices/purchase"
+      "path": "/api/query/invoices/purchase",
+      "action": "Tìm kiếm (hóa đơn {direction})"
     },
     "sold": {
       "method": "GET",
-      "path": "/api/v1/invoices/sold"
+      "path": "/api/query/invoices/sold",
+      "action": "Tìm kiếm (hóa đơn {direction})"
     },
-    "parameterLocation": "Query",
-    "dateFormat": "yyyy-MM-dd",
-    "fromParam": "from",
-    "toParam": "to",
+    "rsql": {
+      "param": "search",
+      "separator": ";",
+      "dateField": "tdlap",
+      "dateTimeFormat": "dd/MM/yyyy'T'HH:mm:ss",
+      "proxyTrueValue": "1"
+    },
     "fixedParameters": {
-      "sort": "issueDate:asc"
+      "sort": "tdlap:desc"
     },
     "pagination": {
-      "mode": "Cursor",
       "pageSizeParam": "size",
       "pageSize": 50,
-      "cursorParam": "cursor",
-      "startPage": 1
+      "cursorParam": "state"
     },
-    "filterParameters": {
-      "CounterpartyTaxCode": "partnerTaxCode",
-      "StatusCode": "status",
-      "CheckResultCode": "checkResult",
-      "InvoiceNumber": "invoiceNumber",
-      "FormSymbol": "formSymbol",
-      "InvoiceSymbol": "invoiceSymbol",
-      "ProxyInvoice": "proxy"
+    "soldFilterFields": {
+      "CounterpartyTaxCode": "nmmst",
+      "BuyerIdNumber": "nmcmnd",
+      "StatusCode": "tthai",
+      "CheckResultCode": "ttxly",
+      "InvoiceNumber": "shdon",
+      "FormSymbol": "khmshdon",
+      "InvoiceSymbol": "khhdon",
+      "ProxyInvoice": "unhiem"
+    },
+    "purchaseFilterFields": {
+      "CounterpartyTaxCode": "nbmst",
+      "StatusCode": "tthai",
+      "CheckResultCode": "ttxly",
+      "InvoiceNumber": "shdon",
+      "FormSymbol": "khmshdon",
+      "InvoiceSymbol": "khhdon",
+      "ProxyInvoice": "unhiem"
     },
     "response": {
-      "itemsPath": "data.items",
-      "totalPath": "data.total",
-      "nextCursorPath": "data.nextCursor",
+      "itemsPath": "datas",
+      "totalPath": "total",
+      "nextCursorPath": "state",
+      "timeZoneOffsetHours": 7,
       "dateFormats": [
-        "yyyy-MM-dd",
+        "yyyy-MM-ddTHH:mm:ssZ",
+        "yyyy-MM-ddTHH:mm:ss.fffZ",
         "yyyy-MM-ddTHH:mm:ss",
+        "yyyy-MM-dd",
         "dd/MM/yyyy"
       ],
       "fields": {
         "PortalInvoiceId": "id",
-        "FormSymbol": "formSymbol",
-        "InvoiceSymbol": "invoiceSymbol",
-        "InvoiceNumber": "number",
-        "IssueDate": "issueDate",
-        "SellerTaxCode": "seller.taxCode",
-        "SellerName": "seller.name",
-        "BuyerTaxCode": "buyer.taxCode",
-        "BuyerName": "buyer.name",
-        "BuyerAddress": "buyer.address",
-        "TotalBeforeTax": "amounts.beforeTax",
-        "TotalTax": "amounts.tax",
-        "TotalDiscount": "amounts.discount",
-        "TotalFee": "amounts.fee",
-        "TotalPayment": "amounts.payment",
-        "Currency": "currency",
-        "ExchangeRate": "exchangeRate",
-        "StatusRaw": "status",
-        "CheckResultRaw": "checkResult"
+        "FormSymbol": "khmshdon",
+        "InvoiceSymbol": "khhdon",
+        "InvoiceNumber": "shdon",
+        "IssueDate": "tdlap",
+        "SellerTaxCode": "nbmst",
+        "SellerName": "nbten",
+        "BuyerTaxCode": "nmmst",
+        "BuyerIdNumber": "nmcmnd",
+        "BuyerName": "nmten",
+        "BuyerAddress": "nmdchi",
+        "TotalBeforeTax": "tgtcthue",
+        "TotalTax": "tgtthue",
+        "TotalDiscount": "ttcktmai",
+        "TotalFee": "tgtphi",
+        "TotalPayment": "tgtttbso",
+        "Currency": "dvtte",
+        "ExchangeRate": "tgia",
+        "StatusRaw": "tthai",
+        "CheckResultRaw": "ttxly"
       }
+    }
+  },
+  "detail": {
+    "endpoint": {
+      "method": "GET",
+      "path": "/api/query/invoices/detail",
+      "action": "Xem hóa đơn (hóa đơn {direction})"
+    },
+    "parameters": {
+      "nbmst": "SellerTaxCode",
+      "khhdon": "InvoiceSymbol",
+      "shdon": "InvoiceNumber",
+      "khmshdon": "FormSymbol"
     }
   },
   "download": {
     "endpoint": {
       "method": "GET",
-      "path": "/api/v1/invoices/{id}/xml"
+      "path": "/api/query/invoices/export-xml",
+      "action": "Xuất xml (hóa đơn {direction})"
     },
-    "parameterLocation": "Path",
     "parameters": {
-      "id": "PortalInvoiceId"
+      "nbmst": "SellerTaxCode",
+      "khhdon": "InvoiceSymbol",
+      "shdon": "InvoiceNumber",
+      "khmshdon": "FormSymbol"
     },
-    "responseMode": "RawXml",
-    "fileNameTemplate": "{InvoiceSymbol}-{InvoiceNumber}.xml"
+    "responseMode": "Zip",
+    "zipEntryName": "invoice.xml",
+    "fileNameTemplate": "{SellerTaxCode}_{InvoiceSymbol}_{InvoiceNumber}.xml"
+  },
+  "exportExcel": {
+    "endpoint": {
+      "method": "GET",
+      "path": "/api/query/invoices/export-excel",
+      "action": "Xuất hóa đơn (hóa đơn {direction})"
+    }
   },
   "errors": {
     "statusKinds": {},

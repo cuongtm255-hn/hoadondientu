@@ -6,119 +6,125 @@ using System.Text;
 using HoaDonDienTu.Application.Portal;
 using HoaDonDienTu.Domain.Invoices;
 using HoaDonDienTu.Infrastructure.Portal.Config;
-using Newtonsoft.Json.Linq;
 
 namespace HoaDonDienTu.Infrastructure.Portal
 {
-    /// <summary>Dựng HTTP request hoàn toàn theo <see cref="PortalApiConfig"/>; không chứa kiến thức riêng về cổng thật.</summary>
+    /// <summary>
+    /// Dựng HTTP request theo <see cref="PortalApiConfig"/>. Tra cứu dùng một tham số <c>search</c> dạng RSQL, ví dụ
+    /// <c>tdlap=ge=02/10/2026T00:00:00;tdlap=le=01/11/2026T23:59:59;tthai==1;nmmst==0101654633</c> (sample-api-web.md mục 2).
+    /// </summary>
     public static class PortalRequestBuilder
     {
-        public static HttpRequestMessage BuildProfile(PortalApiConfig config)
-        {
-            return new HttpRequestMessage(Method(config.Profile.Endpoint), Url(config, config.Profile.Endpoint.Path));
-        }
-
         public static HttpRequestMessage BuildSearch(PortalApiConfig config, InvoiceSearchRequest request)
         {
             var search = config.Search;
             var endpoint = request.Direction == InvoiceDirection.Purchase ? search.Purchase : search.Sold;
-            var parameters = new List<KeyValuePair<string, object>>();
+            var parameters = new List<KeyValuePair<string, string>>();
 
             if (search.FixedParameters != null)
             {
                 foreach (var pair in search.FixedParameters) parameters.Add(Pair(pair.Key, pair.Value));
             }
 
-            parameters.Add(Pair(search.FromParam, request.From.ToString(search.DateFormat, CultureInfo.InvariantCulture)));
-            parameters.Add(Pair(search.ToParam, request.To.ToString(search.DateFormat, CultureInfo.InvariantCulture)));
-            parameters.Add(Pair(search.Pagination.PageSizeParam, request.PageSize ?? search.Pagination.PageSize));
-            AddPaging(parameters, search.Pagination, request.Cursor);
-            AddFilters(parameters, search.FilterParameters, request.Filter);
+            parameters.Add(Pair(search.Pagination.PageSizeParam, (request.PageSize ?? search.Pagination.PageSize).ToString(CultureInfo.InvariantCulture)));
+            if (!string.IsNullOrEmpty(request.Cursor)) parameters.Add(Pair(search.Pagination.CursorParam, request.Cursor));
+            parameters.Add(Pair(search.Rsql.Param, BuildRsql(config, request)));
 
-            var message = new HttpRequestMessage(Method(endpoint), Url(config, endpoint.Path));
-            if (search.ParameterLocation == "Body")
+            var message = new HttpRequestMessage(HttpMethod.Get, Url(config, endpoint.Path, parameters));
+            SetAction(config, message, endpoint, request.Direction);
+            return message;
+        }
+
+        /// <summary>Biểu thức <c>search</c>: khoảng ngày lập (bắt buộc) rồi các bộ lọc có giá trị; "Tất cả" không được gửi.</summary>
+        public static string BuildRsql(PortalApiConfig config, InvoiceSearchRequest request)
+        {
+            var rsql = config.Search.Rsql;
+            var terms = new List<string>
             {
-                message.Content = JsonBody(parameters);
-            }
-            else
+                rsql.DateField + "=ge=" + request.From.Date.ToString(rsql.DateTimeFormat, CultureInfo.InvariantCulture),
+                rsql.DateField + "=le=" + request.To.Date.AddHours(23).AddMinutes(59).AddSeconds(59).ToString(rsql.DateTimeFormat, CultureInfo.InvariantCulture)
+            };
+
+            var map = request.Direction == InvoiceDirection.Purchase ? config.Search.PurchaseFilterFields : config.Search.SoldFilterFields;
+            var filter = request.Filter;
+            if (filter != null && map != null)
             {
-                message.RequestUri = new Uri(message.RequestUri + "?" + Query(parameters));
+                // Thứ tự giống form của cổng (sample-api-web.md mục 2): MST, trạng thái, kết quả kiểm tra, mẫu số, số, ký hiệu, ủy nhiệm, CCCD.
+                AddTerm(terms, map, "CounterpartyTaxCode", filter.CounterpartyTaxCode);
+                AddTerm(terms, map, "StatusCode", filter.StatusCode);
+                AddTerm(terms, map, "CheckResultCode", filter.CheckResultCode);
+                AddTerm(terms, map, "FormSymbol", filter.FormSymbol);
+                AddTerm(terms, map, "InvoiceNumber", filter.InvoiceNumber);
+                AddTerm(terms, map, "InvoiceSymbol", filter.InvoiceSymbol);
+
+                // Hóa đơn ủy nhiệm là checkbox: chỉ có "tích" mới gửi, bỏ tích thì không gửi gì (không phải =0).
+                if (filter.ProxyInvoice == true) AddTerm(terms, map, "ProxyInvoice", rsql.ProxyTrueValue);
+                AddTerm(terms, map, "BuyerIdNumber", filter.BuyerIdNumber);
             }
 
+            return string.Join(rsql.Separator, terms);
+        }
+
+        public static HttpRequestMessage BuildDetail(PortalApiConfig config, PortalInvoiceRef invoice)
+        {
+            var detail = config.Detail;
+            var message = new HttpRequestMessage(HttpMethod.Get, Url(config, detail.Endpoint.Path, KeyParameters(detail.Parameters, invoice)));
+            SetAction(config, message, detail.Endpoint, invoice.Direction);
             return message;
         }
 
         public static HttpRequestMessage BuildDownload(PortalApiConfig config, PortalInvoiceRef invoice)
         {
             var download = config.Download;
-            var path = download.Endpoint.Path;
-            var parameters = new List<KeyValuePair<string, object>>();
-
-            foreach (var pair in download.Parameters)
-            {
-                var value = RefValue(config, invoice, pair.Value);
-                if (download.ParameterLocation == "Path")
-                {
-                    path = path.Replace("{" + pair.Key + "}", Uri.EscapeDataString(value));
-                }
-                else
-                {
-                    parameters.Add(Pair(pair.Key, value));
-                }
-            }
-
-            var message = new HttpRequestMessage(Method(download.Endpoint), Url(config, path));
-            if (parameters.Count > 0)
-            {
-                if (download.ParameterLocation == "Body") message.Content = JsonBody(parameters);
-                else message.RequestUri = new Uri(message.RequestUri + "?" + Query(parameters));
-            }
-
+            var message = new HttpRequestMessage(HttpMethod.Get, Url(config, download.Endpoint.Path, KeyParameters(download.Parameters, invoice)));
+            SetAction(config, message, download.Endpoint, invoice.Direction);
             return message;
         }
 
-        private static void AddPaging(List<KeyValuePair<string, object>> parameters, PaginationConfig paging, string cursor)
+        /// <summary>Tên hiển thị của chiều hóa đơn trong header action của cổng web.</summary>
+        public static string DirectionText(InvoiceDirection direction)
         {
-            if (paging.Mode == "Page")
-            {
-                var page = paging.StartPage;
-                if (!string.IsNullOrEmpty(cursor) && !int.TryParse(cursor, NumberStyles.None, CultureInfo.InvariantCulture, out page))
-                {
-                    throw new ArgumentException("Cursor của chế độ Page phải là số trang.");
-                }
-
-                parameters.Add(Pair(paging.CursorParam, page));
-            }
-            else if (!string.IsNullOrEmpty(cursor))
-            {
-                parameters.Add(Pair(paging.CursorParam, cursor));
-            }
+            return direction == InvoiceDirection.Purchase ? "mua vào" : "bán ra";
         }
 
-        private static void AddFilters(List<KeyValuePair<string, object>> parameters, Dictionary<string, string> map, InvoiceSearchFilter filter)
+        /// <summary>Mã hóa phần trăm giống <c>encodeURIComponent</c> của trình duyệt (giữ nguyên ! ' ( ) *).</summary>
+        public static string EncodeHeaderValue(string value)
         {
-            if (filter == null || map == null) return;
-            AddFilter(parameters, map, "CounterpartyTaxCode", filter.CounterpartyTaxCode);
-            AddFilter(parameters, map, "StatusCode", filter.StatusCode);
-            AddFilter(parameters, map, "CheckResultCode", filter.CheckResultCode);
-            AddFilter(parameters, map, "InvoiceNumber", filter.InvoiceNumber);
-            AddFilter(parameters, map, "FormSymbol", filter.FormSymbol);
-            AddFilter(parameters, map, "InvoiceSymbol", filter.InvoiceSymbol);
-            if (filter.ProxyInvoice.HasValue)
-            {
-                AddFilter(parameters, map, "ProxyInvoice", filter.ProxyInvoice.Value ? "true" : "false");
-            }
+            return Uri.EscapeDataString(value)
+                .Replace("%21", "!").Replace("%27", "'").Replace("%28", "(").Replace("%29", ")").Replace("%2A", "*");
         }
 
-        private static void AddFilter(List<KeyValuePair<string, object>> parameters, Dictionary<string, string> map, string field, string value)
+        private static void SetAction(PortalApiConfig config, HttpRequestMessage message, EndpointConfig endpoint, InvoiceDirection direction)
+        {
+            if (string.IsNullOrEmpty(endpoint.Action) || string.IsNullOrEmpty(config.Http.ActionHeader)) return;
+            message.Headers.TryAddWithoutValidation(
+                config.Http.ActionHeader, EncodeHeaderValue(endpoint.Action.Replace("{direction}", DirectionText(direction))));
+        }
+
+        private static List<KeyValuePair<string, string>> KeyParameters(Dictionary<string, string> map, PortalInvoiceRef invoice)
+        {
+            var list = new List<KeyValuePair<string, string>>();
+            foreach (var pair in map) list.Add(Pair(pair.Key, RefValue(invoice, pair.Value)));
+            return list;
+        }
+
+        private static void AddTerm(List<string> terms, Dictionary<string, string> map, string field, string value)
         {
             string name;
-            // Trường lọc chưa cấu hình tên tham số nghĩa là cổng không hỗ trợ: bỏ qua thay vì gửi sai.
+            // Trường lọc chưa có tên RSQL nghĩa là cổng không hỗ trợ ở chiều này: bỏ qua thay vì gửi sai.
             if (string.IsNullOrWhiteSpace(value) || !map.TryGetValue(field, out name) || string.IsNullOrWhiteSpace(name)) return;
-            parameters.Add(Pair(name, value.Trim()));
+            terms.Add(name + "==" + RsqlValue(value.Trim()));
         }
 
-        private static string RefValue(PortalApiConfig config, PortalInvoiceRef invoice, string field)
+        /// <summary>Giá trị chứa ký tự đặc biệt của RSQL thì đặt trong dấu nháy kép để không phá cấu trúc biểu thức.</summary>
+        private static string RsqlValue(string value)
+        {
+            return value.IndexOfAny(new[] { ';', ',', '(', ')', '=', '!', '<', '>', '"', '\'', ' ' }) >= 0
+                ? "\"" + value.Replace("\\", "\\\\").Replace("\"", "\\\"") + "\""
+                : value;
+        }
+
+        private static string RefValue(PortalInvoiceRef invoice, string field)
         {
             switch (field)
             {
@@ -127,45 +133,33 @@ namespace HoaDonDienTu.Infrastructure.Portal
                 case "FormSymbol": return invoice.FormSymbol ?? string.Empty;
                 case "InvoiceSymbol": return invoice.InvoiceSymbol ?? string.Empty;
                 case "InvoiceNumber": return invoice.InvoiceNumber ?? string.Empty;
-                case "IssueDate": return invoice.IssueDate.ToString(config.Search.DateFormat, CultureInfo.InvariantCulture);
-                case "Direction": return invoice.Direction == InvoiceDirection.Purchase ? "purchase" : "sold";
                 default: throw new ArgumentException("Trường tham chiếu không biết: " + field);
             }
         }
 
-        private static string Query(List<KeyValuePair<string, object>> parameters)
+        /// <summary>
+        /// Ghép URL. Dấu <c>=</c>, <c>;</c>, <c>:</c> và <c>/</c> trong tham số được giữ nguyên như cổng web gửi
+        /// (<c>search=tdlap=ge=...;tdlap=le=...</c>, <c>sort=tdlap:desc</c>); các ký tự còn lại mã hóa phần trăm.
+        /// </summary>
+        private static Uri Url(PortalApiConfig config, string path, List<KeyValuePair<string, string>> parameters)
         {
-            var sb = new StringBuilder();
-            foreach (var pair in parameters)
+            var sb = new StringBuilder(config.BaseUrl.TrimEnd('/')).Append(path);
+            for (var i = 0; i < parameters.Count; i++)
             {
-                if (sb.Length > 0) sb.Append('&');
-                sb.Append(Uri.EscapeDataString(pair.Key)).Append('=')
-                  .Append(Uri.EscapeDataString(Convert.ToString(pair.Value, CultureInfo.InvariantCulture)));
+                sb.Append(i == 0 ? '?' : '&').Append(Uri.EscapeDataString(parameters[i].Key)).Append('=').Append(EscapeValue(parameters[i].Value));
             }
 
-            return sb.ToString();
+            return new Uri(sb.ToString());
         }
 
-        private static StringContent JsonBody(List<KeyValuePair<string, object>> parameters)
+        private static string EscapeValue(string value)
         {
-            var body = new JObject();
-            foreach (var pair in parameters) body[pair.Key] = new JValue(pair.Value);
-            return new StringContent(body.ToString(Newtonsoft.Json.Formatting.None), Encoding.UTF8, "application/json");
+            return Uri.EscapeDataString(value).Replace("%3D", "=").Replace("%3B", ";").Replace("%3A", ":").Replace("%2F", "/");
         }
 
-        private static string Url(PortalApiConfig config, string path)
+        private static KeyValuePair<string, string> Pair(string key, string value)
         {
-            return config.BaseUrl.TrimEnd('/') + path;
-        }
-
-        private static HttpMethod Method(EndpointConfig endpoint)
-        {
-            return endpoint.Method == "POST" ? HttpMethod.Post : HttpMethod.Get;
-        }
-
-        private static KeyValuePair<string, object> Pair(string key, object value)
-        {
-            return new KeyValuePair<string, object>(key, value);
+            return new KeyValuePair<string, string>(key, value);
         }
     }
 }

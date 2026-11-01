@@ -3,15 +3,16 @@ using System.Collections.Generic;
 namespace HoaDonDienTu.Infrastructure.Portal.Config
 {
     /// <summary>
-    /// Mô tả cách gọi API cổng Thuế: endpoint, cách đặt tham số, phân trang, cách đọc phản hồi, ánh xạ lỗi.
-    /// Giá trị mặc định là bản NHÁP tự định nghĩa (<see cref="Verified"/> = false), chưa đối chiếu với cổng thật (G-02).
-    /// Khi có tài khoản thật chỉ cần sửa file cấu hình cho khớp với traffic thực tế; code client không phải đổi.
+    /// Mô tả cách gọi API cổng Thuế <c>https://hoadondientu.gdt.gov.vn</c>. Giá trị mặc định lấy từ traffic thật đã ghi lại trong
+    /// <c>docs/api-samples/sample-api-web.md</c> (đăng nhập, tra cứu hóa đơn bán ra, xem chi tiết, xuất XML, xuất Excel).
+    /// Những phần chưa có mẫu thật (tra cứu mua vào, trang kế tiếp bằng <c>state</c>, kích thước trang tối đa) được đánh dấu trong
+    /// <see cref="Notes"/>; sửa file cấu hình khi đã đối chiếu, không phải đổi code.
     /// </summary>
     public sealed class PortalApiConfig
     {
         public int SchemaVersion { get; set; }
 
-        /// <summary>False cho tới khi toàn bộ cấu hình đã được đối chiếu với traffic thật.</summary>
+        /// <summary>True khi toàn bộ cấu hình đã đối chiếu với traffic thật; False nếu còn phần suy luận (xem Notes).</summary>
         public bool Verified { get; set; }
 
         public string Notes { get; set; }
@@ -21,32 +22,48 @@ namespace HoaDonDienTu.Infrastructure.Portal.Config
 
         public AuthConfig Auth { get; set; }
         public HttpSettings Http { get; set; }
-        public ProfileConfig Profile { get; set; }
         public SearchConfig Search { get; set; }
+        public DetailConfig Detail { get; set; }
         public DownloadConfig Download { get; set; }
+        public ExportExcelConfig ExportExcel { get; set; }
         public ErrorConfig Errors { get; set; }
         public RateLimitConfig RateLimit { get; set; }
     }
 
     public sealed class AuthConfig
     {
+        /// <summary>Endpoint đăng nhập của cổng (POST). Ứng dụng không tự gọi: WebView gọi, ứng dụng chỉ ghi lại kết quả.</summary>
+        public string AuthenticatePath { get; set; }
+
+        /// <summary>Đường dẫn JSON tới token trong phản hồi đăng nhập (ví dụ <c>token</c>).</summary>
+        public string TokenResponsePath { get; set; }
+
         public string HeaderName { get; set; }
 
         /// <summary>Ví dụ "Bearer"; để trống nếu header chứa token trần.</summary>
         public string Scheme { get; set; }
 
-        /// <summary>Gửi các cookie thu được từ WebView trong header Cookie.</summary>
+        /// <summary>Gửi các cookie thu được từ WebView (jwt, JSESSIONID, cookie F5/WAF) trong header Cookie.</summary>
         public bool SendCookies { get; set; }
 
-        /// <summary>Tên các header thu được từ WebView cần chuyển tiếp nguyên văn (ví dụ header CSRF).</summary>
+        /// <summary>Tên các header thu được từ WebView cần chuyển tiếp nguyên văn.</summary>
         public List<string> ForwardHeaders { get; set; }
     }
 
     public sealed class HttpSettings
     {
         public int TimeoutSeconds { get; set; }
+
+        /// <summary>User-Agent mặc định; khi WebView đã ghi lại User-Agent thật của nó thì dùng giá trị đó thay thế.</summary>
         public string UserAgent { get; set; }
+
         public Dictionary<string, string> DefaultHeaders { get; set; }
+
+        /// <summary>Tên header mang mã yêu cầu duy nhất mỗi lần gọi (cổng web gửi <c>request-id</c> dạng GUID); để trống nếu không gửi.</summary>
+        public string RequestIdHeader { get; set; }
+
+        /// <summary>Tên header mô tả hành động (cổng web gửi <c>action</c>, giá trị mã hóa phần trăm).</summary>
+        public string ActionHeader { get; set; }
     }
 
     public sealed class EndpointConfig
@@ -54,54 +71,65 @@ namespace HoaDonDienTu.Infrastructure.Portal.Config
         /// <summary>GET hoặc POST.</summary>
         public string Method { get; set; }
 
-        /// <summary>Đường dẫn tương đối so với BaseUrl; có thể chứa placeholder dạng {ten}.</summary>
+        /// <summary>Đường dẫn tương đối so với BaseUrl.</summary>
         public string Path { get; set; }
-    }
 
-    public sealed class ProfileConfig
-    {
-        public EndpointConfig Endpoint { get; set; }
-
-        /// <summary>Đường dẫn JSON tới MST của tài khoản đang đăng nhập (dùng đối chiếu MST).</summary>
-        public string TaxCodePath { get; set; }
-
-        public string NamePath { get; set; }
+        /// <summary>
+        /// Nội dung header <c>action</c> mà cổng web gửi kèm, chứa {direction} sẽ thay bằng "bán ra" hoặc "mua vào".
+        /// Ví dụ "Tìm kiếm (hóa đơn {direction})".
+        /// </summary>
+        public string Action { get; set; }
     }
 
     public sealed class SearchConfig
     {
+        /// <summary>Tra cứu hóa đơn mua vào. Đường dẫn suy luận theo mẫu bán ra, chưa có mẫu thật.</summary>
         public EndpointConfig Purchase { get; set; }
+
         public EndpointConfig Sold { get; set; }
 
-        /// <summary>"Query" (chuỗi truy vấn) hoặc "Body" (JSON body, dùng với POST).</summary>
-        public string ParameterLocation { get; set; }
+        /// <summary>Tham số <c>search</c> dạng RSQL, ví dụ <c>tdlap=ge=02/10/2026T00:00:00;tdlap=le=01/11/2026T23:59:59;tthai==1</c>.</summary>
+        public RsqlConfig Rsql { get; set; }
 
-        public string DateFormat { get; set; }
-        public string FromParam { get; set; }
-        public string ToParam { get; set; }
-
-        /// <summary>Tham số hằng luôn được gửi (ví dụ sắp xếp).</summary>
+        /// <summary>Tham số hằng luôn được gửi (ví dụ <c>sort=tdlap:desc</c>).</summary>
         public Dictionary<string, string> FixedParameters { get; set; }
 
         public PaginationConfig Pagination { get; set; }
 
-        /// <summary>Tên trường bộ lọc (<c>CounterpartyTaxCode</c>, <c>StatusCode</c>, ...) → tên tham số của cổng.</summary>
-        public Dictionary<string, string> FilterParameters { get; set; }
+        /// <summary>Tên trường bộ lọc (<c>StatusCode</c>, ...) → tên trường RSQL, cho tra cứu bán ra. Thiếu nghĩa là cổng không hỗ trợ.</summary>
+        public Dictionary<string, string> SoldFilterFields { get; set; }
+
+        /// <summary>Như <see cref="SoldFilterFields"/> nhưng cho tra cứu mua vào (MST đối tác là người bán, không có CCCD).</summary>
+        public Dictionary<string, string> PurchaseFilterFields { get; set; }
 
         public SearchResponseConfig Response { get; set; }
     }
 
+    public sealed class RsqlConfig
+    {
+        /// <summary>Tên tham số chứa biểu thức, thường là <c>search</c>.</summary>
+        public string Param { get; set; }
+
+        /// <summary>Dấu nối các điều kiện, thường là <c>;</c> (AND).</summary>
+        public string Separator { get; set; }
+
+        /// <summary>Trường ngày lập hóa đơn, thường là <c>tdlap</c>.</summary>
+        public string DateField { get; set; }
+
+        /// <summary>Định dạng ngày giờ trong biểu thức, ví dụ <c>dd/MM/yyyy'T'HH:mm:ss</c>.</summary>
+        public string DateTimeFormat { get; set; }
+
+        /// <summary>Giá trị gửi cho trường ủy nhiệm khi người dùng bật (<c>unhiem==1</c>).</summary>
+        public string ProxyTrueValue { get; set; }
+    }
+
     public sealed class PaginationConfig
     {
-        /// <summary>"Cursor" (token trang kế tiếp) hoặc "Page" (số trang).</summary>
-        public string Mode { get; set; }
-
         public string PageSizeParam { get; set; }
         public int PageSize { get; set; }
-        public string CursorParam { get; set; }
 
-        /// <summary>Số trang đầu tiên khi Mode = Page (0 hoặc 1).</summary>
-        public int StartPage { get; set; }
+        /// <summary>Tên tham số mang con trỏ trang kế tiếp (cổng web dùng <c>state</c>).</summary>
+        public string CursorParam { get; set; }
     }
 
     public sealed class SearchResponseConfig
@@ -111,11 +139,14 @@ namespace HoaDonDienTu.Infrastructure.Portal.Config
         /// <summary>Tùy chọn: tổng số bản ghi.</summary>
         public string TotalPath { get; set; }
 
-        /// <summary>Tùy chọn (Mode = Cursor): con trỏ trang kế; rỗng/null nghĩa là hết.</summary>
+        /// <summary>Con trỏ trang kế; rỗng/null nghĩa là hết dữ liệu.</summary>
         public string NextCursorPath { get; set; }
 
-        /// <summary>Tùy chọn: cờ boolean còn trang.</summary>
-        public string HasMorePath { get; set; }
+        /// <summary>
+        /// Múi giờ dùng để đổi ngày giờ UTC của cổng (ví dụ <c>2026-10-30T17:00:00Z</c>) sang ngày lập thực tế theo giờ Việt Nam (+7 giờ).
+        /// Chỉ áp dụng cho giá trị có hậu tố Z.
+        /// </summary>
+        public int TimeZoneOffsetHours { get; set; }
 
         /// <summary>Các định dạng ngày cổng trả về (thử lần lượt).</summary>
         public List<string> DateFormats { get; set; }
@@ -124,27 +155,38 @@ namespace HoaDonDienTu.Infrastructure.Portal.Config
         public Dictionary<string, string> Fields { get; set; }
     }
 
+    public sealed class DetailConfig
+    {
+        public EndpointConfig Endpoint { get; set; }
+
+        /// <summary>Tên tham số → trường của <c>PortalInvoiceRef</c> (dùng chung với xuất XML).</summary>
+        public Dictionary<string, string> Parameters { get; set; }
+    }
+
     public sealed class DownloadConfig
     {
         public EndpointConfig Endpoint { get; set; }
 
-        /// <summary>"Query", "Path" (thay placeholder trong Path) hoặc "Body".</summary>
-        public string ParameterLocation { get; set; }
-
         /// <summary>
-        /// Tên tham số → trường của <c>PortalInvoiceRef</c> (PortalInvoiceId, SellerTaxCode, FormSymbol, InvoiceSymbol,
-        /// InvoiceNumber, IssueDate, Direction).
+        /// Tên tham số → trường của <c>PortalInvoiceRef</c> (SellerTaxCode, FormSymbol, InvoiceSymbol, InvoiceNumber, ...).
+        /// Cổng nhận khóa tổng hợp <c>nbmst, khhdon, shdon, khmshdon</c> chứ không nhận id.
         /// </summary>
         public Dictionary<string, string> Parameters { get; set; }
 
-        /// <summary>"RawXml" (thân phản hồi là XML) hoặc "JsonBase64" (JSON chứa XML mã hóa base64).</summary>
+        /// <summary>"Zip" (cổng trả file zip chứa XML và bản xem) hoặc "RawXml" (thân phản hồi là XML).</summary>
         public string ResponseMode { get; set; }
 
-        /// <summary>Đường dẫn JSON tới chuỗi base64 khi ResponseMode = JsonBase64.</summary>
-        public string ContentPath { get; set; }
+        /// <summary>Tên entry XML trong file zip khi ResponseMode = Zip (cổng đặt tên <c>invoice.xml</c>).</summary>
+        public string ZipEntryName { get; set; }
 
-        /// <summary>Mẫu tên file gợi ý, dùng {InvoiceSymbol}, {InvoiceNumber}, {PortalInvoiceId}.</summary>
+        /// <summary>Mẫu tên file gợi ý, dùng {SellerTaxCode}, {InvoiceSymbol}, {InvoiceNumber}, {PortalInvoiceId}.</summary>
         public string FileNameTemplate { get; set; }
+    }
+
+    /// <summary>API xuất bảng kê Excel của chính cổng. Ứng dụng tự xuất theo mẫu từ dữ liệu đã lưu nên không gọi; giữ để đối chiếu.</summary>
+    public sealed class ExportExcelConfig
+    {
+        public EndpointConfig Endpoint { get; set; }
     }
 
     public sealed class ErrorConfig

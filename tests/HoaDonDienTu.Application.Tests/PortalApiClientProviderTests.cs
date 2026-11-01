@@ -104,6 +104,12 @@ namespace HoaDonDienTu.Application.Tests
                 throw new NotSupportedException();
             }
 
+            public System.Threading.Tasks.Task<string> GetInvoiceDetailAsync(
+                HoaDonDienTu.Application.Portal.PortalInvoiceRef invoice, System.Threading.CancellationToken cancellationToken)
+            {
+                throw new NotSupportedException();
+            }
+
             public void Dispose()
             {
                 Disposed = true;

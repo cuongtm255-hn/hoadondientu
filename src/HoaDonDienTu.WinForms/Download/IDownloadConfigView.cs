@@ -16,6 +16,7 @@ namespace HoaDonDienTu.WinForms.Download
         public DateTime To { get; set; }
 
         public string CounterpartyTaxCode { get; set; }
+        public string BuyerIdNumber { get; set; }
         public string InvoiceNumber { get; set; }
         public string StatusCode { get; set; }
         public string CheckResultCode { get; set; }
@@ -39,6 +40,12 @@ namespace HoaDonDienTu.WinForms.Download
         void ShowSupportedFilters(ISet<string> supportedFields);
 
         void ClearFilters();
+
+        /// <summary>Đổi nhãn theo chiều tra cứu: bán ra lọc theo MST người mua, mua vào theo MST người bán.</summary>
+        void ShowDirectionLabels(InvoiceDirection direction);
+
+        /// <summary>Lỗi giá trị bộ lọc (sai định dạng); rỗng khi hợp lệ.</summary>
+        void ShowFilterMessage(string message);
 
         void ShowPlan(IList<DateSegment> segments);
         void ShowPeriodMessages(IList<string> errors, IList<string> warnings);

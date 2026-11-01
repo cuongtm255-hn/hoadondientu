@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using HoaDonDienTu.Domain.Invoices;
 using HoaDonDienTu.Infrastructure.Portal.Config;
 using NUnit.Framework;
 
@@ -9,18 +10,28 @@ namespace HoaDonDienTu.Infrastructure.Tests.Portal
     public class CapabilitiesAndProbeTests
     {
         [Test]
-        public void Capabilities_FollowConfiguredFilterParameters()
+        public void Capabilities_FollowConfiguredFilterFields_PerDirection()
         {
             var config = PortalApiConfigDefaults.Create();
-            config.Search.FilterParameters.Remove("ProxyInvoice");
-            config.Search.FilterParameters["FormSymbol"] = " ";
+            config.Search.SoldFilterFields.Remove("ProxyInvoice");
+            config.Search.SoldFilterFields["FormSymbol"] = " ";
             var caps = new PortalApiConfigCapabilities(config);
 
-            Assert.That(caps.SupportsFilter("CounterpartyTaxCode"), Is.True);
-            Assert.That(caps.SupportsFilter("InvoiceNumber"), Is.True);
-            Assert.That(caps.SupportsFilter("ProxyInvoice"), Is.False, "Không có trong cấu hình");
-            Assert.That(caps.SupportsFilter("FormSymbol"), Is.False, "Tên tham số rỗng nghĩa là không hỗ trợ");
-            Assert.That(caps.SupportsFilter("Unknown"), Is.False);
+            Assert.That(caps.SupportsFilter(InvoiceDirection.Sold, "CounterpartyTaxCode"), Is.True);
+            Assert.That(caps.SupportsFilter(InvoiceDirection.Sold, "InvoiceNumber"), Is.True);
+            Assert.That(caps.SupportsFilter(InvoiceDirection.Sold, "ProxyInvoice"), Is.False, "Không có trong cấu hình");
+            Assert.That(caps.SupportsFilter(InvoiceDirection.Sold, "FormSymbol"), Is.False, "Tên trường rỗng nghĩa là không hỗ trợ");
+            Assert.That(caps.SupportsFilter(InvoiceDirection.Sold, "Unknown"), Is.False);
+            Assert.That(caps.SupportsFilter(InvoiceDirection.Purchase, "ProxyInvoice"), Is.True, "Mua vào có bộ trường riêng");
+        }
+
+        [Test]
+        public void Capabilities_BuyerIdNumber_OnlyForSold()
+        {
+            var caps = new PortalApiConfigCapabilities(PortalApiConfigDefaults.Create());
+
+            Assert.That(caps.SupportsFilter(InvoiceDirection.Sold, "BuyerIdNumber"), Is.True);
+            Assert.That(caps.SupportsFilter(InvoiceDirection.Purchase, "BuyerIdNumber"), Is.False);
         }
 
         [Test]

@@ -33,6 +33,12 @@ public interface IInvoiceDetailService
 - Hành động: `Xem XML`, `Xem chứng từ (PDF)`, chọn phiên bản để xem, `Quay lại` Kho (giữ bộ lọc), `Tải lại XML` khi file lỗi (qua DD-05), `Xuất ZIP` cho một hóa đơn (DD-09).
 - Cảnh báo cụ thể khi XML mất/lỗi/sai hash (FR-STORE-009).
 
+### 3.1 Nguồn dữ liệu và in (đã đối chiếu cổng thật)
+
+- API chi tiết: `GET /api/query/invoices/detail?nbmst=…&khhdon=…&shdon=…&khmshdon=…` → JSON có `hdhhdvu[]` (hàng hóa/dịch vụ), `thttltsuat[]`, `qrcode` (`IPortalApiClient.GetInvoiceDetailAsync`).
+- **Cổng không có API in.** Nút In của cổng gọi lại API chi tiết, render hóa đơn trong trang rồi mở hộp thoại in của trình duyệt. Ứng dụng làm tương tự: dựng trang từ XML/JSON đã lưu và in ra PDF.
+- Gói xuất XML của cổng kèm sẵn **trình xem**: `invoice.html` + `details.js` (+ `viewinvoice-bg.jpg`, `sign-check.jpg`) đọc `invoice.xml` để hiển thị mẫu hóa đơn có hình nền và dấu kiểm chữ ký. Đây là ứng viên cho `IPdfRenderer` (gate G-03/G-09): dùng lại đúng mẫu hiển thị của cổng thay vì tự thiết kế; cần kiểm tra giấy phép/độ an toàn của `details.js` (110 KB) trước khi nhúng, và chạy trong WebView không có quyền ra mạng (NFR-SEC-003).
+
 ## 4. Trình xem XML (SCR-07 — tab XML)
 
 - Chế độ **cây** và chế độ **nội dung thô** (FR-DETAIL-003), chỉ đọc.

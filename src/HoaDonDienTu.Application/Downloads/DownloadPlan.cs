@@ -42,6 +42,7 @@ namespace HoaDonDienTu.Application.Downloads
             return new InvoiceSearchFilter
             {
                 CounterpartyTaxCode = f.CounterpartyTaxCode,
+                BuyerIdNumber = f.BuyerIdNumber,
                 StatusCode = f.StatusCode,
                 CheckResultCode = f.CheckResultCode,
                 InvoiceNumber = f.InvoiceNumber,
@@ -83,8 +84,9 @@ namespace HoaDonDienTu.Application.Downloads
     /// <summary>Cho biết cổng Thuế hỗ trợ bộ lọc nào để UI chỉ hiện trường dùng được (FR-SEARCH-007).</summary>
     public interface IPortalCapabilities
     {
+        /// <param name="direction">Chiều tra cứu: mỗi chiều có bộ trường riêng (CCCD người mua chỉ có ở bán ra).</param>
         /// <param name="filterField">Tên trường của <see cref="InvoiceSearchFilter"/>, ví dụ <c>CounterpartyTaxCode</c>.</param>
-        bool SupportsFilter(string filterField);
+        bool SupportsFilter(HoaDonDienTu.Domain.Invoices.InvoiceDirection direction, string filterField);
     }
 
     /// <summary>Tạo phiên tải từ kế hoạch; implementation ở DD-05 (<c>IDownloadOrchestrator</c>).</summary>

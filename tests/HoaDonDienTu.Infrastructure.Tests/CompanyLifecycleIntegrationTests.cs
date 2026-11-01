@@ -256,7 +256,7 @@ namespace HoaDonDienTu.Infrastructure.Tests
                     _action = action;
                 }
 
-                public void Dispose()
+            public void Dispose()
                 {
                     _action();
                 }
@@ -274,6 +274,12 @@ namespace HoaDonDienTu.Infrastructure.Tests
             }
 
             public System.Threading.Tasks.Task<HoaDonDienTu.Application.Portal.InvoiceXmlPayload> DownloadXmlAsync(
+                HoaDonDienTu.Application.Portal.PortalInvoiceRef invoice, System.Threading.CancellationToken cancellationToken)
+            {
+                throw new NotSupportedException();
+            }
+
+            public System.Threading.Tasks.Task<string> GetInvoiceDetailAsync(
                 HoaDonDienTu.Application.Portal.PortalInvoiceRef invoice, System.Threading.CancellationToken cancellationToken)
             {
                 throw new NotSupportedException();

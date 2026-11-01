@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
+using System.IO.Compression;
 using HoaDonDienTu.Application.Portal;
 using HoaDonDienTu.Infrastructure.Portal.Config;
 using Newtonsoft.Json;
@@ -28,10 +30,9 @@ namespace HoaDonDienTu.Infrastructure.Portal
             }
         }
 
-        public static InvoicePage ParseSearch(PortalApiConfig config, string body, string requestCursor)
+        public static InvoicePage ParseSearch(PortalApiConfig config, string body)
         {
             var response = config.Search.Response;
-            var paging = config.Search.Pagination;
             var root = ParseJson(body);
 
             var items = root.SelectToken(response.ItemsPath) as JArray;
@@ -48,25 +49,7 @@ namespace HoaDonDienTu.Infrastructure.Portal
             }
 
             string next = null;
-            if (paging.Mode == "Page")
-            {
-                // Không biết cổng cắt kích thước trang bao nhiêu nên không suy ra từ số lượng yêu cầu:
-                // dùng cờ hasMore nếu có, nếu không thì đọc tiếp tới khi gặp trang rỗng.
-                var more = items.Count > 0;
-                if (!string.IsNullOrEmpty(response.HasMorePath))
-                {
-                    var flag = root.SelectToken(response.HasMorePath);
-                    more = items.Count > 0 && flag != null && flag.Type == JTokenType.Boolean && flag.Value<bool>();
-                }
-
-                if (more)
-                {
-                    var current = paging.StartPage;
-                    if (!string.IsNullOrEmpty(requestCursor)) int.TryParse(requestCursor, NumberStyles.None, CultureInfo.InvariantCulture, out current);
-                    next = (current + 1).ToString(CultureInfo.InvariantCulture);
-                }
-            }
-            else if (!string.IsNullOrEmpty(response.NextCursorPath))
+            if (!string.IsNullOrEmpty(response.NextCursorPath))
             {
                 var token = root.SelectToken(response.NextCursorPath);
                 if (token != null && token.Type != JTokenType.Null)
@@ -79,26 +62,34 @@ namespace HoaDonDienTu.Infrastructure.Portal
             return new InvoicePage(dtos, total, next);
         }
 
-        public static string ParseProfileTaxCode(PortalApiConfig config, string body)
+        /// <summary>
+        /// Lấy nội dung XML hóa đơn từ file zip của API xuất XML. Cổng đóng gói <c>invoice.xml</c> cùng trang xem (HTML, JS, ảnh);
+        /// chỉ đọc đúng entry XML, không giải nén ra đĩa nên tên entry không thể thoát khỏi thư mục đích.
+        /// </summary>
+        public static byte[] ExtractXml(DownloadConfig download, byte[] zipBytes)
         {
-            var token = ParseJson(body).SelectToken(config.Profile.TaxCodePath);
-            var text = token == null ? null : ToText(token);
-            if (string.IsNullOrWhiteSpace(text)) throw Schema("Không thấy MST tại '" + config.Profile.TaxCodePath + "'.");
-            return text.Trim();
-        }
-
-        public static byte[] ParseBase64Content(PortalApiConfig config, string body)
-        {
-            var token = ParseJson(body).SelectToken(config.Download.ContentPath);
-            var text = token == null ? null : ToText(token);
-            if (string.IsNullOrEmpty(text)) throw Schema("Không thấy nội dung XML tại '" + config.Download.ContentPath + "'.");
             try
             {
-                return Convert.FromBase64String(text);
+                using (var archive = new ZipArchive(new MemoryStream(zipBytes), ZipArchiveMode.Read))
+                {
+                    ZipArchiveEntry entry = null;
+                    foreach (var candidate in archive.Entries)
+                    {
+                        if (string.Equals(candidate.Name, download.ZipEntryName, StringComparison.OrdinalIgnoreCase)) { entry = candidate; break; }
+                    }
+
+                    if (entry == null) throw Schema("File zip không có '" + download.ZipEntryName + "'.");
+                    using (var stream = entry.Open())
+                    using (var buffer = new MemoryStream())
+                    {
+                        stream.CopyTo(buffer);
+                        return buffer.ToArray();
+                    }
+                }
             }
-            catch (FormatException)
+            catch (InvalidDataException)
             {
-                throw Schema("Nội dung XML không phải base64 hợp lệ.");
+                throw Schema("Phản hồi xuất XML không phải file zip hợp lệ.");
             }
         }
 
@@ -108,12 +99,13 @@ namespace HoaDonDienTu.Infrastructure.Portal
             var dto = new PortalInvoiceDto
             {
                 PortalInvoiceId = Text(item, f, "PortalInvoiceId", true),
-                FormSymbol = Text(item, f, "FormSymbol", false),
-                InvoiceSymbol = Text(item, f, "InvoiceSymbol", false),
+                FormSymbol = Text(item, f, "FormSymbol", true),
+                InvoiceSymbol = Text(item, f, "InvoiceSymbol", true),
                 InvoiceNumber = Text(item, f, "InvoiceNumber", true),
-                SellerTaxCode = Text(item, f, "SellerTaxCode", false),
+                SellerTaxCode = Text(item, f, "SellerTaxCode", true),
                 SellerName = Text(item, f, "SellerName", false),
                 BuyerTaxCode = Text(item, f, "BuyerTaxCode", false),
+                BuyerIdNumber = Text(item, f, "BuyerIdNumber", false),
                 BuyerName = Text(item, f, "BuyerName", false),
                 BuyerAddress = Text(item, f, "BuyerAddress", false),
                 TotalBeforeTax = Number(item, f, "TotalBeforeTax"),
@@ -127,7 +119,7 @@ namespace HoaDonDienTu.Infrastructure.Portal
                 CheckResultRaw = Text(item, f, "CheckResultRaw", false)
             };
 
-            dto.IssueDate = Date(item, f, response.DateFormats);
+            dto.IssueDate = Date(item, f, response);
             return dto;
         }
 
@@ -160,7 +152,11 @@ namespace HoaDonDienTu.Infrastructure.Portal
             throw Schema("Trường số '" + field + "' không hợp lệ.");
         }
 
-        private static DateTime Date(JToken item, Dictionary<string, string> fields, List<string> formats)
+        /// <summary>
+        /// Ngày lập của cổng là thời điểm UTC (ví dụ <c>2026-10-30T17:00:00Z</c> là 31/10/2026 giờ Việt Nam); đổi sang múi giờ cấu hình
+        /// rồi lấy phần ngày, nếu không hóa đơn lập 0 giờ sẽ lệch về ngày hôm trước.
+        /// </summary>
+        private static DateTime Date(JToken item, Dictionary<string, string> fields, SearchResponseConfig response)
         {
             string path;
             if (!fields.TryGetValue("IssueDate", out path)) throw Schema("Thiếu ánh xạ IssueDate.");
@@ -168,11 +164,16 @@ namespace HoaDonDienTu.Infrastructure.Portal
             if (token == null || token.Type == JTokenType.Null) throw Schema("Hóa đơn thiếu trường bắt buộc 'IssueDate'.");
 
             // JToken.Value<string>() của JTokenType.Date có thể đổi định dạng; đọc nguyên văn khi là chuỗi.
-            var text = token.Type == JTokenType.Date ? token.Value<DateTime>().ToString("yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture) : ToText(token);
+            var text = token.Type == JTokenType.Date
+                ? token.Value<DateTime>().ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture)
+                : ToText(token);
+
             DateTime parsed;
-            if (DateTime.TryParseExact(text, formats.ToArray(), CultureInfo.InvariantCulture, DateTimeStyles.None, out parsed))
+            var isUtc = text != null && text.EndsWith("Z", StringComparison.Ordinal);
+            var styles = isUtc ? DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal : DateTimeStyles.None;
+            if (DateTime.TryParseExact(text, response.DateFormats.ToArray(), CultureInfo.InvariantCulture, styles, out parsed))
             {
-                return parsed.Date;
+                return (isUtc ? parsed.AddHours(response.TimeZoneOffsetHours) : parsed).Date;
             }
 
             throw Schema("Ngày lập không khớp định dạng đã cấu hình.");

@@ -9,7 +9,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using HoaDonDienTu.Application.Portal;
+using HoaDonDienTu.Application.Authentication;
 using HoaDonDienTu.Domain.Invoices;
 using HoaDonDienTu.Infrastructure.Portal.Config;
 using Newtonsoft.Json.Linq;
@@ -17,14 +17,17 @@ using Newtonsoft.Json.Linq;
 namespace HoaDonDienTu.Infrastructure.Development.Mock
 {
     /// <summary>
-    /// Cổng Thuế giả chạy trong tiến trình (không mở socket), đọc cùng <see cref="PortalApiConfig"/> với client thật:
-    /// đổi cấu hình (tên tham số, kiểu phân trang, vị trí tham số, đường dẫn JSON...) thì mock đổi theo, nên có thể thử
-    /// nhiều "hình dạng API" khác nhau. Token hợp lệ có dạng <c>mock-token-{MST}</c>; token chứa "expired" bị từ chối.
-    /// Giới hạn: đường dẫn JSON trong cấu hình chỉ hỗ trợ dạng chấm (a.b.c) khi mock dựng phản hồi.
-    /// Đây là hành vi TỰ ĐỊNH NGHĨA, không phản ánh cổng Thuế thật.
+    /// Cổng Thuế giả chạy trong tiến trình (không mở socket) mô phỏng đúng hình dạng API thật đã ghi lại trong
+    /// <c>docs/api-samples/sample-api-web.md</c>: xác thực <c>Authorization: Bearer &lt;JWT&gt;</c> (claim <c>sub</c> là MST, <c>exp</c> hết hạn → 401),
+    /// tra cứu <c>GET {sold|purchase}?sort=&amp;size=&amp;state=&amp;search=tdlap=ge=…;tdlap=le=…;tthai==…</c> trả <c>{datas, total, state, time}</c>,
+    /// chi tiết và xuất XML theo khóa <c>nbmst, khhdon, shdon, khmshdon</c> (xuất XML trả file zip). Đường dẫn lấy từ cùng
+    /// <see cref="PortalApiConfig"/> với client thật.
+    /// Phần chưa có mẫu thật (tra cứu mua vào, trang kế tiếp bằng <c>state</c>, giới hạn <c>size</c>) là giả định và được đánh dấu như vậy.
     /// </summary>
     public sealed class MockPortalHandler : HttpMessageHandler
     {
+        private static readonly Regex Term = new Regex("^(?<field>[A-Za-z0-9_]+)(?<op>=ge=|=le=|==)(?<value>.*)$", RegexOptions.Compiled);
+
         private readonly PortalApiConfig _config;
         private readonly Dictionary<string, MockInvoiceDataset> _datasets = new Dictionary<string, MockInvoiceDataset>();
         private readonly Queue<Func<HttpResponseMessage>> _failures = new Queue<Func<HttpResponseMessage>>();
@@ -35,26 +38,33 @@ namespace HoaDonDienTu.Infrastructure.Development.Mock
             if (config == null) throw new ArgumentNullException("config");
             _config = config;
             RequestLog = new List<string>();
-            UnsupportedFilterFields = new HashSet<string> { "ProxyInvoice" };
+            HeaderLog = new List<Dictionary<string, string>>();
+            RejectedRsqlFields = new HashSet<string>();
             MaxPageSize = 50;
         }
 
-        /// <summary>Số bản ghi tối đa mỗi trang mà "cổng" chấp nhận, bất kể client xin bao nhiêu.</summary>
+        /// <summary>Số bản ghi tối đa mỗi trang mà "cổng" chấp nhận, bất kể client xin bao nhiêu (giả định, chưa có mẫu thật).</summary>
         public int MaxPageSize { get; set; }
 
         public TimeSpan Latency { get; set; }
 
-        /// <summary>Trường lọc mà cổng giả từ chối bằng HTTP 400 (mô phỏng bộ lọc không được hỗ trợ).</summary>
-        public HashSet<string> UnsupportedFilterFields { get; private set; }
+        /// <summary>Tên trường RSQL (ví dụ <c>unhiem</c>) mà cổng giả từ chối bằng HTTP 400 (mô phỏng bộ lọc không được hỗ trợ).</summary>
+        public HashSet<string> RejectedRsqlFields { get; private set; }
 
-        /// <summary>Bỏ trường DTO này khỏi từng hóa đơn trong phản hồi (mô phỏng cổng đổi cấu trúc).</summary>
-        public string OmitDtoField { get; set; }
+        /// <summary>Bỏ trường JSON này khỏi từng hóa đơn trong phản hồi tra cứu (mô phỏng cổng đổi cấu trúc).</summary>
+        public string OmitJsonField { get; set; }
 
         /// <summary>Trả về thân phản hồi tra cứu không phải JSON.</summary>
         public bool MalformedSearchResponse { get; set; }
 
+        /// <summary>Trả về thân phản hồi xuất XML không phải file zip.</summary>
+        public bool MalformedExportResponse { get; set; }
+
         /// <summary>Mỗi request ghi một dòng "METHOD /path?query" (không có header/token).</summary>
         public List<string> RequestLog { get; private set; }
+
+        /// <summary>Các header (trừ Authorization và Cookie) của từng request, để kiểm tra action/request-id/User-Agent.</summary>
+        public List<Dictionary<string, string>> HeaderLog { get; private set; }
 
         public void EnqueueFailure(int status, int? retryAfterSeconds = null)
         {
@@ -98,6 +108,9 @@ namespace HoaDonDienTu.Infrastructure.Development.Mock
             lock (_gate)
             {
                 RequestLog.Add(request.Method.Method + " " + request.RequestUri.PathAndQuery);
+                HeaderLog.Add(request.Headers.Where(h => !string.Equals(h.Key, "Authorization", StringComparison.OrdinalIgnoreCase)
+                        && !string.Equals(h.Key, "Cookie", StringComparison.OrdinalIgnoreCase))
+                    .ToDictionary(h => h.Key, h => string.Join(string.Equals(h.Key, "User-Agent", StringComparison.OrdinalIgnoreCase) ? " " : ",", h.Value), StringComparer.OrdinalIgnoreCase));
                 if (_failures.Count > 0) failure = _failures.Dequeue();
             }
 
@@ -108,73 +121,87 @@ namespace HoaDonDienTu.Infrastructure.Development.Mock
             if (taxCode == null) return Error(HttpStatusCode.Unauthorized, "unauthorized");
 
             var path = request.RequestUri.AbsolutePath;
-            if (path == _config.Profile.Endpoint.Path) return Profile(taxCode);
-            if (path == _config.Search.Purchase.Path) return await Search(request, taxCode, InvoiceDirection.Purchase).ConfigureAwait(false);
-            if (path == _config.Search.Sold.Path) return await Search(request, taxCode, InvoiceDirection.Sold).ConfigureAwait(false);
-
-            var downloadId = await DownloadId(request, path).ConfigureAwait(false);
-            if (downloadId != null) return Download(taxCode, downloadId);
+            var query = ReadQuery(request);
+            if (path == _config.Search.Sold.Path) return Search(query, taxCode, InvoiceDirection.Sold);
+            if (path == _config.Search.Purchase.Path) return Search(query, taxCode, InvoiceDirection.Purchase);
+            if (path == _config.Detail.Endpoint.Path) return Detail(query, taxCode);
+            if (path == _config.Download.Endpoint.Path) return ExportXml(query, taxCode);
 
             return Error(HttpStatusCode.NotFound, "not found");
         }
 
+        /// <summary>MST trong claim <c>sub</c> của JWT; null khi thiếu/sai token hoặc token hết hạn.</summary>
         private string AuthenticatedTaxCode(HttpRequestMessage request)
         {
             IEnumerable<string> values;
             if (!request.Headers.TryGetValues(_config.Auth.HeaderName, out values)) return null;
             var value = values.FirstOrDefault();
-            if (string.IsNullOrEmpty(value)) return null;
-
             var scheme = string.IsNullOrEmpty(_config.Auth.Scheme) ? string.Empty : _config.Auth.Scheme + " ";
-            if (!value.StartsWith(scheme + MockInvoiceDataset.TokenPrefix, StringComparison.Ordinal)) return null;
-            var taxCode = value.Substring(scheme.Length + MockInvoiceDataset.TokenPrefix.Length);
-            return taxCode.Length == 0 || taxCode.Contains("expired") ? null : taxCode;
+            if (string.IsNullOrEmpty(value) || !value.StartsWith(scheme, StringComparison.Ordinal)) return null;
+
+            PortalToken token;
+            if (!PortalToken.TryParse(value.Substring(scheme.Length), out token) || token.IsExpired(DateTime.UtcNow)) return null;
+            return token.Subject;
         }
 
-        private HttpResponseMessage Profile(string taxCode)
-        {
-            var body = new JObject();
-            SetPath(body, _config.Profile.TaxCodePath, new JValue(taxCode));
-            if (!string.IsNullOrEmpty(_config.Profile.NamePath)) SetPath(body, _config.Profile.NamePath, new JValue("Công ty mẫu " + taxCode));
-            return Json(body);
-        }
-
-        private async Task<HttpResponseMessage> Search(HttpRequestMessage request, string taxCode, InvoiceDirection direction)
+        private HttpResponseMessage Search(Dictionary<string, string> query, string taxCode, InvoiceDirection direction)
         {
             var search = _config.Search;
-            var parameters = await ReadParameters(request, search.ParameterLocation == "Body").ConfigureAwait(false);
+            string rsql;
+            if (!query.TryGetValue(search.Rsql.Param, out rsql)) return Error(HttpStatusCode.BadRequest, "missing search");
 
-            DateTime from, to;
-            string fromText, toText;
-            if (!parameters.TryGetValue(search.FromParam, out fromText) || !parameters.TryGetValue(search.ToParam, out toText)
-                || !DateTime.TryParseExact(fromText, search.DateFormat, CultureInfo.InvariantCulture, DateTimeStyles.None, out from)
-                || !DateTime.TryParseExact(toText, search.DateFormat, CultureInfo.InvariantCulture, DateTimeStyles.None, out to))
+            DateTime from = DateTime.MinValue, to = DateTime.MinValue;
+            var hasFrom = false;
+            var hasTo = false;
+            var filters = new List<KeyValuePair<string, string>>();
+            foreach (var raw in rsql.Split(new[] { search.Rsql.Separator }, StringSplitOptions.RemoveEmptyEntries))
             {
-                return Error(HttpStatusCode.BadRequest, "invalid date range");
+                var match = Term.Match(raw);
+                if (!match.Success) return Error(HttpStatusCode.BadRequest, "invalid search");
+                var field = match.Groups["field"].Value;
+                var op = match.Groups["op"].Value;
+                var value = Unquote(match.Groups["value"].Value);
+
+                if (field == search.Rsql.DateField)
+                {
+                    DateTime parsed;
+                    if (!DateTime.TryParseExact(value, search.Rsql.DateTimeFormat, CultureInfo.InvariantCulture, DateTimeStyles.None, out parsed)) return Error(HttpStatusCode.BadRequest, "invalid date");
+                    if (op == "=ge=") { from = parsed; hasFrom = true; }
+                    else if (op == "=le=") { to = parsed; hasTo = true; }
+                    else return Error(HttpStatusCode.BadRequest, "invalid date operator");
+                }
+                else
+                {
+                    if (op != "==" || RejectedRsqlFields.Contains(field)) return Error(HttpStatusCode.BadRequest, "unsupported filter");
+                    filters.Add(new KeyValuePair<string, string>(field, value));
+                }
             }
 
-            // Cổng thật giới hạn một tháng mỗi lần tra cứu; mock mô phỏng bằng cách từ chối khoảng dài hơn 31 ngày.
-            if (to < from || (to - from).TotalDays > 31) return Error(HttpStatusCode.BadRequest, "range too large");
+            // Ngày lập là điều kiện bắt buộc của form tra cứu; cổng giới hạn khoảng tra cứu tối đa 31 ngày.
+            if (!hasFrom || !hasTo || to < from || (to.Date - from.Date).TotalDays > 31) return Error(HttpStatusCode.BadRequest, "invalid range");
 
             var pageSize = MaxPageSize;
             string sizeText;
-            if (parameters.TryGetValue(search.Pagination.PageSizeParam, out sizeText))
+            if (query.TryGetValue(search.Pagination.PageSizeParam, out sizeText))
             {
                 int requested;
                 if (!int.TryParse(sizeText, NumberStyles.None, CultureInfo.InvariantCulture, out requested) || requested <= 0) return Error(HttpStatusCode.BadRequest, "invalid size");
                 pageSize = Math.Min(requested, MaxPageSize);
             }
 
-            int offset;
-            if (!TryReadOffset(parameters, search.Pagination, pageSize, out offset)) return Error(HttpStatusCode.BadRequest, "invalid cursor");
+            var offset = 0;
+            string state;
+            if (query.TryGetValue(search.Pagination.CursorParam, out state) && !string.IsNullOrEmpty(state) && !TryDecodeCursor(state, out offset))
+            {
+                return Error(HttpStatusCode.BadRequest, "invalid state");
+            }
 
             var records = DatasetFor(taxCode).Query(direction, from, to).AsEnumerable();
-            foreach (var pair in search.FilterParameters ?? new Dictionary<string, string>())
+            foreach (var filter in filters)
             {
-                string value;
-                if (string.IsNullOrEmpty(pair.Value) || !parameters.TryGetValue(pair.Value, out value)) continue;
-                if (UnsupportedFilterFields.Contains(pair.Key)) return Error(HttpStatusCode.BadRequest, "unsupported filter");
-                records = ApplyFilter(records, pair.Key, value, direction);
+                bool known;
+                records = ApplyFilter(records, filter.Key, filter.Value, direction, out known);
+                if (!known) return Error(HttpStatusCode.BadRequest, "unsupported filter");
             }
 
             var matches = records.ToList();
@@ -186,73 +213,102 @@ namespace HoaDonDienTu.Infrastructure.Development.Mock
                 return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("<html>not json</html>", Encoding.UTF8, "text/html") };
             }
 
-            var response = search.Response;
-            var body = new JObject();
-            var items = new JArray(pageItems.Select(r => MapItem(response, r)));
-            SetPath(body, response.ItemsPath, items);
-            if (!string.IsNullOrEmpty(response.TotalPath)) SetPath(body, response.TotalPath, new JValue(matches.Count));
-            if (!string.IsNullOrEmpty(response.HasMorePath)) SetPath(body, response.HasMorePath, new JValue(hasMore));
-            if (search.Pagination.Mode == "Cursor" && !string.IsNullOrEmpty(response.NextCursorPath))
+            var items = new JArray(pageItems.Select(r =>
             {
-                SetPath(body, response.NextCursorPath, hasMore ? new JValue(EncodeCursor(offset + pageItems.Count)) : JValue.CreateNull());
-            }
+                var json = MockInvoiceDataset.ToSearchJson(r);
+                if (!string.IsNullOrEmpty(OmitJsonField)) json.Remove(OmitJsonField);
+                return json;
+            }));
 
-            return Json(body);
+            return Json(new JObject
+            {
+                { "datas", items },
+                { "total", matches.Count },
+                { "state", hasMore ? new JValue(EncodeCursor(offset + pageItems.Count)) : JValue.CreateNull() },
+                { "time", 12 }
+            });
         }
 
-        private HttpResponseMessage Download(string taxCode, string id)
+        private HttpResponseMessage Detail(Dictionary<string, string> query, string taxCode)
         {
-            var record = DatasetFor(taxCode).Find(id);
+            var record = FindByKey(query, _config.Detail.Parameters, taxCode);
+            return record == null ? Error(HttpStatusCode.NotFound, "invoice not found") : Json(MockInvoiceDataset.ToDetailJson(record));
+        }
+
+        private HttpResponseMessage ExportXml(Dictionary<string, string> query, string taxCode)
+        {
+            var record = FindByKey(query, _config.Download.Parameters, taxCode);
             if (record == null) return Error(HttpStatusCode.NotFound, "invoice not found");
 
-            var xml = MockInvoiceDataset.BuildXml(record);
-            if (_config.Download.ResponseMode == "JsonBase64")
-            {
-                var body = new JObject();
-                SetPath(body, _config.Download.ContentPath, new JValue(Convert.ToBase64String(xml)));
-                return Json(body);
-            }
-
-            var response = new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(xml) };
-            response.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/xml");
+            var bytes = MalformedExportResponse ? Encoding.UTF8.GetBytes("not a zip") : MockInvoiceDataset.BuildExportZip(record);
+            var response = new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(bytes) };
+            response.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/zip");
             return response;
         }
 
-        private async Task<string> DownloadId(HttpRequestMessage request, string path)
+        private MockInvoiceRecord FindByKey(Dictionary<string, string> query, Dictionary<string, string> map, string taxCode)
         {
-            var download = _config.Download;
-            var idParam = download.Parameters.First(p => p.Value == "PortalInvoiceId").Key;
-
-            if (download.ParameterLocation == "Path")
+            string Get(string refField)
             {
-                var pattern = "^" + Regex.Escape(download.Endpoint.Path).Replace(Regex.Escape("{" + idParam + "}"), "([^/]+)") + "$";
-                var match = Regex.Match(path, pattern);
-                return match.Success ? Uri.UnescapeDataString(match.Groups[1].Value) : null;
+                var name = map.First(p => p.Value == refField).Key;
+                string value;
+                return query.TryGetValue(name, out value) ? value : null;
             }
 
-            if (path != download.Endpoint.Path) return null;
-            var parameters = await ReadParameters(request, download.ParameterLocation == "Body").ConfigureAwait(false);
-            string id;
-            return parameters.TryGetValue(idParam, out id) ? id : null;
+            var seller = Get("SellerTaxCode");
+            var symbol = Get("InvoiceSymbol");
+            var number = Get("InvoiceNumber");
+            var form = Get("FormSymbol");
+            if (seller == null || symbol == null || number == null || form == null) return null;
+            return DatasetFor(taxCode).Find(seller, symbol, number, form);
         }
 
-        private bool TryReadOffset(Dictionary<string, string> parameters, PaginationConfig paging, int pageSize, out int offset)
+        private static IEnumerable<MockInvoiceRecord> ApplyFilter(
+            IEnumerable<MockInvoiceRecord> records, string field, string value, InvoiceDirection direction, out bool known)
+        {
+            known = true;
+            switch (field)
+            {
+                case "nmmst":
+                    if (direction == InvoiceDirection.Purchase) break;
+                    return records.Where(r => r.Dto.BuyerTaxCode == value);
+                case "nbmst":
+                    if (direction == InvoiceDirection.Sold) break;
+                    return records.Where(r => r.Dto.SellerTaxCode == value);
+                case "nmcmnd":
+                    if (direction == InvoiceDirection.Purchase) break;
+                    return records.Where(r => r.Dto.BuyerIdNumber == value);
+                case "tthai": return records.Where(r => r.Dto.StatusRaw == value);
+                case "ttxly": return records.Where(r => r.Dto.CheckResultRaw == value);
+                case "khmshdon": return records.Where(r => r.Dto.FormSymbol == value);
+                case "khhdon": return records.Where(r => r.Dto.InvoiceSymbol == value);
+                case "shdon": return records.Where(r => r.Dto.InvoiceNumber == value);
+                case "unhiem": return value == "1" ? records.Where(r => r.Proxy) : records.Where(r => !r.Proxy);
+            }
+
+            known = false;
+            return records;
+        }
+
+        /// <summary>Giá trị RSQL đặt trong dấu nháy kép (khi chứa ký tự đặc biệt) được bỏ nháy và bỏ ký tự thoát.</summary>
+        private static string Unquote(string value)
+        {
+            if (value.Length >= 2 && value[0] == '"' && value[value.Length - 1] == '"')
+            {
+                return value.Substring(1, value.Length - 2).Replace("\\\"", "\"").Replace("\\\\", "\\");
+            }
+
+            return value;
+        }
+
+        private static string EncodeCursor(int offset)
+        {
+            return Convert.ToBase64String(Encoding.UTF8.GetBytes("o:" + offset.ToString(CultureInfo.InvariantCulture)));
+        }
+
+        private static bool TryDecodeCursor(string cursor, out int offset)
         {
             offset = 0;
-            string cursor;
-            if (!parameters.TryGetValue(paging.CursorParam, out cursor) || string.IsNullOrEmpty(cursor))
-            {
-                return paging.Mode != "Page" || paging.StartPage >= 0;
-            }
-
-            if (paging.Mode == "Page")
-            {
-                int page;
-                if (!int.TryParse(cursor, NumberStyles.None, CultureInfo.InvariantCulture, out page) || page < paging.StartPage) return false;
-                offset = (page - paging.StartPage) * pageSize;
-                return true;
-            }
-
             try
             {
                 var text = Encoding.UTF8.GetString(Convert.FromBase64String(cursor));
@@ -265,60 +321,13 @@ namespace HoaDonDienTu.Infrastructure.Development.Mock
             }
         }
 
-        private static string EncodeCursor(int offset)
-        {
-            return Convert.ToBase64String(Encoding.UTF8.GetBytes("o:" + offset.ToString(CultureInfo.InvariantCulture)));
-        }
-
-        private static IEnumerable<MockInvoiceRecord> ApplyFilter(IEnumerable<MockInvoiceRecord> records, string field, string value, InvoiceDirection direction)
-        {
-            value = value.Trim();
-            switch (field)
-            {
-                case "CounterpartyTaxCode":
-                    return records.Where(r => (direction == InvoiceDirection.Purchase ? r.Dto.SellerTaxCode : r.Dto.BuyerTaxCode) == value);
-                case "StatusCode": return records.Where(r => r.Dto.StatusRaw == value);
-                case "CheckResultCode": return records.Where(r => r.Dto.CheckResultRaw == value);
-                case "InvoiceNumber": return records.Where(r => r.Dto.InvoiceNumber == value);
-                case "FormSymbol": return records.Where(r => r.Dto.FormSymbol == value);
-                case "InvoiceSymbol": return records.Where(r => r.Dto.InvoiceSymbol == value);
-                default: return records;
-            }
-        }
-
-        private JObject MapItem(SearchResponseConfig response, MockInvoiceRecord record)
-        {
-            var item = new JObject();
-            foreach (var pair in response.Fields)
-            {
-                if (pair.Key == OmitDtoField) continue;
-                var property = typeof(PortalInvoiceDto).GetProperty(pair.Key);
-                var value = property == null ? null : property.GetValue(record.Dto, null);
-                if (value == null) continue;
-
-                if (value is DateTime) SetPath(item, pair.Value, new JValue(((DateTime)value).ToString(response.DateFormats[0], CultureInfo.InvariantCulture)));
-                else if (value is decimal) SetPath(item, pair.Value, new JValue((decimal)value));
-                else SetPath(item, pair.Value, new JValue(Convert.ToString(value, CultureInfo.InvariantCulture)));
-            }
-
-            return item;
-        }
-
-        private static async Task<Dictionary<string, string>> ReadParameters(HttpRequestMessage request, bool fromBody)
+        private static Dictionary<string, string> ReadQuery(HttpRequestMessage request)
         {
             var result = new Dictionary<string, string>(StringComparer.Ordinal);
-            if (fromBody)
-            {
-                if (request.Content == null) return result;
-                var text = await request.Content.ReadAsStringAsync().ConfigureAwait(false);
-                var json = JObject.Parse(text);
-                foreach (var property in json.Properties()) result[property.Name] = Convert.ToString(property.Value, CultureInfo.InvariantCulture);
-                return result;
-            }
-
             var query = request.RequestUri.Query.TrimStart('?');
             foreach (var part in query.Split(new[] { '&' }, StringSplitOptions.RemoveEmptyEntries))
             {
+                // Chỉ tách ở dấu '=' đầu tiên: giá trị search chứa nhiều dấu '=' (tdlap=ge=...).
                 var index = part.IndexOf('=');
                 var key = index < 0 ? part : part.Substring(0, index);
                 var value = index < 0 ? string.Empty : part.Substring(index + 1);
@@ -326,25 +335,6 @@ namespace HoaDonDienTu.Infrastructure.Development.Mock
             }
 
             return result;
-        }
-
-        private static void SetPath(JObject root, string path, JToken value)
-        {
-            var parts = path.Split('.');
-            var current = root;
-            for (var i = 0; i < parts.Length - 1; i++)
-            {
-                var next = current[parts[i]] as JObject;
-                if (next == null)
-                {
-                    next = new JObject();
-                    current[parts[i]] = next;
-                }
-
-                current = next;
-            }
-
-            current[parts[parts.Length - 1]] = value;
         }
 
         private static HttpResponseMessage Json(JToken body)

@@ -3,8 +3,7 @@ using System.Collections.Generic;
 namespace HoaDonDienTu.Infrastructure.Portal.Config
 {
     /// <summary>
-    /// Cấu hình NHÁP tự định nghĩa để DD-04…DD-09 phát triển được khi chưa có tài khoản thật. Mọi endpoint, tên tham số và
-    /// cấu trúc phản hồi dưới đây là giả định, chưa được đối chiếu với cổng Thuế (Verified = false).
+    /// Cấu hình mặc định theo traffic thật của https://hoadondientu.gdt.gov.vn ghi lại trong <c>docs/api-samples/sample-api-web.md</c>.
     /// </summary>
     public static class PortalApiConfigDefaults
     {
@@ -12,95 +11,118 @@ namespace HoaDonDienTu.Infrastructure.Portal.Config
         {
             return new PortalApiConfig
             {
-                SchemaVersion = 1,
+                SchemaVersion = 2,
                 Verified = false,
-                Notes = "NHÁP tự định nghĩa, chưa đối chiếu cổng Thuế thật (G-02). Sửa file này cho khớp traffic thực tế; không cần đổi code.",
+                Notes = "Đối chiếu thật: đăng nhập, tra cứu bán ra (tdlap/tthai/ttxly/khmshdon/shdon/khhdon/unhiem/nmmst/nmcmnd), xem chi tiết, "
+                    + "xuất XML (zip), xuất Excel. CHƯA có mẫu thật: tra cứu mua vào (đường dẫn /purchase và tên trường nbmst là suy luận), "
+                    + "trang kế tiếp qua tham số state khi tổng > size, kích thước trang tối đa, chữ ký action của mua vào.",
                 BaseUrl = "https://hoadondientu.gdt.gov.vn",
                 Auth = new AuthConfig
                 {
+                    AuthenticatePath = "/api/security-taxpayer/authenticate",
+                    TokenResponsePath = "token",
                     HeaderName = "Authorization",
                     Scheme = "Bearer",
-                    SendCookies = false,
+                    SendCookies = true,
                     ForwardHeaders = new List<string>()
                 },
                 Http = new HttpSettings
                 {
                     TimeoutSeconds = 60,
-                    UserAgent = "HoaDonDienTu/1.0",
-                    DefaultHeaders = new Dictionary<string, string> { { "Accept", "application/json" } }
-                },
-                Profile = new ProfileConfig
-                {
-                    Endpoint = new EndpointConfig { Method = "GET", Path = "/api/v1/profile" },
-                    TaxCodePath = "data.taxCode",
-                    NamePath = "data.name"
+                    UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+                    RequestIdHeader = "request-id",
+                    ActionHeader = "action",
+                    DefaultHeaders = new Dictionary<string, string>
+                    {
+                        { "Accept", "application/json, text/plain, */*" },
+                        { "Accept-Language", "vi" },
+                        { "end-point", "/tra-cuu/tra-cuu-hoa-don" },
+                        { "Referer", "https://hoadondientu.gdt.gov.vn/tra-cuu/tra-cuu-hoa-don" }
+                    }
                 },
                 Search = new SearchConfig
                 {
-                    Purchase = new EndpointConfig { Method = "GET", Path = "/api/v1/invoices/purchase" },
-                    Sold = new EndpointConfig { Method = "GET", Path = "/api/v1/invoices/sold" },
-                    ParameterLocation = "Query",
-                    DateFormat = "yyyy-MM-dd",
-                    FromParam = "from",
-                    ToParam = "to",
-                    FixedParameters = new Dictionary<string, string> { { "sort", "issueDate:asc" } },
-                    Pagination = new PaginationConfig
+                    Sold = new EndpointConfig { Method = "GET", Path = "/api/query/invoices/sold", Action = "Tìm kiếm (hóa đơn {direction})" },
+                    Purchase = new EndpointConfig { Method = "GET", Path = "/api/query/invoices/purchase", Action = "Tìm kiếm (hóa đơn {direction})" },
+                    Rsql = new RsqlConfig
                     {
-                        Mode = "Cursor",
-                        PageSizeParam = "size",
-                        PageSize = 50,
-                        CursorParam = "cursor",
-                        StartPage = 1
+                        Param = "search",
+                        Separator = ";",
+                        DateField = "tdlap",
+                        DateTimeFormat = "dd/MM/yyyy'T'HH:mm:ss",
+                        ProxyTrueValue = "1"
                     },
-                    FilterParameters = new Dictionary<string, string>
+                    FixedParameters = new Dictionary<string, string> { { "sort", "tdlap:desc" } },
+                    Pagination = new PaginationConfig { PageSizeParam = "size", PageSize = 50, CursorParam = "state" },
+                    SoldFilterFields = new Dictionary<string, string>
                     {
-                        { "CounterpartyTaxCode", "partnerTaxCode" },
-                        { "StatusCode", "status" },
-                        { "CheckResultCode", "checkResult" },
-                        { "InvoiceNumber", "invoiceNumber" },
-                        { "FormSymbol", "formSymbol" },
-                        { "InvoiceSymbol", "invoiceSymbol" },
-                        { "ProxyInvoice", "proxy" }
+                        { "CounterpartyTaxCode", "nmmst" },
+                        { "BuyerIdNumber", "nmcmnd" },
+                        { "StatusCode", "tthai" },
+                        { "CheckResultCode", "ttxly" },
+                        { "InvoiceNumber", "shdon" },
+                        { "FormSymbol", "khmshdon" },
+                        { "InvoiceSymbol", "khhdon" },
+                        { "ProxyInvoice", "unhiem" }
+                    },
+                    PurchaseFilterFields = new Dictionary<string, string>
+                    {
+                        { "CounterpartyTaxCode", "nbmst" },
+                        { "StatusCode", "tthai" },
+                        { "CheckResultCode", "ttxly" },
+                        { "InvoiceNumber", "shdon" },
+                        { "FormSymbol", "khmshdon" },
+                        { "InvoiceSymbol", "khhdon" },
+                        { "ProxyInvoice", "unhiem" }
                     },
                     Response = new SearchResponseConfig
                     {
-                        ItemsPath = "data.items",
-                        TotalPath = "data.total",
-                        NextCursorPath = "data.nextCursor",
-                        HasMorePath = null,
-                        DateFormats = new List<string> { "yyyy-MM-dd", "yyyy-MM-ddTHH:mm:ss", "dd/MM/yyyy" },
+                        ItemsPath = "datas",
+                        TotalPath = "total",
+                        NextCursorPath = "state",
+                        TimeZoneOffsetHours = 7,
+                        DateFormats = new List<string> { "yyyy-MM-ddTHH:mm:ssZ", "yyyy-MM-ddTHH:mm:ss.fffZ", "yyyy-MM-ddTHH:mm:ss", "yyyy-MM-dd", "dd/MM/yyyy" },
                         Fields = new Dictionary<string, string>
                         {
                             { "PortalInvoiceId", "id" },
-                            { "FormSymbol", "formSymbol" },
-                            { "InvoiceSymbol", "invoiceSymbol" },
-                            { "InvoiceNumber", "number" },
-                            { "IssueDate", "issueDate" },
-                            { "SellerTaxCode", "seller.taxCode" },
-                            { "SellerName", "seller.name" },
-                            { "BuyerTaxCode", "buyer.taxCode" },
-                            { "BuyerName", "buyer.name" },
-                            { "BuyerAddress", "buyer.address" },
-                            { "TotalBeforeTax", "amounts.beforeTax" },
-                            { "TotalTax", "amounts.tax" },
-                            { "TotalDiscount", "amounts.discount" },
-                            { "TotalFee", "amounts.fee" },
-                            { "TotalPayment", "amounts.payment" },
-                            { "Currency", "currency" },
-                            { "ExchangeRate", "exchangeRate" },
-                            { "StatusRaw", "status" },
-                            { "CheckResultRaw", "checkResult" }
+                            { "FormSymbol", "khmshdon" },
+                            { "InvoiceSymbol", "khhdon" },
+                            { "InvoiceNumber", "shdon" },
+                            { "IssueDate", "tdlap" },
+                            { "SellerTaxCode", "nbmst" },
+                            { "SellerName", "nbten" },
+                            { "BuyerTaxCode", "nmmst" },
+                            { "BuyerIdNumber", "nmcmnd" },
+                            { "BuyerName", "nmten" },
+                            { "BuyerAddress", "nmdchi" },
+                            { "TotalBeforeTax", "tgtcthue" },
+                            { "TotalTax", "tgtthue" },
+                            { "TotalDiscount", "ttcktmai" },
+                            { "TotalFee", "tgtphi" },
+                            { "TotalPayment", "tgtttbso" },
+                            { "Currency", "dvtte" },
+                            { "ExchangeRate", "tgia" },
+                            { "StatusRaw", "tthai" },
+                            { "CheckResultRaw", "ttxly" }
                         }
                     }
                 },
+                Detail = new DetailConfig
+                {
+                    Endpoint = new EndpointConfig { Method = "GET", Path = "/api/query/invoices/detail", Action = "Xem hóa đơn (hóa đơn {direction})" },
+                    Parameters = KeyParameters()
+                },
                 Download = new DownloadConfig
                 {
-                    Endpoint = new EndpointConfig { Method = "GET", Path = "/api/v1/invoices/{id}/xml" },
-                    ParameterLocation = "Path",
-                    Parameters = new Dictionary<string, string> { { "id", "PortalInvoiceId" } },
-                    ResponseMode = "RawXml",
-                    ContentPath = null,
-                    FileNameTemplate = "{InvoiceSymbol}-{InvoiceNumber}.xml"
+                    Endpoint = new EndpointConfig { Method = "GET", Path = "/api/query/invoices/export-xml", Action = "Xuất xml (hóa đơn {direction})" },
+                    Parameters = KeyParameters(),
+                    ResponseMode = "Zip",
+                    ZipEntryName = "invoice.xml",
+                    FileNameTemplate = "{SellerTaxCode}_{InvoiceSymbol}_{InvoiceNumber}.xml"
+                },
+                ExportExcel = new ExportExcelConfig
+                {
+                    Endpoint = new EndpointConfig { Method = "GET", Path = "/api/query/invoices/export-excel", Action = "Xuất hóa đơn (hóa đơn {direction})" }
                 },
                 Errors = new ErrorConfig
                 {
@@ -108,6 +130,18 @@ namespace HoaDonDienTu.Infrastructure.Portal.Config
                     RetryAfterHeader = "Retry-After"
                 },
                 RateLimit = new RateLimitConfig { MinIntervalMs = 500 }
+            };
+        }
+
+        /// <summary>Khóa tổng hợp của một hóa đơn, dùng cho xem chi tiết và xuất XML: nbmst, khhdon, shdon, khmshdon.</summary>
+        private static Dictionary<string, string> KeyParameters()
+        {
+            return new Dictionary<string, string>
+            {
+                { "nbmst", "SellerTaxCode" },
+                { "khhdon", "InvoiceSymbol" },
+                { "shdon", "InvoiceNumber" },
+                { "khmshdon", "FormSymbol" }
             };
         }
     }

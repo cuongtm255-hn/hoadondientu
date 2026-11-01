@@ -79,6 +79,101 @@ namespace HoaDonDienTu.WinForms.Tests
             Assert.That(_view.Plan.Count, Is.EqualTo(12), "AC-02: năm 2026 → 12 dòng");
         }
 
+        // ---- Bộ lọc theo tham số của cổng ----
+
+        [Test]
+        public void DirectionChange_RecomputesSupportedFilters_AndLabels()
+        {
+            _capabilities = new FakeCapabilities("CounterpartyTaxCode", "BuyerIdNumber", "StatusCode");
+            _presenter.Dispose();
+            _view = new FakeDownloadView();
+            _presenter = Create();
+            Assert.That(_view.ShownDirection, Is.EqualTo(InvoiceDirection.Purchase));
+            Assert.That(_view.SupportedFilters, Does.Not.Contain("BuyerIdNumber"), "Mua vào không có CCCD người mua");
+
+            _view.Input.Direction = InvoiceDirection.Sold;
+            _view.RaiseInputChanged();
+
+            Assert.That(_view.ShownDirection, Is.EqualTo(InvoiceDirection.Sold));
+            Assert.That(_view.SupportedFilters, Does.Contain("BuyerIdNumber"));
+        }
+
+        [TestCase("123", "MST")]
+        [TestCase("01012345", "MST")]
+        public void InvalidTaxCode_BlocksStart_AndExplainsOnTheForm(string value, string expected)
+        {
+            _view.Input.CounterpartyTaxCode = value;
+
+            _view.RaiseInputChanged();
+
+            Assert.That(_view.CanStart, Is.False);
+            Assert.That(_view.FilterMessage, Does.Contain(expected));
+            Assert.That(_view.Reason, Does.Contain("Bộ lọc"));
+        }
+
+        [Test]
+        public void InvalidInvoiceNumber_BlocksStart_EvenIfTheStartEventFires()
+        {
+            _view.Input.InvoiceNumber = "12ab";
+            _view.RaiseInputChanged();
+
+            _view.RaiseStart();
+
+            Assert.That(_starter.Plans, Is.Empty);
+            Assert.That(_view.FilterMessage, Does.Contain("Số hóa đơn"));
+        }
+
+        [Test]
+        public void ValidFilters_FlowIntoThePlan_WithPortalCodes()
+        {
+            _capabilities = new FakeCapabilities("CounterpartyTaxCode", "BuyerIdNumber", "StatusCode", "InvoiceNumber");
+            _view.Input.Direction = InvoiceDirection.Sold;
+            _view.Input.CounterpartyTaxCode = "0100100001";
+            _view.Input.BuyerIdNumber = "036402421225";
+            _view.Input.StatusCode = "6";
+            _view.Input.CheckResultCode = "5";
+            _view.Input.FormSymbol = "1";
+            _view.Input.InvoiceSymbol = "C26TBN";
+            _view.Input.InvoiceNumber = "323";
+            _view.Input.ProxyInvoice = true;
+            _view.RaiseInputChanged();
+
+            _view.RaiseStart();
+
+            var filter = _starter.Plans.Single().Filter;
+            Assert.That(filter.CounterpartyTaxCode, Is.EqualTo("0100100001"));
+            Assert.That(filter.BuyerIdNumber, Is.EqualTo("036402421225"));
+            Assert.That(filter.StatusCode, Is.EqualTo("6"));
+            Assert.That(filter.CheckResultCode, Is.EqualTo("5"));
+            Assert.That(filter.FormSymbol, Is.EqualTo("1"));
+            Assert.That(filter.InvoiceSymbol, Is.EqualTo("C26TBN"));
+            Assert.That(filter.InvoiceNumber, Is.EqualTo("323"));
+            Assert.That(filter.ProxyInvoice, Is.True);
+        }
+
+        [Test]
+        public void PurchaseDirection_DropsAStaleBuyerIdNumber_FromThePlan()
+        {
+            _view.Input.Direction = InvoiceDirection.Purchase;
+            _view.Input.BuyerIdNumber = "036402421225";
+            _view.RaiseInputChanged();
+
+            _view.RaiseStart();
+
+            Assert.That(_starter.Plans.Single().Filter.BuyerIdNumber, Is.Null);
+        }
+
+        [Test]
+        public void AllEmptyFilters_SendNothing()
+        {
+            _view.RaiseStart();
+
+            var filter = _starter.Plans.Single().Filter;
+            Assert.That(filter.StatusCode, Is.Null);
+            Assert.That(filter.CheckResultCode, Is.Null);
+            Assert.That(filter.ProxyInvoice, Is.Null);
+        }
+
         [Test]
         public void Year2026_Purchase_Shows12Rows_AC02()
         {
@@ -363,7 +458,11 @@ namespace HoaDonDienTu.WinForms.Tests
             public DownloadConfigInput ReadInput() { return Input; }
             public void ApplyDefaults(DateTime today) { DefaultsToday = today; }
             public void ShowSupportedFilters(ISet<string> supportedFields) { SupportedFilters = supportedFields; }
-            public void ClearFilters() { FiltersCleared++; Input.CounterpartyTaxCode = null; }
+            public void ClearFilters() { FiltersCleared++; Input.CounterpartyTaxCode = null; Input.BuyerIdNumber = null; }
+            public void ShowDirectionLabels(InvoiceDirection direction) { ShownDirection = direction; }
+            public void ShowFilterMessage(string message) { FilterMessage = message; }
+            public InvoiceDirection? ShownDirection;
+            public string FilterMessage;
             public void ShowPlan(IList<DateSegment> segments) { Plan = segments; }
 
             public void ShowPeriodMessages(IList<string> errors, IList<string> warnings)
@@ -419,7 +518,12 @@ namespace HoaDonDienTu.WinForms.Tests
                 _fields = new HashSet<string>(fields);
             }
 
-            public bool SupportsFilter(string filterField) { return _fields.Contains(filterField); }
+            /// <summary>CCCD người mua chỉ có ở tra cứu bán ra, giống cấu hình thật.</summary>
+            public bool SupportsFilter(InvoiceDirection direction, string filterField)
+            {
+                if (direction == InvoiceDirection.Purchase && filterField == "BuyerIdNumber") return false;
+                return _fields.Contains(filterField);
+            }
         }
 
         private sealed class FakeStarter : IDownloadSessionStarter

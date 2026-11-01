@@ -31,66 +31,38 @@ namespace HoaDonDienTu.Infrastructure.Portal
     }
 
     /// <summary>
-    /// Xác minh phiên bằng API hồ sơ của cổng và đối chiếu MST với doanh nghiệp đang mở (FR-AUTH-011).
-    /// Điều hướng khỏi trang đăng nhập không đủ để coi là thành công.
+    /// Xác minh phiên đăng nhập từ WebView bằng chính token: claim <c>sub</c> của JWT là MST đăng nhập (sample-api-web.md mục 1) nên so với
+    /// MST của kho đang mở mà không cần gọi mạng. Token hết hạn hoặc không đọc được bị từ chối. Mọi lần gọi API sau đó vẫn do cổng kiểm tra lại
+    /// token, và 401/403 sẽ đưa phiên tải về trạng thái chờ đăng nhập.
     /// </summary>
     public sealed class PortalAuthenticationService : IPortalAuthenticationService
     {
-        private readonly PortalApiConfig _config;
         private readonly IClock _clock;
-        private readonly Func<HttpMessageHandler> _handlerFactory;
 
-        public PortalAuthenticationService(PortalApiConfig config, IClock clock, Func<HttpMessageHandler> handlerFactory)
+        public PortalAuthenticationService(IClock clock)
         {
-            if (config == null) throw new ArgumentNullException("config");
             if (clock == null) throw new ArgumentNullException("clock");
-            _config = config;
             _clock = clock;
-            _handlerFactory = handlerFactory;
         }
 
-        public async Task<PortalLoginResult> VerifyAsync(CompanyContext company, PortalSessionMaterial candidate, CancellationToken cancellationToken)
+        public Task<PortalLoginResult> VerifyAsync(CompanyContext company, PortalSessionMaterial candidate, CancellationToken cancellationToken)
         {
             if (company == null) throw new ArgumentNullException("company");
             if (candidate == null) throw new ArgumentNullException("candidate");
-
-            string profileTaxCode;
-            using (var client = new PortalHttpApiClient(_config, candidate, _handlerFactory == null ? null : _handlerFactory()))
-            {
-                try
-                {
-                    profileTaxCode = await client.GetProfileTaxCodeAsync(cancellationToken).ConfigureAwait(true);
-                }
-                catch (PortalApiException ex)
-                {
-                    return PortalLoginResult.Failure(OutcomeOf(ex.Kind), null);
-                }
-            }
-
-            TaxCode actual;
-            if (!TaxCode.TryParse(profileTaxCode, out actual))
-            {
-                return PortalLoginResult.Failure(PortalLoginOutcome.InvalidSession, null);
-            }
-
-            if (!actual.Equals(company.TaxCode))
-            {
-                return PortalLoginResult.Failure(PortalLoginOutcome.TaxCodeMismatch, null);
-            }
-
-            return PortalLoginResult.Success(new PortalSession(company.CompanyId, company.TaxCode, candidate, _clock.UtcNow));
+            return Task.FromResult(Verify(company, candidate));
         }
 
-        private static PortalLoginOutcome OutcomeOf(PortalErrorKind kind)
+        private PortalLoginResult Verify(CompanyContext company, PortalSessionMaterial candidate)
         {
-            switch (kind)
-            {
-                case PortalErrorKind.AuthExpired:
-                case PortalErrorKind.SchemaChanged:
-                    return PortalLoginOutcome.InvalidSession;
-                default:
-                    return PortalLoginOutcome.PortalUnavailable;
-            }
+            var token = candidate.Token;
+            if (token == null) return PortalLoginResult.Failure(PortalLoginOutcome.InvalidSession, null);
+            if (token.IsExpired(_clock.UtcNow)) return PortalLoginResult.Failure(PortalLoginOutcome.InvalidSession, null);
+
+            TaxCode actual;
+            if (!TaxCode.TryParse(token.Subject, out actual)) return PortalLoginResult.Failure(PortalLoginOutcome.InvalidSession, null);
+            if (!actual.Equals(company.TaxCode)) return PortalLoginResult.Failure(PortalLoginOutcome.TaxCodeMismatch, null);
+
+            return PortalLoginResult.Success(new PortalSession(company.CompanyId, company.TaxCode, candidate, _clock.UtcNow));
         }
     }
 }

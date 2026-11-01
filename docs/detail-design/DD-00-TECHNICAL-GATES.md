@@ -38,8 +38,10 @@ Không đưa API WebView cụ thể ra ngoài Infrastructure adapter.
 | Gate | Nội dung cần chứng minh | Đầu ra | Chặn |
 |---|---|---|---|
 | G-02 API discovery | Endpoint, method, header, pagination/cursor, giới hạn ngày, page size, error schema, cách xác minh phiên/MST, cách tải XML/PDF | `docs/api-samples/*` đã làm sạch + ADR | DD-01 (production auth), DD-05, DD-06 |
+|  | **Trạng thái 11/2026: 🟡 đóng một phần.** Đã có mẫu thật cho đăng nhập (JWT, MST ở `sub`), tra cứu **bán ra** (RSQL, mọi tham số), chi tiết, xuất XML (zip), xuất Excel; xem [api-samples](../api-samples/README.md). Còn thiếu: tra cứu mua vào, `state` phân trang, `size` tối đa, mã lỗi hết phiên | | |
 | G-03 PDF strategy | Dùng PDF/print endpoint của cổng hay render XML theo mẫu; nhất quán với XML | ADR | DD-08 |
 | G-04 Excel fidelity | So sánh file xuất với workbook mẫu: cột, kiểu dữ liệu, tiêu đề, phạm vi ngày | Báo cáo đối chiếu + ADR | DD-09 |
+|  | **Trạng thái 11/2026: 🟡 đã có mẫu** `DANH SÁCH HÓA ĐƠN.xlsx` và `spec.xlsx`; bố cục 19 cột, tiêu đề, ô gộp, độ rộng cột đã ghi ở [api-samples mục 5](../api-samples/README.md). Còn lại: so sánh file do ứng dụng xuất với mẫu khi có `ExcelInvoiceWriter` | | |
 | G-05 Rate limit | Nhịp gọi an toàn; hành vi 429/giới hạn tương đương | ADR + cấu hình mặc định | DD-05 |
 | G-06 Licence protocol | API, thuật toán chữ ký, mã máy, mã hóa cục bộ, chu kỳ xác thực, hủy/reset, chính sách lệch đồng hồ | ADR + contract server | DD-03 (T03-04, T03-05) |
 | G-07 Company switch safety | Chứng minh thứ tự đóng tác vụ/token/SQLite và phục hồi sau crash | Báo cáo spike + ADR | DD-01 mục 9, DD-02 |
@@ -64,7 +66,7 @@ Trạng thái: ⬜ Chưa bắt đầu · 🟡 Đang làm · ✅ Hoàn thành · 
 |---|---|---|---|---|---|---|
 | T00-01 | G-01 | Spike WebBrowser/CefSharp/lựa chọn khác trên máy đích (net45) | — | ⬜ | | Cần tài khoản cổng Thuế thật |
 | T00-02 | G-01 | Xác định cách phát hiện login và lấy token/cookie | T00-01 | ⬜ | | |
-| T00-03 | G-02 | Ghi traffic: xác minh phiên/MST, tra cứu mua vào/bán ra, phân trang, tải XML | T00-02 | ⬜ | | Làm sạch dữ liệu trước khi commit. Đã có hợp đồng nháp + cấu hình + cổng giả để không chặn DD-04…09: khi có traffic thật chỉ cần chỉnh `portal-api.json` theo checklist ở [api-samples](../api-samples/README.md) |
+| T00-03 | G-02 | Ghi traffic: xác minh phiên/MST, tra cứu mua vào/bán ra, phân trang, tải XML | T00-02 | 🟡 | | Đã ghi traffic thật cho đăng nhập, tra cứu bán ra, chi tiết, xuất XML/Excel (11/2026) và cập nhật cấu hình/cổng giả/mã nguồn theo đó. **Còn:** tra cứu mua vào, phân trang `state`, mã lỗi hết phiên. Bản ghi nguyên văn chứa mật khẩu/token thật nên chỉ giữ bản đã làm sạch |
 | T00-04 | G-05 | Đo giới hạn tốc độ / hành vi 429 | T00-03 | ⬜ | | |
 | T00-05 | G-03 | Quyết định chiến lược PDF | T00-03 | ⬜ | | |
 | T00-06 | G-04 | Đối chiếu Excel với workbook mẫu `DANH SÁCH HÓA ĐƠN.xlsx` | — | ⬜ | | |

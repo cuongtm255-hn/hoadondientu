@@ -55,6 +55,9 @@ public interface IInvoiceArchiveService
 
 ## 4. Giao diện
 
+> **Bộ lọc kho nên khớp form tra cứu của cổng** ([DD-04 mục 5.1a](DD-04-PERIOD-DOWNLOAD-CONFIG.md)): MST đối tác, CCCD người mua, trạng thái hóa đơn (`tthai` 1–6), kết quả kiểm tra (`ttxly` 0–8), ký hiệu mẫu số, ký hiệu hóa đơn, số hóa đơn, hóa đơn ủy nhiệm, khoảng ngày lập. Nhãn trạng thái/kết quả lấy từ `PortalOptions`.
+> Cột lưới: STT, ký hiệu mẫu số, ký hiệu, số, ngày lập, MST/tên người mua (hoặc bán), tổng tiền chưa thuế, trạng thái — như bảng kết quả của cổng (`spec.xlsx`).
+
 - Tab/bộ chọn `Mua vào` | `Bán ra` (FR-ARCH-001); thanh lọc đầy đủ + ô tìm nhanh.
 - `DataGridView` virtual-mode hoặc phân trang; cột theo mẫu Excel mục 9.1 SRS; người dùng ẩn/hiện cột nhưng xuất Excel luôn theo mẫu chuẩn (FR-ARCH-005).
 - Chỉ báo cảnh báo file lỗi/thiếu bằng biểu tượng + chữ; bộ lọc riêng cho file lỗi (FR-ARCH-009).

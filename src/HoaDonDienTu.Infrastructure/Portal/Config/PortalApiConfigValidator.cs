@@ -7,26 +7,31 @@ namespace HoaDonDienTu.Infrastructure.Portal.Config
 {
     public static class PortalApiConfigValidator
     {
+        public const int CurrentSchemaVersion = 2;
+
         /// <summary>Tên các trường của <c>PortalInvoiceDto</c> cho phép ánh xạ.</summary>
         public static readonly string[] DtoFields =
         {
             "PortalInvoiceId", "FormSymbol", "InvoiceSymbol", "InvoiceNumber", "IssueDate", "SellerTaxCode", "SellerName",
-            "BuyerTaxCode", "BuyerName", "BuyerAddress", "TotalBeforeTax", "TotalTax", "TotalDiscount", "TotalFee",
+            "BuyerTaxCode", "BuyerIdNumber", "BuyerName", "BuyerAddress", "TotalBeforeTax", "TotalTax", "TotalDiscount", "TotalFee",
             "TotalPayment", "Currency", "ExchangeRate", "StatusRaw", "CheckResultRaw"
         };
 
-        /// <summary>Các trường bắt buộc: thiếu trong phản hồi nghĩa là cổng đã đổi cấu trúc.</summary>
-        public static readonly string[] RequiredDtoFields = { "PortalInvoiceId", "InvoiceNumber", "IssueDate" };
+        /// <summary>
+        /// Các trường bắt buộc: thiếu trong phản hồi nghĩa là cổng đã đổi cấu trúc. Khóa tổng hợp của hóa đơn (người bán, ký hiệu mẫu số,
+        /// ký hiệu, số) là thứ cổng dùng để xem chi tiết và xuất XML nên đều bắt buộc.
+        /// </summary>
+        public static readonly string[] RequiredDtoFields =
+        {
+            "PortalInvoiceId", "SellerTaxCode", "FormSymbol", "InvoiceSymbol", "InvoiceNumber", "IssueDate"
+        };
 
         public static readonly string[] FilterFields =
         {
-            "CounterpartyTaxCode", "StatusCode", "CheckResultCode", "InvoiceNumber", "FormSymbol", "InvoiceSymbol", "ProxyInvoice"
+            "CounterpartyTaxCode", "BuyerIdNumber", "StatusCode", "CheckResultCode", "InvoiceNumber", "FormSymbol", "InvoiceSymbol", "ProxyInvoice"
         };
 
-        public static readonly string[] RefFields =
-        {
-            "PortalInvoiceId", "SellerTaxCode", "FormSymbol", "InvoiceSymbol", "InvoiceNumber", "IssueDate", "Direction"
-        };
+        public static readonly string[] RefFields = { "PortalInvoiceId", "SellerTaxCode", "FormSymbol", "InvoiceSymbol", "InvoiceNumber" };
 
         public static IList<string> Validate(PortalApiConfig c)
         {
@@ -37,7 +42,7 @@ namespace HoaDonDienTu.Infrastructure.Portal.Config
                 return errors;
             }
 
-            if (c.SchemaVersion != 1) errors.Add("schemaVersion phải là 1.");
+            if (c.SchemaVersion != CurrentSchemaVersion) errors.Add("schemaVersion phải là " + CurrentSchemaVersion + ".");
 
             Uri baseUri;
             if (string.IsNullOrWhiteSpace(c.BaseUrl) || !Uri.TryCreate(c.BaseUrl, UriKind.Absolute, out baseUri))
@@ -50,12 +55,23 @@ namespace HoaDonDienTu.Infrastructure.Portal.Config
             }
 
             if (c.Auth == null || string.IsNullOrWhiteSpace(c.Auth.HeaderName)) errors.Add("auth.headerName là bắt buộc.");
+            else
+            {
+                if (string.IsNullOrWhiteSpace(c.Auth.AuthenticatePath) || !c.Auth.AuthenticatePath.StartsWith("/", StringComparison.Ordinal))
+                {
+                    errors.Add("auth.authenticatePath phải bắt đầu bằng '/'.");
+                }
+
+                if (string.IsNullOrWhiteSpace(c.Auth.TokenResponsePath)) errors.Add("auth.tokenResponsePath là bắt buộc.");
+            }
+
             if (c.Http == null || c.Http.TimeoutSeconds <= 0) errors.Add("http.timeoutSeconds phải > 0.");
             if (c.RateLimit == null || c.RateLimit.MinIntervalMs < 0) errors.Add("rateLimit.minIntervalMs phải >= 0.");
 
-            ValidateProfile(c.Profile, errors);
             ValidateSearch(c.Search, errors);
+            ValidateKeyed(c.Detail == null ? null : c.Detail.Endpoint, c.Detail == null ? null : c.Detail.Parameters, "detail", errors);
             ValidateDownload(c.Download, errors);
+            if (c.ExportExcel != null) ValidateEndpoint(c.ExportExcel.Endpoint, "exportExcel.endpoint", errors);
 
             if (c.Errors != null && c.Errors.StatusKinds != null)
             {
@@ -72,52 +88,43 @@ namespace HoaDonDienTu.Infrastructure.Portal.Config
             return errors;
         }
 
-        private static void ValidateProfile(ProfileConfig p, List<string> errors)
-        {
-            if (p == null) { errors.Add("Thiếu profile."); return; }
-            ValidateEndpoint(p.Endpoint, "profile.endpoint", errors);
-            if (string.IsNullOrWhiteSpace(p.TaxCodePath)) errors.Add("profile.taxCodePath là bắt buộc.");
-        }
-
         private static void ValidateSearch(SearchConfig s, List<string> errors)
         {
             if (s == null) { errors.Add("Thiếu search."); return; }
             ValidateEndpoint(s.Purchase, "search.purchase", errors);
             ValidateEndpoint(s.Sold, "search.sold", errors);
-
-            if (!IsOneOf(s.ParameterLocation, "Query", "Body")) errors.Add("search.parameterLocation phải là Query hoặc Body.");
-            if (string.Equals(s.ParameterLocation, "Body", StringComparison.Ordinal)
-                && (s.Purchase == null || s.Purchase.Method != "POST" || s.Sold == null || s.Sold.Method != "POST"))
+            if (s.Purchase != null && s.Sold != null && s.Purchase.Path == s.Sold.Path)
             {
-                errors.Add("search.parameterLocation = Body yêu cầu method POST.");
+                errors.Add("search.purchase và search.sold không được trùng đường dẫn.");
             }
 
-            if (string.IsNullOrWhiteSpace(s.DateFormat)) errors.Add("search.dateFormat là bắt buộc.");
-            if (string.IsNullOrWhiteSpace(s.FromParam) || string.IsNullOrWhiteSpace(s.ToParam)) errors.Add("search.fromParam/toParam là bắt buộc.");
+            var q = s.Rsql;
+            if (q == null) errors.Add("Thiếu search.rsql.");
+            else
+            {
+                if (string.IsNullOrWhiteSpace(q.Param)) errors.Add("search.rsql.param là bắt buộc.");
+                if (string.IsNullOrEmpty(q.Separator)) errors.Add("search.rsql.separator là bắt buộc.");
+                if (string.IsNullOrWhiteSpace(q.DateField)) errors.Add("search.rsql.dateField là bắt buộc.");
+                if (string.IsNullOrWhiteSpace(q.DateTimeFormat)) errors.Add("search.rsql.dateTimeFormat là bắt buộc.");
+            }
 
             var p = s.Pagination;
             if (p == null) errors.Add("Thiếu search.pagination.");
             else
             {
-                if (!IsOneOf(p.Mode, "Cursor", "Page")) errors.Add("search.pagination.mode phải là Cursor hoặc Page.");
                 if (p.PageSize <= 0) errors.Add("search.pagination.pageSize phải > 0.");
                 if (string.IsNullOrWhiteSpace(p.PageSizeParam)) errors.Add("search.pagination.pageSizeParam là bắt buộc.");
                 if (string.IsNullOrWhiteSpace(p.CursorParam)) errors.Add("search.pagination.cursorParam là bắt buộc.");
-                if (p.StartPage < 0) errors.Add("search.pagination.startPage phải >= 0.");
             }
 
-            if (s.FilterParameters != null)
-            {
-                foreach (var key in s.FilterParameters.Keys.Where(k => !FilterFields.Contains(k)))
-                {
-                    errors.Add("search.filterParameters: trường lọc không biết: " + key);
-                }
-            }
+            ValidateFilterMap(s.SoldFilterFields, "search.soldFilterFields", errors);
+            ValidateFilterMap(s.PurchaseFilterFields, "search.purchaseFilterFields", errors);
 
             var r = s.Response;
             if (r == null) { errors.Add("Thiếu search.response."); return; }
             if (string.IsNullOrWhiteSpace(r.ItemsPath)) errors.Add("search.response.itemsPath là bắt buộc.");
-            if (p != null && p.Mode == "Cursor" && string.IsNullOrWhiteSpace(r.NextCursorPath)) errors.Add("search.response.nextCursorPath là bắt buộc khi pagination.mode = Cursor.");
+            if (string.IsNullOrWhiteSpace(r.NextCursorPath)) errors.Add("search.response.nextCursorPath là bắt buộc.");
+            if (r.TimeZoneOffsetHours < -12 || r.TimeZoneOffsetHours > 14) errors.Add("search.response.timeZoneOffsetHours phải trong khoảng -12..14.");
             if (r.DateFormats == null || r.DateFormats.Count == 0) errors.Add("search.response.dateFormats cần ít nhất một định dạng.");
             if (r.Fields == null) { errors.Add("Thiếu search.response.fields."); return; }
 
@@ -132,35 +139,40 @@ namespace HoaDonDienTu.Infrastructure.Portal.Config
             }
         }
 
+        private static void ValidateFilterMap(Dictionary<string, string> map, string name, List<string> errors)
+        {
+            if (map == null) return;
+            foreach (var key in map.Keys.Where(k => !FilterFields.Contains(k)))
+            {
+                errors.Add(name + ": trường lọc không biết: " + key);
+            }
+        }
+
         private static void ValidateDownload(DownloadConfig d, List<string> errors)
         {
             if (d == null) { errors.Add("Thiếu download."); return; }
-            ValidateEndpoint(d.Endpoint, "download.endpoint", errors);
-            if (!IsOneOf(d.ParameterLocation, "Query", "Path", "Body")) errors.Add("download.parameterLocation phải là Query, Path hoặc Body.");
-            if (!IsOneOf(d.ResponseMode, "RawXml", "JsonBase64")) errors.Add("download.responseMode phải là RawXml hoặc JsonBase64.");
-            if (d.ResponseMode == "JsonBase64" && string.IsNullOrWhiteSpace(d.ContentPath)) errors.Add("download.contentPath là bắt buộc khi responseMode = JsonBase64.");
-            if (d.Parameters == null || d.Parameters.Count == 0) errors.Add("download.parameters cần ít nhất một tham số.");
-            else
-            {
-                foreach (var pair in d.Parameters.Where(p => !RefFields.Contains(p.Value)))
-                {
-                    errors.Add("download.parameters[" + pair.Key + "]: trường không biết: " + pair.Value);
-                }
-            }
+            ValidateKeyed(d.Endpoint, d.Parameters, "download", errors);
+            if (!IsOneOf(d.ResponseMode, "Zip", "RawXml")) errors.Add("download.responseMode phải là Zip hoặc RawXml.");
+            if (d.ResponseMode == "Zip" && string.IsNullOrWhiteSpace(d.ZipEntryName)) errors.Add("download.zipEntryName là bắt buộc khi responseMode = Zip.");
+        }
 
-            if (d.ParameterLocation == "Path" && d.Endpoint != null && d.Parameters != null)
+        /// <summary>Endpoint nhận khóa tổng hợp của hóa đơn qua query string (xem chi tiết, xuất XML).</summary>
+        private static void ValidateKeyed(EndpointConfig endpoint, Dictionary<string, string> parameters, string name, List<string> errors)
+        {
+            if (endpoint == null && parameters == null) { errors.Add("Thiếu " + name + "."); return; }
+            ValidateEndpoint(endpoint, name + ".endpoint", errors);
+            if (parameters == null || parameters.Count == 0) { errors.Add(name + ".parameters cần ít nhất một tham số."); return; }
+
+            foreach (var pair in parameters.Where(p => !RefFields.Contains(p.Value)))
             {
-                foreach (var name in d.Parameters.Keys.Where(k => d.Endpoint.Path == null || !d.Endpoint.Path.Contains("{" + k + "}")))
-                {
-                    errors.Add("download.endpoint.path thiếu placeholder {" + name + "}.");
-                }
+                errors.Add(name + ".parameters[" + pair.Key + "]: trường không biết: " + pair.Value);
             }
         }
 
         private static void ValidateEndpoint(EndpointConfig e, string name, List<string> errors)
         {
             if (e == null) { errors.Add("Thiếu " + name + "."); return; }
-            if (!IsOneOf(e.Method, "GET", "POST")) errors.Add(name + ".method phải là GET hoặc POST.");
+            if (e.Method != "GET") errors.Add(name + ".method phải là GET.");
             if (string.IsNullOrWhiteSpace(e.Path) || !e.Path.StartsWith("/", StringComparison.Ordinal)) errors.Add(name + ".path phải bắt đầu bằng '/'.");
         }
 

@@ -27,6 +27,9 @@ namespace HoaDonDienTu.WinForms.Download
             this.lblCardFilter = new ComponentFactory.Krypton.Toolkit.KryptonLabel();
             this.lblCounterparty = new ComponentFactory.Krypton.Toolkit.KryptonLabel();
             this.txtCounterparty = new ComponentFactory.Krypton.Toolkit.KryptonTextBox();
+            this.lblBuyerId = new ComponentFactory.Krypton.Toolkit.KryptonLabel();
+            this.txtBuyerId = new ComponentFactory.Krypton.Toolkit.KryptonTextBox();
+            this.lblFilterMessage = new ComponentFactory.Krypton.Toolkit.KryptonWrapLabel();
             this.lblInvoiceNumber = new ComponentFactory.Krypton.Toolkit.KryptonLabel();
             this.txtInvoiceNumber = new ComponentFactory.Krypton.Toolkit.KryptonTextBox();
             this.lblStatus = new ComponentFactory.Krypton.Toolkit.KryptonLabel();
@@ -297,6 +300,7 @@ namespace HoaDonDienTu.WinForms.Download
             //
             // pnlCardFilter
             //
+            this.pnlCardFilter.Controls.Add(this.lblFilterMessage);
             this.pnlCardFilter.Controls.Add(this.btnClearFilters);
             this.pnlCardFilter.Controls.Add(this.chkProxy);
             this.pnlCardFilter.Controls.Add(this.txtInvoiceSymbol);
@@ -309,13 +313,15 @@ namespace HoaDonDienTu.WinForms.Download
             this.pnlCardFilter.Controls.Add(this.lblStatus);
             this.pnlCardFilter.Controls.Add(this.txtInvoiceNumber);
             this.pnlCardFilter.Controls.Add(this.lblInvoiceNumber);
+            this.pnlCardFilter.Controls.Add(this.txtBuyerId);
+            this.pnlCardFilter.Controls.Add(this.lblBuyerId);
             this.pnlCardFilter.Controls.Add(this.txtCounterparty);
             this.pnlCardFilter.Controls.Add(this.lblCounterparty);
             this.pnlCardFilter.Controls.Add(this.lblCardFilter);
             this.pnlCardFilter.Dock = System.Windows.Forms.DockStyle.Top;
             this.pnlCardFilter.Name = "pnlCardFilter";
             this.pnlCardFilter.PanelBackStyle = ComponentFactory.Krypton.Toolkit.PaletteBackStyle.PanelAlternate;
-            this.pnlCardFilter.Size = new System.Drawing.Size(426, 300);
+            this.pnlCardFilter.Size = new System.Drawing.Size(426, 336);
             this.pnlCardFilter.TabIndex = 0;
             //
             // lblCardFilter
@@ -329,7 +335,7 @@ namespace HoaDonDienTu.WinForms.Download
             //
             this.lblCounterparty.Location = new System.Drawing.Point(12, 38);
             this.lblCounterparty.Name = "lblCounterparty";
-            this.lblCounterparty.Values.Text = "MST/CCCD đối tác";
+            this.lblCounterparty.Values.Text = "MST người mua";
             //
             // txtCounterparty
             //
@@ -338,15 +344,30 @@ namespace HoaDonDienTu.WinForms.Download
             this.txtCounterparty.Size = new System.Drawing.Size(190, 24);
             this.txtCounterparty.TextChanged += new System.EventHandler(this.OnInputChanged);
             //
+            // lblBuyerId
+            //
+            this.lblBuyerId.Location = new System.Drawing.Point(212, 38);
+            this.lblBuyerId.Name = "lblBuyerId";
+            this.lblBuyerId.Values.Text = "CCCD người mua";
+            //
+            // txtBuyerId
+            //
+            this.txtBuyerId.Location = new System.Drawing.Point(216, 62);
+            this.txtBuyerId.MaxLength = 12;
+            this.txtBuyerId.Name = "txtBuyerId";
+            this.txtBuyerId.Size = new System.Drawing.Size(190, 24);
+            this.txtBuyerId.TextChanged += new System.EventHandler(this.OnInputChanged);
+            //
             // lblInvoiceNumber
             //
-            this.lblInvoiceNumber.Location = new System.Drawing.Point(212, 38);
+            this.lblInvoiceNumber.Location = new System.Drawing.Point(12, 218);
             this.lblInvoiceNumber.Name = "lblInvoiceNumber";
             this.lblInvoiceNumber.Values.Text = "Số hóa đơn";
             //
             // txtInvoiceNumber
             //
-            this.txtInvoiceNumber.Location = new System.Drawing.Point(216, 62);
+            this.txtInvoiceNumber.Location = new System.Drawing.Point(16, 242);
+            this.txtInvoiceNumber.MaxLength = 16;
             this.txtInvoiceNumber.Name = "txtInvoiceNumber";
             this.txtInvoiceNumber.Size = new System.Drawing.Size(190, 24);
             this.txtInvoiceNumber.TextChanged += new System.EventHandler(this.OnInputChanged);
@@ -359,11 +380,12 @@ namespace HoaDonDienTu.WinForms.Download
             //
             // cboStatus
             //
-            this.cboStatus.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDown;
+            this.cboStatus.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cboStatus.DropDownWidth = 360;
             this.cboStatus.Location = new System.Drawing.Point(16, 122);
             this.cboStatus.Name = "cboStatus";
             this.cboStatus.Size = new System.Drawing.Size(190, 24);
-            this.cboStatus.TextChanged += new System.EventHandler(this.OnInputChanged);
+            this.cboStatus.SelectedIndexChanged += new System.EventHandler(this.OnInputChanged);
             //
             // lblCheckResult
             //
@@ -373,11 +395,12 @@ namespace HoaDonDienTu.WinForms.Download
             //
             // cboCheckResult
             //
-            this.cboCheckResult.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDown;
+            this.cboCheckResult.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cboCheckResult.DropDownWidth = 360;
             this.cboCheckResult.Location = new System.Drawing.Point(216, 122);
             this.cboCheckResult.Name = "cboCheckResult";
             this.cboCheckResult.Size = new System.Drawing.Size(190, 24);
-            this.cboCheckResult.TextChanged += new System.EventHandler(this.OnInputChanged);
+            this.cboCheckResult.SelectedIndexChanged += new System.EventHandler(this.OnInputChanged);
             //
             // lblFormSymbol
             //
@@ -387,11 +410,12 @@ namespace HoaDonDienTu.WinForms.Download
             //
             // cboFormSymbol
             //
-            this.cboFormSymbol.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDown;
+            this.cboFormSymbol.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cboFormSymbol.DropDownWidth = 190;
             this.cboFormSymbol.Location = new System.Drawing.Point(16, 182);
             this.cboFormSymbol.Name = "cboFormSymbol";
             this.cboFormSymbol.Size = new System.Drawing.Size(190, 24);
-            this.cboFormSymbol.TextChanged += new System.EventHandler(this.OnInputChanged);
+            this.cboFormSymbol.SelectedIndexChanged += new System.EventHandler(this.OnInputChanged);
             //
             // lblInvoiceSymbol
             //
@@ -408,7 +432,7 @@ namespace HoaDonDienTu.WinForms.Download
             //
             // chkProxy
             //
-            this.chkProxy.Location = new System.Drawing.Point(16, 226);
+            this.chkProxy.Location = new System.Drawing.Point(216, 246);
             this.chkProxy.Name = "chkProxy";
             this.chkProxy.Size = new System.Drawing.Size(190, 20);
             this.chkProxy.Values.Text = "Hóa đơn ủy nhiệm";
@@ -416,11 +440,21 @@ namespace HoaDonDienTu.WinForms.Download
             //
             // btnClearFilters
             //
-            this.btnClearFilters.Location = new System.Drawing.Point(296, 250);
+            this.btnClearFilters.Location = new System.Drawing.Point(296, 284);
             this.btnClearFilters.Name = "btnClearFilters";
             this.btnClearFilters.Size = new System.Drawing.Size(110, 32);
             this.btnClearFilters.Values.Text = "Xóa bộ lọc";
             this.btnClearFilters.Click += new System.EventHandler(this.OnClearFiltersClick);
+            //
+            // lblFilterMessage
+            //
+            this.lblFilterMessage.AutoSize = false;
+            this.lblFilterMessage.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.lblFilterMessage.ForeColor = System.Drawing.Color.FromArgb(170, 40, 30);
+            this.lblFilterMessage.Location = new System.Drawing.Point(16, 280);
+            this.lblFilterMessage.Name = "lblFilterMessage";
+            this.lblFilterMessage.Size = new System.Drawing.Size(270, 44);
+            this.lblFilterMessage.Text = "";
             //
             // pnlRight
             //
@@ -568,6 +602,9 @@ namespace HoaDonDienTu.WinForms.Download
         private ComponentFactory.Krypton.Toolkit.KryptonLabel lblCardFilter;
         private ComponentFactory.Krypton.Toolkit.KryptonLabel lblCounterparty;
         private ComponentFactory.Krypton.Toolkit.KryptonTextBox txtCounterparty;
+        private ComponentFactory.Krypton.Toolkit.KryptonLabel lblBuyerId;
+        private ComponentFactory.Krypton.Toolkit.KryptonTextBox txtBuyerId;
+        private ComponentFactory.Krypton.Toolkit.KryptonWrapLabel lblFilterMessage;
         private ComponentFactory.Krypton.Toolkit.KryptonLabel lblInvoiceNumber;
         private ComponentFactory.Krypton.Toolkit.KryptonTextBox txtInvoiceNumber;
         private ComponentFactory.Krypton.Toolkit.KryptonLabel lblStatus;
