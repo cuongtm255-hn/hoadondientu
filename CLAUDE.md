@@ -1,0 +1,52 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project status
+
+Greenfield: the repo currently holds only a README and the harness scaffolding below. No solution, project files, or build/test setup exist yet. When you create them, update the **Commands** section with the real commands.
+
+## Purpose
+
+Windows Forms desktop app (**.NET Framework 4.5**, C#) that wraps the Vietnamese tax authority e-invoice portal <https://hoadondientu.gdt.gov.vn/>. The portal limits invoice lookup to one month per query; this tool lets users search/export by **month, quarter, year, or a custom date range**, by splitting the range into monthly requests internally.
+
+Behaviour must mirror the portal ("Tra cứu" menu), plus the extensions below:
+
+- **Search** invoices (purchase/sold) over the chosen period.
+- **Export list** → spreadsheet in the portal's template layout.
+- **Print** → PDF.
+- **Export XML** → a ZIP containing the invoice XML files.
+- **Period selection** (new): month / quarter / year / free-typed from–to dates.
+
+## Authentication design (key architectural decision)
+
+The portal login has a CAPTCHA, so the app does **not** automate login:
+
+1. An embedded WebView (WinForms-hosted browser control) loads the portal's login page directly; the user logs in manually.
+2. After login, the app captures the auth token (from the WebView's requests/storage/cookies) and reuses it for direct HTTP API calls to the portal. The WebView is only for login; data retrieval goes through the API client.
+3. Handle token expiry by prompting the user to re-login in the WebView.
+
+Planned layering (not yet created): UI (WinForms) → services (period splitting, search, export) → portal API client (token-bearing HttpClient) / WebView token capture. Keep period-splitting logic (quarter/year/custom → monthly windows) UI-independent so it is unit-testable.
+
+## Constraints
+
+- Target framework is `net45`: no `async Main`, no modern C# runtime APIs; check package compatibility with .NET 4.5. TLS 1.2 must be enabled explicitly (`ServicePointManager.SecurityProtocol`) for the portal.
+- .NET 4.5 WebView options: `WebBrowser` (IE, legacy), CefSharp.WinForms, or WebView2 (needs newer framework) — pick one deliberately and record it here once decided.
+- Portal API endpoints and payloads are not documented in this repo; verify them from the live site's network traffic rather than assuming.
+- Build requires Visual Studio / MSBuild with the .NET Framework 4.5 targeting pack (`msbuild` is not on PATH in this environment; only the `dotnet` CLI is, which cannot build net45 WinForms projects without reference assemblies).
+
+## Commands
+
+To be filled in once the solution exists. Expected shape:
+
+```bash
+msbuild HoaDonDienTu.sln /p:Configuration=Debug /restore   # build
+vstest.console.exe path\to\Tests.dll /TestCaseFilter:"Name~Foo"   # single test (MSTest/NUnit adapter dependent)
+```
+
+## Repository layout (harness scaffolding)
+
+- `src/` — application source (solution + WinForms project go here)
+- `tests/` — unit tests
+- `docs/` — project context; see `docs/README.md` for the index (`requirements/`, `architecture/`, `decisions/` ADRs, `api-samples/`, `plans/`, `progress/` session handoff notes, `runbooks/`). Read `docs/progress/` first when resuming work; record decisions in `docs/decisions/`.
+- `.claude/agents/`, `.claude/commands/`, `.claude/skills/`, `.claude/hooks/` — Claude Code harness extensions (empty; add project subagents, slash commands, skills, hooks here)

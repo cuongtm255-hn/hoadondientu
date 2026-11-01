@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Wireframe - Ứng dụng Hóa đơn điện tử</title>
+  <style>
+    :root {
+      --ink: #27323b;
+      --muted: #687580;
+      --line: #b9c1c8;
+      --line-dark: #7d8993;
+      --paper: #ffffff;
+      --canvas: #edf0f2;
+      --sidebar: #2f3f4d;
+      --sidebar-active: #4a6072;
+      --accent: #8a5a19;
+      --good: #2d7550;
+      --warn: #9a671a;
+      --bad: #9a3f3f;
+      --soft: #f6f7f8;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; font-family: Arial, Helvetica, sans-serif; color: var(--ink); background: var(--canvas); }
+    body.capture { width: 1440px; height: 900px; overflow: hidden; background: var(--paper); }
+    .prototype-bar { height: 64px; display: flex; align-items: center; gap: 8px; padding: 9px 16px; background: #18232c; color: #fff; border-bottom: 1px solid #000; }
+    .prototype-bar strong { margin-right: 14px; white-space: nowrap; }
+    .prototype-bar a { color: #fff; text-decoration: none; border: 1px solid #64717c; border-radius: 4px; padding: 7px 9px; font-size: 12px; }
+    .prototype-bar a.active { background: #fff; color: #18232c; border-color: #fff; font-weight: bold; }
+    .prototype-bar .hint { margin-left: auto; color: #c7cfd5; font-size: 12px; }
+    body.capture .prototype-bar { display: none; }
+    .screen { width: 1440px; height: 900px; margin: 0 auto; background: var(--paper); overflow: hidden; }
+    body:not(.capture) .screen { margin: 22px auto 60px; box-shadow: 0 10px 35px rgba(27, 41, 52, .16); }
+    .screen[hidden] { display: none !important; }
+    .app-shell { display: grid; grid-template-columns: 225px 1fr; height: 100%; }
+    .sidebar { background: var(--sidebar); color: #fff; padding: 20px 14px; display: flex; flex-direction: column; }
+    .brand { padding: 4px 10px 22px; border-bottom: 1px solid #536371; margin-bottom: 16px; }
+    .brand b { display: block; font-size: 17px; line-height: 1.3; }
+    .brand span { display: block; font-size: 11px; color: #c8d0d6; margin-top: 4px; }
+    .side-nav { display: grid; gap: 5px; }
+    .side-nav a { color: #eef2f5; text-decoration: none; padding: 12px 12px; border-radius: 5px; font-size: 14px; }
+    .side-nav a.active { background: var(--sidebar-active); border-left: 4px solid #d6a55f; padding-left: 8px; font-weight: bold; }
+    .side-nav small { display: block; color: #c7d0d7; margin-top: 3px; }
+    .sidebar-bottom { margin-top: auto; border-top: 1px solid #536371; padding: 14px 10px 0; font-size: 12px; color: #d8dee3; line-height: 1.6; }
+    .app-main { display: grid; grid-template-rows: 70px 1fr; min-width: 0; }
+    .app-header { border-bottom: 1px solid var(--line); display: flex; align-items: center; padding: 0 25px; gap: 15px; background: #fff; }
+    .app-header .company { font-weight: bold; }
+    .app-header .tax-code { color: var(--muted); font-size: 12px; }
+    .header-spacer { flex: 1; }
+    .session-status { border: 1px solid #89a895; color: var(--good); border-radius: 16px; padding: 6px 10px; font-size: 12px; }
+    .running-chip { border: 1px solid #bea77d; color: var(--warn); background: #fff9ed; border-radius: 16px; padding: 6px 10px; font-size: 12px; }
+    .content { padding: 23px 26px 28px; overflow: hidden; background: #fafbfb; }
+    .page-title { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 18px; }
+    .page-title h1 { font-size: 24px; margin: 0 0 4px; }
+    .page-title p { margin: 0; color: var(--muted); font-size: 13px; }
+    .page-actions { margin-left: auto; display: flex; gap: 8px; }
+    .button { border: 1px solid var(--line-dark); border-radius: 4px; padding: 9px 14px; background: #fff; color: var(--ink); font-weight: 600; font-size: 13px; text-decoration: none; display: inline-block; }
+    .button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .button.danger { color: var(--bad); border-color: #c59898; }
+    .button.disabled { opacity: .45; }
+    .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 13px; margin-bottom: 17px; }
+    .card { background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 15px; min-height: 88px; }
+    .card .label { color: var(--muted); font-size: 12px; margin-bottom: 8px; }
+    .card .value { font-size: 24px; font-weight: bold; }
+    .card .sub { color: var(--muted); font-size: 11px; margin-top: 6px; }
+    .panel { background: #fff; border: 1px solid var(--line); border-radius: 6px; margin-bottom: 15px; overflow: hidden; }
+    .panel-head { min-height: 48px; padding: 12px 15px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 10px; background: #f4f6f7; }
+    .panel-head b { font-size: 14px; }
+    .panel-body { padding: 15px; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+    .field-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 13px 18px; }
+    .field { display: grid; gap: 5px; }
+    .field label { font-size: 12px; font-weight: bold; color: #495660; }
+    .input, .select, .date-input { border: 1px solid #9da8b1; background: #fff; border-radius: 4px; min-height: 38px; padding: 10px; font-size: 13px; color: #3f4b54; }
+    .input.placeholder, .select.placeholder { color: #87929b; }
+    .choice-row { display: flex; gap: 8px; }
+    .choice { flex: 1; border: 1px solid var(--line); padding: 10px; text-align: center; border-radius: 4px; font-size: 12px; background: #fff; }
+    .choice.selected { border: 2px solid var(--accent); padding: 9px; background: #fff9ef; font-weight: bold; }
+    .table-wrap { border: 1px solid var(--line); background: #fff; overflow: hidden; border-radius: 5px; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th { background: #e9ecef; border-bottom: 1px solid var(--line-dark); color: #34404a; padding: 10px 8px; text-align: left; vertical-align: bottom; }
+    td { border-bottom: 1px solid #d9dee2; padding: 10px 8px; vertical-align: top; }
+    tbody tr:nth-child(even) { background: #fafafa; }
+    .right { text-align: right; }
+    .center { text-align: center; }
+    .tag { display: inline-block; border: 1px solid var(--line); border-radius: 12px; padding: 4px 8px; background: #fff; font-size: 11px; }
+    .tag.good { color: var(--good); border-color: #91b6a0; background: #f1faf4; }
+    .tag.warn { color: var(--warn); border-color: #c7ad7e; background: #fff9ed; }
+    .tag.bad { color: var(--bad); border-color: #cea2a2; background: #fff4f4; }
+    .progress { height: 8px; background: #dfe4e7; border-radius: 5px; overflow: hidden; }
+    .progress > span { display: block; height: 100%; background: var(--good); }
+    .alert { border: 1px solid #c7ad7e; background: #fff9ed; border-radius: 5px; padding: 11px 13px; color: #76511c; font-size: 12px; margin-bottom: 14px; }
+    .muted { color: var(--muted); }
+    .small { font-size: 11px; }
+    .toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+    .toolbar .input { min-height: 34px; padding: 8px 10px; }
+    .toolbar .wide { width: 260px; }
+    .pager { display: flex; justify-content: space-between; align-items: center; padding: 10px 2px; font-size: 12px; color: var(--muted); }
+    .list-row { display: grid; grid-template-columns: 120px 1fr 120px 100px; align-items: center; gap: 12px; padding: 12px 14px; border-bottom: 1px solid #d9dee2; font-size: 12px; }
+    .list-row:last-child { border-bottom: 0; }
+    .kv { display: grid; grid-template-columns: 170px 1fr; gap: 0; font-size: 12px; }
+    .kv div { padding: 9px 10px; border-bottom: 1px solid #e2e6e9; }
+    .kv .k { color: var(--muted); background: #f8f9fa; font-weight: bold; }
+    .breadcrumb { color: var(--muted); font-size: 12px; margin-bottom: 12px; }
+    .tabbar { display: flex; border-bottom: 1px solid var(--line); background: #f4f6f7; }
+    .tabbar span { padding: 12px 16px; font-size: 12px; }
+    .tabbar .active { background: #fff; border-right: 1px solid var(--line); border-left: 1px solid var(--line); border-top: 3px solid var(--accent); margin-top: -1px; font-weight: bold; }
+    .viewer { display: grid; grid-template-columns: 275px 1fr; height: 690px; border: 1px solid var(--line); background: #fff; }
+    .viewer-tree { border-right: 1px solid var(--line); padding: 14px; overflow: hidden; background: #f7f8f9; font-family: Consolas, monospace; font-size: 12px; line-height: 1.8; }
+    .viewer-code { padding: 18px; overflow: hidden; font-family: Consolas, monospace; font-size: 12px; line-height: 1.65; color: #33414b; }
+    .viewer-code .xml-tag { color: #7a4510; }
+    .viewer-code .xml-value { color: #1f6a48; }
+    .storage-bar { display: grid; grid-template-columns: 150px 1fr 85px; align-items: center; gap: 10px; font-size: 12px; margin: 12px 0; }
+    .storage-bar .progress { height: 12px; }
+    .compact-settings .panel { margin-bottom: 10px; }
+    .compact-settings .panel-head { min-height: 42px; padding: 9px 15px; }
+    .compact-settings .panel-body { padding: 11px 15px; }
+    .compact-settings .storage-bar { margin: 8px 0; }
+    .login-screen { background: #eef1f3; display: grid; grid-template-rows: 76px 1fr 42px; }
+    .login-top { background: #273746; color: #fff; display: flex; align-items: center; padding: 0 30px; gap: 12px; }
+    .login-top b { font-size: 19px; }
+    .login-top span { color: #cbd5dc; font-size: 12px; }
+    .login-body { display: grid; grid-template-columns: 330px 1fr; gap: 22px; padding: 24px 30px; }
+    .login-guide { background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 20px; }
+    .login-guide h1 { font-size: 22px; margin: 0 0 10px; }
+    .login-guide ol { padding-left: 20px; color: #4d5963; font-size: 13px; line-height: 1.7; }
+    .webview { background: #fff; border: 2px solid #6f7c86; border-radius: 6px; display: grid; grid-template-rows: 38px 1fr; overflow: hidden; }
+    .browser-bar { background: #e6e9eb; border-bottom: 1px solid var(--line); padding: 8px 13px; font-size: 12px; color: #53606a; }
+    .portal-page { padding: 32px 60px; background: linear-gradient(#fff8e9 0 95px, #fff 95px); }
+    .portal-logo { color: #9c231e; font-weight: bold; font-size: 18px; margin-bottom: 60px; }
+    .portal-login { width: 430px; margin: 0 auto; border: 1px solid #c6c6c6; padding: 24px; background: #fff; }
+    .portal-login h2 { margin: 0 0 18px; font-size: 18px; text-align: center; }
+    .captcha { display: grid; grid-template-columns: 1fr 150px; gap: 10px; align-items: center; }
+    .captcha-box { border: 1px dashed #777; background: #f1f1f1; padding: 9px; text-align: center; font-style: italic; letter-spacing: 4px; }
+    .login-footer { padding: 12px 30px; font-size: 11px; color: #67747e; }
+    .screen-ref { position: absolute; right: 18px; bottom: 14px; font-size: 10px; color: #75818a; background: rgba(255,255,255,.92); padding: 4px 7px; border: 1px solid #d3d8dc; }
+    .screen { position: relative; }
+  </style>
+</head>
+<body>
+  <nav class="prototype-bar" aria-label="Chọn màn hình wireframe">
+    <strong>Wireframe Hóa đơn điện tử</strong>
+    <a data-screen-link="SCR-01" href="?screen=SCR-01">01 Đăng nhập</a>
+    <a data-screen-link="SCR-02" href="?screen=SCR-02">02 Tổng quan</a>
+    <a data-screen-link="SCR-03" href="?screen=SCR-03">03 Tải</a>
+    <a data-screen-link="SCR-04" href="?screen=SCR-04">04 Tiến độ</a>
+    <a data-screen-link="SCR-05" href="?screen=SCR-05">05 Kho</a>
+    <a data-screen-link="SCR-06" href="?screen=SCR-06">06 Chi tiết</a>
+    <a data-screen-link="SCR-07" href="?screen=SCR-07">07 Chứng từ</a>
+    <a data-screen-link="SCR-08" href="?screen=SCR-08">08 Lịch sử</a>
+    <a data-screen-link="SCR-09" href="?screen=SCR-09">09 Cài đặt</a>
+    <span class="hint">HTML trao đổi kỹ thuật · 1440 × 900</span>
+  </nav>
+
+  <section class="screen login-screen" data-screen="SCR-01">
+    <header class="login-top"><b>HÓA ĐƠN ĐIỆN TỬ</b><span>Đăng nhập cổng Thuế</span><span style="margin-left:auto">Trạng thái: Chưa đăng nhập</span></header>
+    <div class="login-body">
+      <aside class="login-guide">
+        <h1>Đăng nhập</h1>
+        <p class="muted">Ứng dụng mở trực tiếp trang đăng nhập của cổng Thuế.</p>
+        <ol>
+          <li>Nhập tài khoản và mật khẩu trên trang cổng Thuế.</li>
+          <li>Tự nhập mã CAPTCHA.</li>
+          <li>Chọn <b>Đăng nhập</b>.</li>
+          <li>Ứng dụng sẽ tự nhận phiên đăng nhập thành công.</li>
+        </ol>
+        <div class="alert">Ứng dụng không lưu mật khẩu hoặc tự giải CAPTCHA.</div>
+        <div class="button disabled">Đang chờ đăng nhập thành công</div>
+      </aside>
+      <div class="webview">
+        <div class="browser-bar">🔒 https://hoadondientu.gdt.gov.vn/</div>
+        <div class="portal-page">
+          <div class="portal-logo">HỆ THỐNG HÓA ĐƠN ĐIỆN TỬ</div>
+          <div class="portal-login">
+            <h2>Đăng nhập hệ thống</h2>
+            <div class="field" style="margin-bottom:12px"><label>Tên đăng nhập</label><div class="input placeholder">Nhập tên đăng nhập</div></div>
+            <div class="field" style="margin-bottom:12px"><label>Mật khẩu</label><div class="input placeholder">••••••••••</div></div>
+            <div class="field" style="margin-bottom:14px"><label>Mã CAPTCHA</label><div class="captcha"><div class="input placeholder">Nhập mã</div><div class="captcha-box">8A5K2</div></div></div>
+            <div class="button primary" style="width:100%;text-align:center">Đăng nhập</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <footer class="login-footer">MST cấu hình: 0101234567 · Kết nối TLS 1.2 · Token chỉ lưu trong bộ nhớ</footer>
+    <div class="screen-ref">SCR-01 · Đăng nhập</div>
+  </section>
+
+  <section class="screen" data-screen="SCR-02" hidden>
+    <div class="app-shell">
+      <aside class="sidebar"><div class="brand"><b>HÓA ĐƠN<br>ĐIỆN TỬ</b><span>Kho chứng từ doanh nghiệp</span></div><nav class="side-nav"><a class="active" href="?screen=SCR-02">▣ Tổng quan</a><a href="?screen=SCR-03">⇩ Tải hóa đơn</a><a href="?screen=SCR-05">▤ Kho hóa đơn</a><a href="?screen=SCR-08">◷ Lịch sử tải</a><a href="?screen=SCR-09">⚙ Cài đặt</a></nav><div class="sidebar-bottom">Phiên bản 1.0<br>Kho dữ liệu: Hoạt động</div></aside>
+      <main class="app-main">
+        <header class="app-header"><div><div class="company">CÔNG TY TNHH MẪU</div><div class="tax-code">MST 0101234567</div></div><div class="header-spacer"></div><span class="running-chip">Đang tải: 7/12 tháng</span><span class="session-status">● Đã đăng nhập</span></header>
+        <div class="content">
+          <div class="page-title"><div><h1>Tổng quan</h1><p>Tình trạng kho hóa đơn và công việc gần đây</p></div><div class="page-actions"><a class="button primary" href="?screen=SCR-03">Tải hóa đơn</a></div></div>
+          <div class="cards"><div class="card"><div class="label">HÓA ĐƠN ĐÃ LƯU</div><div class="value">24.862</div><div class="sub">Mua vào 18.421 · Bán ra 6.441</div></div><div class="card"><div class="label">TỔNG THANH TOÁN NĂM 2026</div><div class="value">18,4 tỷ</div><div class="sub">Theo dữ liệu đã tải</div></div><div class="card"><div class="label">LẦN ĐỒNG BỘ GẦN NHẤT</div><div class="value" style="font-size:18px">31/10/2026</div><div class="sub">Hoàn tất · 128 hóa đơn</div></div><div class="card"><div class="label">CẦN XỬ LÝ</div><div class="value">3</div><div class="sub">2 XML thiếu · 1 phiên lỗi</div></div></div>
+          <div class="grid-2">
+            <div class="panel"><div class="panel-head"><b>Phiên tải đang chạy</b><span class="tag warn" style="margin-left:auto">Đang chạy</span></div><div class="panel-body"><div style="display:flex;justify-content:space-between;margin-bottom:10px"><div><b>Hóa đơn mua vào · Năm 2026</b><div class="muted small">Đang xử lý tháng 07/2026 · trang 4</div></div><a class="button" href="?screen=SCR-04">Xem tiến độ</a></div><div class="progress"><span style="width:58%"></span></div><div class="pager"><span>7/12 tháng</span><span>1.846 hóa đơn · 1 lỗi</span></div></div></div>
+            <div class="panel"><div class="panel-head"><b>Công việc cần xử lý</b></div><div class="list-row" style="grid-template-columns:90px 1fr 100px"><span class="tag bad">File thiếu</span><span>2 XML không còn trong thư mục kho</span><a class="button" href="?screen=SCR-05">Kiểm tra</a></div><div class="list-row" style="grid-template-columns:90px 1fr 100px"><span class="tag warn">Phiên lỗi</span><span>Tháng 05/2026 cần thử lại</span><a class="button" href="?screen=SCR-04">Mở</a></div></div>
+          </div>
+          <div class="panel"><div class="panel-head"><b>Hóa đơn mới tải</b><a class="button" style="margin-left:auto" href="?screen=SCR-05">Mở Kho hóa đơn</a></div><table><thead><tr><th>Ngày lập</th><th>Loại</th><th>Đối tác</th><th>Số hóa đơn</th><th>Trạng thái</th><th class="right">Tổng thanh toán</th></tr></thead><tbody><tr><td>31/10/2026</td><td>Mua vào</td><td>Công ty ABC · 0109988776</td><td>0000128</td><td><span class="tag good">Đã lưu XML</span></td><td class="right">33.000.000</td></tr><tr><td>31/10/2026</td><td>Mua vào</td><td>Công ty XYZ · 0101122334</td><td>0000127</td><td><span class="tag good">Đã lưu XML</span></td><td class="right">40.700.000</td></tr><tr><td>30/10/2026</td><td>Bán ra</td><td>Công ty DEF · 0105566778</td><td>0000451</td><td><span class="tag warn">Có phiên bản mới</span></td><td class="right">18.250.000</td></tr></tbody></table></div>
+        </div>
+      </main>
+    </div><div class="screen-ref">SCR-02 · Tổng quan</div>
+  </section>
+
+  <section class="screen" data-screen="SCR-03" hidden>
+    <div class="app-shell">
+      <aside class="sidebar"><div class="brand"><b>HÓA ĐƠN<br>ĐIỆN TỬ</b><span>Kho chứng từ doanh nghiệp</span></div><nav class="side-nav"><a href="?screen=SCR-02">▣ Tổng quan</a><a class="active" href="?screen=SCR-03">⇩ Tải hóa đơn</a><a href="?screen=SCR-05">▤ Kho hóa đơn</a><a href="?screen=SCR-08">◷ Lịch sử tải</a><a href="?screen=SCR-09">⚙ Cài đặt</a></nav><div class="sidebar-bottom">Sẵn sàng tải<br>Thư mục kho có thể ghi</div></aside>
+      <main class="app-main">
+        <header class="app-header"><div><div class="company">CÔNG TY TNHH MẪU</div><div class="tax-code">MST 0101234567</div></div><div class="header-spacer"></div><span class="session-status">● Đã đăng nhập</span></header>
+        <div class="content">
+          <div class="page-title"><div><h1>Tải hóa đơn</h1><p>Chọn kỳ và điều kiện tra cứu; ứng dụng tự chia theo từng tháng</p></div></div>
+          <div class="grid-2" style="grid-template-columns:1.05fr .95fr">
+            <div>
+              <div class="panel"><div class="panel-head"><b>1. Loại hóa đơn và kỳ tải</b></div><div class="panel-body"><div class="choice-row" style="margin-bottom:14px"><div class="choice selected">Hóa đơn mua vào</div><div class="choice">Hóa đơn bán ra</div></div><div class="field"><label>Kiểu kỳ</label><div class="choice-row"><div class="choice">Tháng</div><div class="choice">Quý</div><div class="choice selected">Năm</div><div class="choice">Tùy chọn</div></div></div><div class="field" style="margin-top:13px"><label>Năm</label><div class="select">2026 ▾</div></div></div></div>
+              <div class="panel"><div class="panel-head"><b>2. Bộ lọc nâng cao</b><span class="muted small" style="margin-left:auto">Có thể bỏ trống</span></div><div class="panel-body"><div class="field-grid"><div class="field"><label>MST/CCCD đối tác</label><div class="input placeholder">Nhập MST hoặc CCCD</div></div><div class="field"><label>Số hóa đơn</label><div class="input placeholder">Nhập số hóa đơn</div></div><div class="field"><label>Trạng thái hóa đơn</label><div class="select">Tất cả ▾</div></div><div class="field"><label>Kết quả kiểm tra</label><div class="select">Tất cả ▾</div></div><div class="field"><label>Ký hiệu mẫu số</label><div class="select">Tất cả ▾</div></div><div class="field"><label>Ký hiệu hóa đơn</label><div class="input placeholder">Nhập ký hiệu</div></div></div><div style="margin-top:13px"><span>□ Hóa đơn ủy nhiệm</span><a class="button" style="float:right">Xóa bộ lọc</a></div></div></div>
+            </div>
+            <div>
+              <div class="panel"><div class="panel-head"><b>3. Kế hoạch tải</b><span class="tag" style="margin-left:auto">12 tháng</span></div><div class="panel-body"><div class="alert">Cổng Thuế giới hạn mỗi lần tra cứu trong một tháng. Ứng dụng sẽ chạy tuần tự 12 đoạn và tự phân trang.</div><div class="table-wrap" style="max-height:500px"><table><thead><tr><th>#</th><th>Khoảng ngày</th><th>Trạng thái</th></tr></thead><tbody><tr><td>1</td><td>01/01/2026–31/01/2026</td><td>Chờ</td></tr><tr><td>2</td><td>01/02/2026–28/02/2026</td><td>Chờ</td></tr><tr><td>3</td><td>01/03/2026–31/03/2026</td><td>Chờ</td></tr><tr><td>4</td><td>01/04/2026–30/04/2026</td><td>Chờ</td></tr><tr><td>5</td><td>01/05/2026–31/05/2026</td><td>Chờ</td></tr><tr><td>6</td><td>01/06/2026–30/06/2026</td><td>Chờ</td></tr><tr><td>…</td><td>Tháng 07–11/2026</td><td>Chờ</td></tr><tr><td>12</td><td>01/12/2026–31/12/2026</td><td>Chờ</td></tr></tbody></table></div><div style="display:flex;justify-content:flex-end;gap:8px;margin-top:15px"><a class="button">Lưu bộ lọc</a><a class="button primary" href="?screen=SCR-04">Bắt đầu tải</a></div></div></div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div><div class="screen-ref">SCR-03 · Tải hóa đơn</div>
+  </section>
+
+  <section class="screen" data-screen="SCR-04" hidden>
+    <div class="app-shell">
+      <aside class="sidebar"><div class="brand"><b>HÓA ĐƠN<br>ĐIỆN TỬ</b><span>Kho chứng từ doanh nghiệp</span></div><nav class="side-nav"><a href="?screen=SCR-02">▣ Tổng quan</a><a class="active" href="?screen=SCR-03">⇩ Tải hóa đơn<small>Phiên đang chạy</small></a><a href="?screen=SCR-05">▤ Kho hóa đơn</a><a href="?screen=SCR-08">◷ Lịch sử tải</a><a href="?screen=SCR-09">⚙ Cài đặt</a></nav><div class="sidebar-bottom">Không đóng ứng dụng khi đang ghi XML</div></aside>
+      <main class="app-main">
+        <header class="app-header"><div><div class="company">CÔNG TY TNHH MẪU</div><div class="tax-code">MST 0101234567</div></div><div class="header-spacer"></div><span class="running-chip">Đang tải: tháng 07/2026</span><span class="session-status">● Đã đăng nhập</span></header>
+        <div class="content">
+          <div class="breadcrumb">Lịch sử tải / Phiên #DL-2026-1101-001</div>
+          <div class="page-title"><div><h1>Tiến độ tải hóa đơn</h1><p>Mua vào · Năm 2026 · Bắt đầu 09:15 01/11/2026</p></div><div class="page-actions"><a class="button">Tạm dừng</a><a class="button danger">Hủy phiên</a></div></div>
+          <div class="cards"><div class="card"><div class="label">TIẾN ĐỘ</div><div class="value">58%</div><div class="sub">7/12 tháng</div></div><div class="card"><div class="label">HÓA ĐƠN NHẬN ĐƯỢC</div><div class="value">1.846</div><div class="sub">Mới 1.702 · Đã có 144</div></div><div class="card"><div class="label">XML ĐÃ LƯU</div><div class="value">1.845</div><div class="sub">1 file đang thử lại</div></div><div class="card"><div class="label">THỜI GIAN</div><div class="value" style="font-size:19px">00:18:42</div><div class="sub">Ước tính còn 00:12:10</div></div></div>
+          <div class="panel"><div class="panel-head"><b>Tiến độ tổng</b><span class="muted small" style="margin-left:auto">Checkpoint gần nhất: tháng 07 · trang 4 · hóa đơn 63</span></div><div class="panel-body"><div class="progress" style="height:12px"><span style="width:58%"></span></div></div></div>
+          <div class="panel"><div class="panel-head"><b>Chi tiết theo tháng</b><a class="button" style="margin-left:auto">Thử lại các lỗi</a></div><div class="table-wrap"><table><thead><tr><th>Tháng</th><th>Khoảng ngày</th><th>Trạng thái</th><th class="right">Trang</th><th class="right">Hóa đơn</th><th class="right">XML</th><th>Lỗi/Ghi chú</th><th></th></tr></thead><tbody><tr><td>01/2026</td><td>01/01–31/01</td><td><span class="tag good">Hoàn tất</span></td><td class="right">8</td><td class="right">233</td><td class="right">233</td><td>Không có lỗi</td><td></td></tr><tr><td>02/2026</td><td>01/02–28/02</td><td><span class="tag good">Hoàn tất</span></td><td class="right">7</td><td class="right">201</td><td class="right">201</td><td>Không có lỗi</td><td></td></tr><tr><td>03/2026</td><td>01/03–31/03</td><td><span class="tag good">Hoàn tất</span></td><td class="right">9</td><td class="right">264</td><td class="right">264</td><td>Không có lỗi</td><td></td></tr><tr><td>04/2026</td><td>01/04–30/04</td><td><span class="tag good">Hoàn tất</span></td><td class="right">9</td><td class="right">251</td><td class="right">251</td><td>Không có lỗi</td><td></td></tr><tr><td>05/2026</td><td>01/05–31/05</td><td><span class="tag warn">Hoàn tất có lỗi</span></td><td class="right">8</td><td class="right">226</td><td class="right">225</td><td>1 XML lỗi</td><td><a class="button">Thử lại</a></td></tr><tr><td>06/2026</td><td>01/06–30/06</td><td><span class="tag good">Hoàn tất</span></td><td class="right">8</td><td class="right">238</td><td class="right">238</td><td>Không có lỗi</td><td></td></tr><tr style="background:#fff9ed"><td>07/2026</td><td>01/07–31/07</td><td><span class="tag warn">Đang chạy</span></td><td class="right">4/9</td><td class="right">433</td><td class="right">433</td><td>Đang tải trang 4</td><td><div class="progress"><span style="width:44%"></span></div></td></tr><tr><td>08–12/2026</td><td>5 đoạn còn lại</td><td><span class="tag">Chờ</span></td><td class="right">—</td><td class="right">—</td><td class="right">—</td><td></td><td></td></tr></tbody></table></div></div>
+        </div>
+      </main>
+    </div><div class="screen-ref">SCR-04 · Tiến độ / Chi tiết phiên tải</div>
+  </section>
+
+  <section class="screen" data-screen="SCR-05" hidden>
+    <div class="app-shell">
+      <aside class="sidebar"><div class="brand"><b>HÓA ĐƠN<br>ĐIỆN TỬ</b><span>Kho chứng từ doanh nghiệp</span></div><nav class="side-nav"><a href="?screen=SCR-02">▣ Tổng quan</a><a href="?screen=SCR-03">⇩ Tải hóa đơn</a><a class="active" href="?screen=SCR-05">▤ Kho hóa đơn</a><a href="?screen=SCR-08">◷ Lịch sử tải</a><a href="?screen=SCR-09">⚙ Cài đặt</a></nav><div class="sidebar-bottom">24.862 hóa đơn<br>2 file cần kiểm tra</div></aside>
+      <main class="app-main">
+        <header class="app-header"><div><div class="company">CÔNG TY TNHH MẪU</div><div class="tax-code">MST 0101234567</div></div><div class="header-spacer"></div><span class="session-status">● Đã đăng nhập</span></header>
+        <div class="content">
+          <div class="page-title"><div><h1>Kho hóa đơn</h1><p>Tra cứu chứng từ đã tải và thực hiện thao tác hàng loạt</p></div><div class="page-actions"><a class="button">Kiểm tra file</a><a class="button">Xuất ZIP XML</a><a class="button primary">Xuất Excel</a></div></div>
+          <div class="panel"><div class="panel-body"><div class="toolbar"><div class="choice selected" style="max-width:130px">Mua vào</div><div class="choice" style="max-width:130px">Bán ra</div><div class="input wide placeholder">Tìm số hóa đơn, MST, tên đối tác</div><div class="select" style="width:160px">Năm 2026 ▾</div><div class="select" style="width:150px">Mọi trạng thái ▾</div><div class="select" style="width:150px">Tình trạng file ▾</div><a class="button">Bộ lọc nâng cao</a><a class="button">Xóa lọc</a></div></div></div>
+          <div class="cards" style="grid-template-columns:repeat(4,1fr)"><div class="card"><div class="label">KẾT QUẢ</div><div class="value">18.421</div><div class="sub">Hóa đơn mua vào năm 2026</div></div><div class="card"><div class="label">TỔNG CHƯA THUẾ</div><div class="value" style="font-size:19px">12,8 tỷ</div></div><div class="card"><div class="label">TỔNG THUẾ</div><div class="value" style="font-size:19px">1,28 tỷ</div></div><div class="card"><div class="label">TỔNG THANH TOÁN</div><div class="value" style="font-size:19px">14,08 tỷ</div></div></div>
+          <div class="table-wrap"><table><thead><tr><th class="center">□</th><th>Ngày lập</th><th>MST người bán</th><th>Tên người bán</th><th>Mẫu số</th><th>Ký hiệu</th><th>Số HĐ</th><th>Trạng thái</th><th>File</th><th class="right">Chưa thuế</th><th class="right">Thuế</th><th class="right">Thanh toán</th></tr></thead><tbody><tr><td class="center">□</td><td>31/10/2026</td><td>0109988776</td><td>Công ty ABC</td><td>1</td><td>C26TAA</td><td><a href="?screen=SCR-06">0000128</a></td><td>Hóa đơn mới</td><td><span class="tag good">XML OK</span></td><td class="right">30.000.000</td><td class="right">3.000.000</td><td class="right">33.000.000</td></tr><tr><td class="center">□</td><td>31/10/2026</td><td>0101122334</td><td>Công ty XYZ</td><td>1</td><td>C26TAA</td><td><a href="?screen=SCR-06">0000127</a></td><td>Hóa đơn mới</td><td><span class="tag good">XML OK</span></td><td class="right">37.000.000</td><td class="right">3.700.000</td><td class="right">40.700.000</td></tr><tr><td class="center">□</td><td>30/10/2026</td><td>0105566778</td><td>Công ty DEF</td><td>1</td><td>C26TBB</td><td><a href="?screen=SCR-06">0000451</a></td><td>Điều chỉnh</td><td><span class="tag warn">2 phiên bản</span></td><td class="right">15.000.000</td><td class="right">1.500.000</td><td class="right">16.500.000</td></tr><tr><td class="center">□</td><td>29/10/2026</td><td>0106677889</td><td>Công ty GHI</td><td>2</td><td>C26TCC</td><td><a href="?screen=SCR-06">0000089</a></td><td>Hóa đơn mới</td><td><span class="tag bad">Thiếu XML</span></td><td class="right">5.500.000</td><td class="right">550.000</td><td class="right">6.050.000</td></tr><tr><td class="center">□</td><td>28/10/2026</td><td>0107788990</td><td>Công ty JKL</td><td>1</td><td>C26TDD</td><td><a href="?screen=SCR-06">0000315</a></td><td>Hóa đơn mới</td><td><span class="tag good">XML + PDF</span></td><td class="right">68.000.000</td><td class="right">6.800.000</td><td class="right">74.800.000</td></tr></tbody></table></div>
+          <div class="pager"><span>Hiển thị 1–50 / 18.421</span><span>‹ Trước &nbsp; 1 &nbsp; 2 &nbsp; 3 &nbsp; … &nbsp; 369 &nbsp; Sau ›</span></div>
+        </div>
+      </main>
+    </div><div class="screen-ref">SCR-05 · Kho hóa đơn</div>
+  </section>
+
+  <section class="screen" data-screen="SCR-06" hidden>
+    <div class="app-shell">
+      <aside class="sidebar"><div class="brand"><b>HÓA ĐƠN<br>ĐIỆN TỬ</b><span>Kho chứng từ doanh nghiệp</span></div><nav class="side-nav"><a href="?screen=SCR-02">▣ Tổng quan</a><a href="?screen=SCR-03">⇩ Tải hóa đơn</a><a class="active" href="?screen=SCR-05">▤ Kho hóa đơn</a><a href="?screen=SCR-08">◷ Lịch sử tải</a><a href="?screen=SCR-09">⚙ Cài đặt</a></nav><div class="sidebar-bottom">Hóa đơn đang xem<br>XML đã kiểm tra</div></aside>
+      <main class="app-main">
+        <header class="app-header"><div><div class="company">CÔNG TY TNHH MẪU</div><div class="tax-code">MST 0101234567</div></div><div class="header-spacer"></div><span class="session-status">● Đã đăng nhập</span></header>
+        <div class="content">
+          <div class="breadcrumb"><a href="?screen=SCR-05">Kho hóa đơn</a> / Hóa đơn 0000128</div>
+          <div class="page-title"><div><h1>Chi tiết hóa đơn 0000128</h1><p>Mua vào · Ký hiệu C26TAA · Ngày lập 31/10/2026</p></div><span class="tag good">Đã cấp mã hóa đơn</span><div class="page-actions"><a class="button" href="?screen=SCR-05">Quay lại</a><a class="button primary" href="?screen=SCR-07">Xem chứng từ</a></div></div>
+          <div class="grid-2" style="grid-template-columns:1.35fr .65fr">
+            <div>
+              <div class="panel"><div class="panel-head"><b>Thông tin hóa đơn</b></div><div class="kv"><div class="k">Ký hiệu mẫu số</div><div>1</div><div class="k">Ký hiệu hóa đơn</div><div>C26TAA</div><div class="k">Số hóa đơn</div><div>0000128</div><div class="k">Ngày lập</div><div>31/10/2026</div><div class="k">Trạng thái</div><div>Hóa đơn mới</div><div class="k">Kết quả kiểm tra</div><div>Đã cấp mã hóa đơn</div></div></div>
+              <div class="panel"><div class="panel-head"><b>Bên bán và bên mua</b></div><div class="grid-2" style="padding:15px"><div class="kv"><div class="k">MST người bán</div><div>0109988776</div><div class="k">Tên người bán</div><div>Công ty ABC</div></div><div class="kv"><div class="k">MST người mua</div><div>0101234567</div><div class="k">Tên người mua</div><div>Công ty TNHH Mẫu</div><div class="k">Địa chỉ</div><div>Hà Nội, Việt Nam</div></div></div></div>
+              <div class="panel"><div class="panel-head"><b>Giá trị hóa đơn</b></div><table><tbody><tr><td>Tổng tiền chưa thuế</td><td class="right">30.000.000 VND</td></tr><tr><td>Tổng tiền thuế</td><td class="right">3.000.000 VND</td></tr><tr><td>Chiết khấu thương mại / phí</td><td class="right">0 VND</td></tr><tr><td><b>Tổng tiền thanh toán</b></td><td class="right"><b>33.000.000 VND</b></td></tr></tbody></table></div>
+            </div>
+            <div>
+              <div class="panel"><div class="panel-head"><b>File chứng từ</b></div><div class="list-row" style="grid-template-columns:60px 1fr 75px"><span class="tag good">XML</span><span>31/10/2026<br><span class="muted small">SHA-256: 8a2f…d91c</span></span><a class="button" href="?screen=SCR-07">Mở</a></div><div class="list-row" style="grid-template-columns:60px 1fr 75px"><span class="tag">PDF</span><span>Chưa tạo<br><span class="muted small">Tạo khi xem/in</span></span><a class="button" href="?screen=SCR-07">Tạo</a></div></div>
+              <div class="panel"><div class="panel-head"><b>Lịch sử phiên bản</b></div><div class="list-row" style="grid-template-columns:80px 1fr 80px"><span>v1</span><span>31/10/2026 09:41<br><span class="muted small">Phiên DL-2026-1101-001</span></span><span class="tag good">Hiện hành</span></div></div>
+              <div class="panel"><div class="panel-head"><b>Nguồn tải</b></div><div class="panel-body small"><p><b>Phiên:</b> DL-2026-1101-001</p><p><b>Đoạn:</b> 01/10/2026–31/10/2026</p><p><b>Lần thấy đầu:</b> 31/10/2026 09:41</p><p><b>Lần thấy cuối:</b> 01/11/2026 10:02</p></div></div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div><div class="screen-ref">SCR-06 · Chi tiết hóa đơn</div>
+  </section>
+
+  <section class="screen" data-screen="SCR-07" hidden>
+    <div class="app-shell">
+      <aside class="sidebar"><div class="brand"><b>HÓA ĐƠN<br>ĐIỆN TỬ</b><span>Kho chứng từ doanh nghiệp</span></div><nav class="side-nav"><a href="?screen=SCR-02">▣ Tổng quan</a><a href="?screen=SCR-03">⇩ Tải hóa đơn</a><a class="active" href="?screen=SCR-05">▤ Kho hóa đơn</a><a href="?screen=SCR-08">◷ Lịch sử tải</a><a href="?screen=SCR-09">⚙ Cài đặt</a></nav><div class="sidebar-bottom">Trình xem chỉ đọc<br>Phiên bản XML: v1</div></aside>
+      <main class="app-main">
+        <header class="app-header"><div><div class="company">CÔNG TY TNHH MẪU</div><div class="tax-code">MST 0101234567</div></div><div class="header-spacer"></div><span class="session-status">● Đã đăng nhập</span></header>
+        <div class="content">
+          <div class="breadcrumb"><a href="?screen=SCR-05">Kho hóa đơn</a> / <a href="?screen=SCR-06">Hóa đơn 0000128</a> / Xem chứng từ</div>
+          <div class="page-title"><div><h1>Xem chứng từ</h1><p>Hóa đơn 0000128 · C26TAA · Phiên bản XML v1</p></div><div class="page-actions"><a class="button">Lưu bản sao</a><a class="button">In</a><a class="button" href="?screen=SCR-06">Đóng</a></div></div>
+          <div class="panel" style="margin:0"><div class="tabbar"><span class="active">XML dạng cây</span><span>XML thô</span><span>PDF <small>(chưa tạo)</small></span><span style="margin-left:auto" class="muted">SHA-256: 8a2f…d91c</span></div><div class="viewer"><div class="viewer-tree">▼ HDon<br>&nbsp;&nbsp;▼ DLHDon<br>&nbsp;&nbsp;&nbsp;&nbsp;▼ TTChung<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;KHMSHDon: 1<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;KHHDon: C26TAA<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;SHDon: 0000128<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;NLap: 2026-10-31<br>&nbsp;&nbsp;&nbsp;&nbsp;▼ NDHDon<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;▼ NBan<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;▼ NMua<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;▼ DSHHDVu<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;▼ TToan<br>&nbsp;&nbsp;▼ MTDDiep</div><div class="viewer-code"><span class="xml-tag">&lt;HDon&gt;</span><br>&nbsp;&nbsp;<span class="xml-tag">&lt;DLHDon&gt;</span><br>&nbsp;&nbsp;&nbsp;&nbsp;<span class="xml-tag">&lt;TTChung&gt;</span><br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="xml-tag">&lt;KHMSHDon&gt;</span><span class="xml-value">1</span><span class="xml-tag">&lt;/KHMSHDon&gt;</span><br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="xml-tag">&lt;KHHDon&gt;</span><span class="xml-value">C26TAA</span><span class="xml-tag">&lt;/KHHDon&gt;</span><br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="xml-tag">&lt;SHDon&gt;</span><span class="xml-value">0000128</span><span class="xml-tag">&lt;/SHDon&gt;</span><br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="xml-tag">&lt;NLap&gt;</span><span class="xml-value">2026-10-31</span><span class="xml-tag">&lt;/NLap&gt;</span><br>&nbsp;&nbsp;&nbsp;&nbsp;<span class="xml-tag">&lt;/TTChung&gt;</span><br>&nbsp;&nbsp;&nbsp;&nbsp;<span class="xml-tag">&lt;NDHDon&gt;</span><br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="xml-tag">&lt;NBan&gt;</span><br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="xml-tag">&lt;MST&gt;</span><span class="xml-value">0109988776</span><span class="xml-tag">&lt;/MST&gt;</span><br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="xml-tag">&lt;Ten&gt;</span><span class="xml-value">Công ty ABC</span><span class="xml-tag">&lt;/Ten&gt;</span><br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="xml-tag">&lt;/NBan&gt;</span><br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="xml-tag">&lt;NMua&gt;</span><br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="xml-tag">&lt;MST&gt;</span><span class="xml-value">0101234567</span><span class="xml-tag">&lt;/MST&gt;</span><br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="xml-tag">&lt;Ten&gt;</span><span class="xml-value">Công ty TNHH Mẫu</span><span class="xml-tag">&lt;/Ten&gt;</span><br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="xml-tag">&lt;/NMua&gt;</span><br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="xml-tag">&lt;TToan&gt;</span><br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="xml-tag">&lt;TgTCThue&gt;</span><span class="xml-value">30000000</span><span class="xml-tag">&lt;/TgTCThue&gt;</span><br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="xml-tag">&lt;TgTThue&gt;</span><span class="xml-value">3000000</span><span class="xml-tag">&lt;/TgTThue&gt;</span><br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="xml-tag">&lt;TgTTTBSo&gt;</span><span class="xml-value">33000000</span><span class="xml-tag">&lt;/TgTTTBSo&gt;</span><br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="xml-tag">&lt;/TToan&gt;</span><br>&nbsp;&nbsp;&nbsp;&nbsp;<span class="xml-tag">&lt;/NDHDon&gt;</span><br>&nbsp;&nbsp;<span class="xml-tag">&lt;/DLHDon&gt;</span><br><span class="xml-tag">&lt;/HDon&gt;</span></div></div></div>
+        </div>
+      </main>
+    </div><div class="screen-ref">SCR-07 · Xem chứng từ XML/PDF</div>
+  </section>
+
+  <section class="screen" data-screen="SCR-08" hidden>
+    <div class="app-shell">
+      <aside class="sidebar"><div class="brand"><b>HÓA ĐƠN<br>ĐIỆN TỬ</b><span>Kho chứng từ doanh nghiệp</span></div><nav class="side-nav"><a href="?screen=SCR-02">▣ Tổng quan</a><a href="?screen=SCR-03">⇩ Tải hóa đơn</a><a href="?screen=SCR-05">▤ Kho hóa đơn</a><a class="active" href="?screen=SCR-08">◷ Lịch sử tải</a><a href="?screen=SCR-09">⚙ Cài đặt</a></nav><div class="sidebar-bottom">24 phiên tải<br>1 phiên cần xử lý</div></aside>
+      <main class="app-main">
+        <header class="app-header"><div><div class="company">CÔNG TY TNHH MẪU</div><div class="tax-code">MST 0101234567</div></div><div class="header-spacer"></div><span class="session-status">● Đã đăng nhập</span></header>
+        <div class="content">
+          <div class="page-title"><div><h1>Lịch sử tải</h1><p>Theo dõi các phiên tải, lỗi và kết quả đã lưu</p></div><div class="page-actions"><a class="button primary" href="?screen=SCR-03">Tạo phiên tải mới</a></div></div>
+          <div class="panel"><div class="panel-body"><div class="toolbar"><div class="input wide placeholder">Tìm mã phiên hoặc ghi chú</div><div class="select" style="width:160px">Tất cả loại ▾</div><div class="select" style="width:180px">Tất cả trạng thái ▾</div><div class="date-input" style="width:145px">01/01/2026</div><div class="date-input" style="width:145px">01/11/2026</div><a class="button">Lọc</a><a class="button">Xóa lọc</a></div></div></div>
+          <div class="cards"><div class="card"><div class="label">TỔNG PHIÊN</div><div class="value">24</div></div><div class="card"><div class="label">HOÀN TẤT</div><div class="value">21</div></div><div class="card"><div class="label">ĐANG CHẠY/TẠM DỪNG</div><div class="value">2</div></div><div class="card"><div class="label">CẦN XỬ LÝ</div><div class="value">1</div></div></div>
+          <div class="table-wrap"><table><thead><tr><th>Mã phiên</th><th>Bắt đầu</th><th>Loại</th><th>Phạm vi</th><th>Trạng thái</th><th class="right">Mới</th><th class="right">Đã có</th><th class="right">Lỗi</th><th>Người dùng</th><th>Thao tác</th></tr></thead><tbody><tr><td>DL-2026-1101-001</td><td>01/11/2026 09:15</td><td>Mua vào</td><td>Năm 2026</td><td><span class="tag warn">Đang chạy 58%</span></td><td class="right">1.702</td><td class="right">144</td><td class="right">1</td><td>CUONGTM</td><td><a class="button" href="?screen=SCR-04">Xem tiến độ</a></td></tr><tr><td>DL-2026-1031-002</td><td>31/10/2026 16:04</td><td>Bán ra</td><td>Tháng 10/2026</td><td><span class="tag good">Hoàn tất</span></td><td class="right">128</td><td class="right">0</td><td class="right">0</td><td>CUONGTM</td><td><a class="button" href="?screen=SCR-05">Xem kết quả</a></td></tr><tr><td>DL-2026-1031-001</td><td>31/10/2026 08:22</td><td>Mua vào</td><td>Q3/2026</td><td><span class="tag bad">Hoàn tất có lỗi</span></td><td class="right">612</td><td class="right">18</td><td class="right">2</td><td>CUONGTM</td><td><a class="button" href="?screen=SCR-04">Xử lý lỗi</a></td></tr><tr><td>DL-2026-1001-001</td><td>01/10/2026 09:00</td><td>Mua vào</td><td>Tháng 09/2026</td><td><span class="tag good">Hoàn tất</span></td><td class="right">221</td><td class="right">0</td><td class="right">0</td><td>CUONGTM</td><td><a class="button" href="?screen=SCR-05">Xem kết quả</a></td></tr><tr><td>DL-2026-0901-001</td><td>01/09/2026 08:48</td><td>Mua vào</td><td>Tháng 08/2026</td><td><span class="tag good">Hoàn tất</span></td><td class="right">206</td><td class="right">0</td><td class="right">0</td><td>CUONGTM</td><td><a class="button" href="?screen=SCR-05">Xem kết quả</a></td></tr></tbody></table></div>
+          <div class="pager"><span>Hiển thị 1–20 / 24 phiên</span><span>‹ Trước &nbsp; 1 &nbsp; 2 &nbsp; Sau ›</span></div>
+        </div>
+      </main>
+    </div><div class="screen-ref">SCR-08 · Lịch sử tải</div>
+  </section>
+
+  <section class="screen" data-screen="SCR-09" hidden>
+    <div class="app-shell">
+      <aside class="sidebar"><div class="brand"><b>HÓA ĐƠN<br>ĐIỆN TỬ</b><span>Kho chứng từ doanh nghiệp</span></div><nav class="side-nav"><a href="?screen=SCR-02">▣ Tổng quan</a><a href="?screen=SCR-03">⇩ Tải hóa đơn</a><a href="?screen=SCR-05">▤ Kho hóa đơn</a><a href="?screen=SCR-08">◷ Lịch sử tải</a><a class="active" href="?screen=SCR-09">⚙ Cài đặt</a></nav><div class="sidebar-bottom">Phiên bản ứng dụng 1.0<br>Schema dữ liệu v1</div></aside>
+      <main class="app-main">
+        <header class="app-header"><div><div class="company">CÔNG TY TNHH MẪU</div><div class="tax-code">MST 0101234567</div></div><div class="header-spacer"></div><span class="session-status">● Đã đăng nhập</span></header>
+        <div class="content compact-settings">
+          <div class="page-title"><div><h1>Cài đặt</h1><p>Thông tin doanh nghiệp, lưu trữ, sao lưu và kết nối</p></div><div class="page-actions"><a class="button primary">Lưu thay đổi</a></div></div>
+          <div class="grid-2" style="grid-template-columns:260px 1fr">
+            <div class="panel"><div class="list-row" style="grid-template-columns:1fr"><b>Doanh nghiệp</b></div><div class="list-row" style="grid-template-columns:1fr;background:#f1f3f4"><b>Lưu trữ và sao lưu</b></div><div class="list-row" style="grid-template-columns:1fr"><b>Kết nối cổng Thuế</b></div><div class="list-row" style="grid-template-columns:1fr"><b>Nhật ký và chẩn đoán</b></div><div class="list-row" style="grid-template-columns:1fr"><b>Thông tin ứng dụng</b></div></div>
+            <div>
+              <div class="panel"><div class="panel-head"><b>Thư mục kho dữ liệu</b></div><div class="panel-body"><div class="field"><label>Đường dẫn gốc</label><div style="display:grid;grid-template-columns:1fr 110px;gap:8px"><div class="input">D:\DuLieu\HoaDonDienTu\0101234567</div><a class="button">Chọn thư mục</a></div></div><div class="alert" style="margin-top:12px;margin-bottom:0">Đã kiểm tra quyền đọc/ghi · Còn trống 184 GB</div></div></div>
+              <div class="panel"><div class="panel-head"><b>Dung lượng sử dụng</b><a class="button" style="margin-left:auto">Mở thư mục kho</a></div><div class="panel-body"><div class="storage-bar"><span>Database</span><div class="progress"><span style="width:8%"></span></div><b class="right">84 MB</b></div><div class="storage-bar"><span>XML</span><div class="progress"><span style="width:72%"></span></div><b class="right">7,4 GB</b></div><div class="storage-bar"><span>PDF đã tạo</span><div class="progress"><span style="width:24%"></span></div><b class="right">2,1 GB</b></div><div class="storage-bar"><span>File xuất</span><div class="progress"><span style="width:12%"></span></div><b class="right">1,2 GB</b></div></div></div>
+              <div class="panel"><div class="panel-head"><b>Sao lưu và khôi phục</b></div><div class="panel-body"><div class="grid-2"><div><b>Tạo bản sao lưu</b><p class="muted small">Bao gồm database, XML, PDF đã tạo và manifest kiểm tra.</p><a class="button primary">Tạo bản sao lưu</a></div><div><b>Khôi phục dữ liệu</b><p class="muted small">Chỉ chấp nhận gói đúng MST 0101234567 và có manifest hợp lệ.</p><a class="button">Chọn gói khôi phục</a></div></div><hr style="border:0;border-top:1px solid #d9dee2;margin:16px 0"><div class="small"><b>Bản sao lưu gần nhất:</b> 31/10/2026 18:00 · <span class="tag good">Hợp lệ</span> · D:\Backup\HDDT_0101234567_20261031.zip</div></div></div>
+              <div class="panel"><div class="panel-head"><b>Kiểm tra toàn vẹn</b></div><div class="panel-body" style="display:flex;align-items:center;gap:10px"><span class="tag good">Database hợp lệ</span><span class="tag warn">2 XML cần kiểm tra</span><span class="muted small">Kiểm tra gần nhất: 01/11/2026 08:30</span><a class="button" style="margin-left:auto">Kiểm tra lại</a></div></div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div><div class="screen-ref">SCR-09 · Cài đặt</div>
+  </section>
+
+  <script>
+    (function () {
+      var params = new URLSearchParams(window.location.search);
+      var screen = (params.get('screen') || 'SCR-02').toUpperCase();
+      var capture = params.get('capture') === '1';
+      var available = Array.prototype.map.call(document.querySelectorAll('[data-screen]'), function (el) { return el.getAttribute('data-screen'); });
+      if (available.indexOf(screen) < 0) screen = 'SCR-02';
+      if (capture) document.body.classList.add('capture');
+      document.querySelectorAll('[data-screen]').forEach(function (el) { el.hidden = el.getAttribute('data-screen') !== screen; });
+      document.querySelectorAll('[data-screen-link]').forEach(function (el) { if (el.getAttribute('data-screen-link') === screen) el.classList.add('active'); });
+      document.title = screen + ' - Wireframe Hóa đơn điện tử';
+    }());
+  </script>
+</body>
+</html>
