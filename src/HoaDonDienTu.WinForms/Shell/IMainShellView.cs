@@ -19,5 +19,8 @@ namespace HoaDonDienTu.WinForms.Shell
         void ShowScreen(Control screen);
         void SelectNavigation(HoaDonDienTu.Application.Navigation.ScreenId screen);
         void ShowError(string title, string message);
+
+        /// <summary>Đóng cửa sổ chính mà không hỏi lại; chỉ gọi sau khi quy trình đóng đã hoàn tất.</summary>
+        void CloseShell();
     }
 }

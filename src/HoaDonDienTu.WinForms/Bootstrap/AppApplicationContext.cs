@@ -27,7 +27,8 @@ namespace HoaDonDienTu.WinForms.Bootstrap
                 compositionRoot.ContextManager,
                 compositionRoot.SessionStore,
                 compositionRoot.OperationRunner,
-                compositionRoot.ErrorPresenter);
+                compositionRoot.ErrorPresenter,
+                compositionRoot.ShutdownCoordinator);
             _presenter.Initialize();
             _presenter.ShowInitializing();
 

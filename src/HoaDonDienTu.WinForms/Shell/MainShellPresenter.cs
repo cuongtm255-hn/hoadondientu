@@ -4,6 +4,7 @@ using HoaDonDienTu.Application.Authentication;
 using HoaDonDienTu.Application.Common;
 using HoaDonDienTu.Application.Companies;
 using HoaDonDienTu.Application.Navigation;
+using HoaDonDienTu.Application.Startup;
 using HoaDonDienTu.WinForms.Login;
 
 namespace HoaDonDienTu.WinForms.Shell
@@ -16,6 +17,7 @@ namespace HoaDonDienTu.WinForms.Shell
         private readonly IPortalSessionStore _sessionStore;
         private readonly IUiOperationRunner _runner;
         private readonly IUserErrorPresenter _errors;
+        private readonly ShutdownCoordinator _shutdown;
         private ScreenId _currentScreen = ScreenId.Initializing;
         private bool _initialized;
 
@@ -25,7 +27,8 @@ namespace HoaDonDienTu.WinForms.Shell
             ICompanyContextAccessor context,
             IPortalSessionStore sessionStore,
             IUiOperationRunner runner,
-            IUserErrorPresenter errors)
+            IUserErrorPresenter errors,
+            ShutdownCoordinator shutdown)
         {
             if (view == null) throw new ArgumentNullException("view");
             if (loginCoordinator == null) throw new ArgumentNullException("loginCoordinator");
@@ -33,12 +36,14 @@ namespace HoaDonDienTu.WinForms.Shell
             if (sessionStore == null) throw new ArgumentNullException("sessionStore");
             if (runner == null) throw new ArgumentNullException("runner");
             if (errors == null) throw new ArgumentNullException("errors");
+            if (shutdown == null) throw new ArgumentNullException("shutdown");
             _view = view;
             _loginCoordinator = loginCoordinator;
             _context = context;
             _sessionStore = sessionStore;
             _runner = runner;
             _errors = errors;
+            _shutdown = shutdown;
         }
 
         public void Initialize()
@@ -48,6 +53,7 @@ namespace HoaDonDienTu.WinForms.Shell
             _view.NavigationRequested += OnNavigationRequested;
             _view.CompanySelectorRequested += OnCompanySelectorRequested;
             _view.PortalLoginRequested += OnPortalLoginRequested;
+            _view.ShellClosingRequested += OnShellClosingRequested;
             _sessionStore.SessionChanged += OnSessionChanged;
         }
 
@@ -59,6 +65,7 @@ namespace HoaDonDienTu.WinForms.Shell
             _view.NavigationRequested -= OnNavigationRequested;
             _view.CompanySelectorRequested -= OnCompanySelectorRequested;
             _view.PortalLoginRequested -= OnPortalLoginRequested;
+            _view.ShellClosingRequested -= OnShellClosingRequested;
             _sessionStore.SessionChanged -= OnSessionChanged;
         }
 
@@ -95,6 +102,33 @@ namespace HoaDonDienTu.WinForms.Shell
         private void OnSessionChanged(object sender, EventArgs e)
         {
             RefreshPortalSession();
+        }
+
+        private async void OnShellClosingRequested(object sender, EventArgs e)
+        {
+            var canClose = false;
+            await _runner.RunAsync(
+                "Đóng ứng dụng",
+                async token =>
+                {
+                    var result = await _shutdown.TryShutdownAsync(token);
+                    canClose = result.CanClose;
+                    if (!result.CanClose && !string.IsNullOrEmpty(result.Message))
+                    {
+                        _view.ShowError("Đóng ứng dụng", result.Message);
+                    }
+                },
+                state =>
+                {
+                    _view.ShowOperation(new OperationViewState
+                    {
+                        Text = state.IsBusy ? "Đang đóng ứng dụng..." : "Sẵn sàng",
+                        IsBusy = state.IsBusy
+                    });
+                    if (state.Error != null) _errors.Show(state.Error);
+                });
+
+            if (canClose) _view.CloseShell();
         }
 
         private async void OnPortalLoginRequested(object sender, EventArgs e)

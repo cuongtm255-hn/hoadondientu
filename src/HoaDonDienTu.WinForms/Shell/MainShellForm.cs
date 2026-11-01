@@ -11,6 +11,7 @@ namespace HoaDonDienTu.WinForms.Shell
     {
         private readonly ScreenHost _screenHost;
         private readonly List<KryptonCheckButton> _navButtons;
+        private bool _closeApproved;
 
         public MainShellForm()
         {
@@ -81,11 +82,27 @@ namespace HoaDonDienTu.WinForms.Shell
             }
         }
 
+        public void CloseShell()
+        {
+            _closeApproved = true;
+            Close();
+        }
+
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
+            // Người dùng đóng cửa sổ: hoãn lại để presenter xử lý tác vụ đang chạy rồi mới gọi CloseShell.
+            // WM_CLOSE gửi từ ngoài (taskbar, công cụ khác) được WinForms báo là TaskManagerClosing nên cũng phải xử lý.
+            // Các lý do khác (tắt Windows, Application.Exit sau lỗi nghiêm trọng) không được chặn.
+            if (!_closeApproved
+                && (e.CloseReason == CloseReason.UserClosing || e.CloseReason == CloseReason.TaskManagerClosing))
+            {
+                e.Cancel = true;
+                var handler = ShellClosingRequested;
+                if (handler != null) handler(this, EventArgs.Empty);
+                return;
+            }
+
             base.OnFormClosing(e);
-            var handler = ShellClosingRequested;
-            if (handler != null) handler(this, EventArgs.Empty);
         }
 
         private void OnNavigationClick(object sender, EventArgs e)

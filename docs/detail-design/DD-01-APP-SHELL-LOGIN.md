@@ -1202,8 +1202,8 @@ Trạng thái: ⬜ Chưa bắt đầu · 🟡 Đang làm · ✅ Hoàn thành · 
 | T01-08 | `PortalLoginForm`, `PortalLoginPresenter`, `PortalLoginCoordinator` + `DevelopmentPortalLoginBrowser` | WinForms/Infra | T01-05, T01-07 | ✅ | | `PortalLoginForm` (Krypton, partial) theo SCR-01, `PortalLoginPresenter` (state machine, retry/mismatch/cancel), `PortalLoginCoordinator` (gate + điều kiện), `DevelopmentPortalLoginBrowser` (Debug, nút đúng/sai MST); đã chạy thử tay. Presenter chưa có unit test (T01-13). Thêm outcome `NotAllowed`, `AlreadyInProgress` |
 | T01-09 | `InMemoryPortalSessionStore`, `IPortalApiClientFactory` (stub), fake `IPortalAuthenticationService` | Infra | T01-03 | ✅ | | `InMemoryPortalSessionStore`, `PortalSession/Snapshot/Material` (che token), `PortalApiClientProvider` (1 client/generation), fake `IPortalAuthenticationService` + stub `IPortalApiClientFactory` (Debug); 11 test. Thêm `GetSessionForApi()` và `SessionChanged` so với mục 11.1 |
 | T01-10 | `UiOperationRunner`, `UserErrorPresenter`, `ConfirmationService`, logging che dữ liệu nhạy cảm | WinForms/Infra | T01-04 | ✅ | | `LogSanitizer` (Authorization/cookie/token/mật khẩu/CAPTCHA/licence key/JWT/CCCD/XML) áp dụng trong `FileApplicationLogger` (một dòng/bản ghi, không ghi stack trace); `UiOperationRunner` + `UserErrorMapper` (không đưa message exception vào thông báo); `UserErrorPresenter`, `ConfirmationService`; 35 test |
-| T01-11 | `AtomicJsonWriter` và quy trình `.tmp` → verify → replace + `.bak` | Infra | T01-01 | ⬜ | | Dùng chung DD-02/DD-03 |
-| T01-12 | Quy trình đóng ứng dụng (mục 17) | WinForms | T01-05, T01-09 | ⬜ | | |
+| T01-11 | `AtomicJsonWriter` và quy trình `.tmp` → verify → replace + `.bak` | Infra | T01-01 | ✅ | | `AtomicJsonWriter` (`Infrastructure/Persistence`): ghi `.tmp` write-through → đọc lại + xác minh → `File.Replace`; `.bak` chỉ cập nhật từ bản hợp lệ, file hỏng được chép sang `.corrupt`; `Read` tự lùi về `.bak`, không bao giờ đọc `.tmp`. Độc lập thư viện JSON (nơi gọi truyền hàm xác minh); 14 test |
+| T01-12 | Quy trình đóng ứng dụng (mục 17) | WinForms | T01-05, T01-09 | ✅ | | `ShutdownCoordinator` (Application): không job → xóa phiên + đóng kho; có job → hỏi qua `ShutdownPromptForm` (Chờ / Tạm dừng / Hủy / Ở lại), job lỗi thì không đóng, lỗi dọn dẹp chỉ ghi log. `MainShellForm` hoãn FormClosing (UserClosing/TaskManagerClosing) rồi `CloseShell()`; không dùng `Environment.Exit`. Dev: `HDDT_DEV_JOB=1`. 9 test + thử tay |
 | T01-13 | Unit test Startup, MainShellPresenter, PortalLoginPresenter, CompanySwitchService (mục 19.1–19.4) | Tests | T01-06..T01-09 | ⬜ | | |
 | T01-14 | Integration test (mục 19.5) | Tests | T01-11 | ⬜ | | |
 | T01-15 | UI smoke test (mục 19.6) | Tests | T01-13 | ⬜ | | |
@@ -1229,6 +1229,8 @@ Trạng thái: ⬜ Chưa bắt đầu · 🟡 Đang làm · ✅ Hoàn thành · 
 | Ngày | Nội dung | Người thực hiện |
 |---|---|---|
 | 01/11/2026 | Chuẩn hóa tài liệu, tách DD-02/DD-03/DD-00; chưa có code | Claude Code |
+| 01/11/2026 | T01-12 xong: quy trình đóng ứng dụng; 119 test | Claude Code |
+| 01/11/2026 | T01-11 xong: AtomicJsonWriter + recovery từ .bak; 109 test | Claude Code |
 | 01/11/2026 | T01-10 xong: sanitizer log, UiOperationRunner, error mapper/presenter, confirmation; 95 test | Claude Code |
 | 01/11/2026 | T01-08 xong: form đăng nhập + presenter + coordinator, nối vào shell (Standard tự mở kho, đăng nhập giả lập) | Claude Code |
 | 01/11/2026 | T01-09 xong: session store trong bộ nhớ, client provider theo generation, adapter giả; 60 test | Claude Code |

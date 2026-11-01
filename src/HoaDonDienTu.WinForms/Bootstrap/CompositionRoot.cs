@@ -37,6 +37,7 @@ namespace HoaDonDienTu.WinForms.Bootstrap
         public IUiOperationRunner OperationRunner { get; private set; }
         public IUserErrorPresenter ErrorPresenter { get; private set; }
         public IConfirmationService Confirmation { get; private set; }
+        public ShutdownCoordinator ShutdownCoordinator { get; private set; }
 
         public static CompositionRoot Create()
         {
@@ -113,6 +114,13 @@ namespace HoaDonDienTu.WinForms.Bootstrap
 
             var contextManager = new CompanyContextManager(new DevelopmentCompanyStorageOpener());
             ContextManager = contextManager;
+            var jobsRunning = Environment.GetEnvironmentVariable("HDDT_DEV_JOB") == "1";
+            ShutdownCoordinator = new ShutdownCoordinator(
+                contextManager,
+                new DevelopmentActiveJobService(jobsRunning),
+                SessionStore,
+                new ShutdownPrompt(),
+                Logger);
             PortalLoginCoordinator = new PortalLoginCoordinator(
                 contextManager,
                 new DevelopmentEntitlementService(mode),
