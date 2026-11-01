@@ -605,6 +605,26 @@ namespace HoaDonDienTu.WinForms.Tests
         }
 
         [Test]
+        public void Standard_License_Activated_StaysServiceAfterRestart()
+        {
+            Start("Standard");
+            OpenLicenseScreen();
+            Control<KryptonTextBox>("txtLicenseKey").Text = "HDDT-SVC-0001";
+            Click("btnActivate");
+            Assert.That(WaitFor(() => ContentTitle() == "Quản lý doanh nghiệp"), Is.True);
+
+            // Khởi động lại cùng thư mục dữ liệu: license.dat được đọc và xác minh chữ ký ngay lúc khởi động.
+            _form.Close();
+            _context.Dispose();
+            _root.Dispose();
+            Start("Standard");
+
+            Assert.That(ContentTitle(), Is.EqualTo("Quản lý doanh nghiệp"));
+            Assert.That(_root.Entitlement.CurrentMode, Is.EqualTo(HoaDonDienTu.Domain.Common.AppMode.Service));
+            Assert.That(Control<KryptonCheckButton>("navCompanies").Visible, Is.True);
+        }
+
+        [Test]
         public void ReadOnly_License_ShowsExpiredLabel_AndNoDownloadAction()
         {
             Start("ReadOnly");

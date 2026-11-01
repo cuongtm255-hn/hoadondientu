@@ -156,7 +156,21 @@ namespace HoaDonDienTu.WinForms.Bootstrap
             var storage = new FileSystemCompanyStorage();
             Registry = registry;
 
-            StartupCoordinator = new StartupCoordinator(new DevelopmentLicenseService(license), registry, Logger);
+            // SCR-12 dùng LicenseService thật (store DPAPI, chữ ký RSA, mã máy) với licence server giả; khởi động dùng nó khi đã có license.dat, chưa có thì theo HDDT_DEV_MODE.
+            var licenseServer = new DevelopmentLicenseServer(
+                () => string.Equals(Environment.GetEnvironmentVariable("HDDT_DEV_LICENSE_SERVER"), "down", StringComparison.OrdinalIgnoreCase),
+                Path.Combine(dataDirectory, "dev-license-key.xml"));
+            var machineIdentity = new MachineIdentityProvider();
+            var licenseService = new LicenseService(
+                new FileLicenseStore(Path.Combine(dataDirectory, "license.dat")), licenseServer, machineIdentity,
+                new RsaLicenseSignatureVerifier(licenseServer.PublicKeyXml), Clock, Logger, AppVersion);
+
+            LicenseService = licenseService;
+
+            var startupLicense = File.Exists(Path.Combine(dataDirectory, "license.dat"))
+                ? (ILicenseService)licenseService
+                : new DevelopmentLicenseService(license);
+            StartupCoordinator = new StartupCoordinator(startupLicense, registry, Logger);
 
             var portalConfig = LoadPortalApiConfig();
             PortalApiConfig = portalConfig;
@@ -178,16 +192,6 @@ namespace HoaDonDienTu.WinForms.Bootstrap
             var folderPicker = new FolderPicker();
             var folderLauncher = new ExplorerFolderLauncher();
             Func<string, string> suggestFolder = taxCode => Path.Combine(dataDirectory, "Companies", taxCode);
-
-            // SCR-12 dùng LicenseService thật (store DPAPI, chữ ký RSA, mã máy) với licence server giả; khởi động vẫn theo HDDT_DEV_MODE.
-            var licenseServer = new DevelopmentLicenseServer(
-                () => string.Equals(Environment.GetEnvironmentVariable("HDDT_DEV_LICENSE_SERVER"), "down", StringComparison.OrdinalIgnoreCase));
-            var machineIdentity = new MachineIdentityProvider();
-            var licenseService = new LicenseService(
-                new FileLicenseStore(Path.Combine(dataDirectory, "license.dat")), licenseServer, machineIdentity,
-                new RsaLicenseSignatureVerifier(licenseServer.PublicKeyXml), Clock, Logger, AppVersion);
-
-            LicenseService = licenseService;
 
             var splitter = new PeriodSplitter();
             var startPolicy = new DownloadStartPolicy(contextManager, SessionStore, entitlement);

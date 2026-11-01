@@ -1,5 +1,6 @@
 #if DEBUG
 using System;
+using System.IO;
 using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
@@ -20,12 +21,31 @@ namespace HoaDonDienTu.Infrastructure.Development
         private readonly string _privateKeyXml;
         private readonly Func<bool> _isDown;
 
-        public DevelopmentLicenseServer(Func<bool> isDown)
+        /// <param name="keyFile">Nơi giữ cặp khóa giữa các lần chạy, để license.dat đã kích hoạt vẫn xác minh được sau khi khởi động lại.</param>
+        public DevelopmentLicenseServer(Func<bool> isDown, string keyFile)
         {
             _isDown = isDown ?? (() => false);
-            using (var rsa = new RSACryptoServiceProvider(1024))
+            if (!string.IsNullOrEmpty(keyFile) && File.Exists(keyFile))
             {
-                _privateKeyXml = rsa.ToXmlString(true);
+                _privateKeyXml = File.ReadAllText(keyFile);
+            }
+            else
+            {
+                using (var rsa = new RSACryptoServiceProvider(1024))
+                {
+                    _privateKeyXml = rsa.ToXmlString(true);
+                }
+
+                if (!string.IsNullOrEmpty(keyFile))
+                {
+                    Directory.CreateDirectory(Path.GetDirectoryName(keyFile));
+                    File.WriteAllText(keyFile, _privateKeyXml);
+                }
+            }
+
+            using (var rsa = new RSACryptoServiceProvider())
+            {
+                rsa.FromXmlString(_privateKeyXml);
                 PublicKeyXml = rsa.ToXmlString(false);
             }
         }

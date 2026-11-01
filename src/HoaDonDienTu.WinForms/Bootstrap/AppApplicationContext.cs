@@ -4,6 +4,7 @@ using System.Windows.Forms;
 using HoaDonDienTu.Application.Authentication;
 using HoaDonDienTu.Application.Common;
 using HoaDonDienTu.Application.Navigation;
+using HoaDonDienTu.Application.Licensing;
 using HoaDonDienTu.Application.Startup;
 using HoaDonDienTu.Domain.Common;
 using HoaDonDienTu.WinForms.Companies;
@@ -99,6 +100,13 @@ namespace HoaDonDienTu.WinForms.Bootstrap
             if (result.Route == StartupRoute.StandardPortalLogin && result.StandardCompany != null)
             {
                 await _compositionRoot.ContextManager.OpenAsync(result.StandardCompany, _cancellation.Token);
+            }
+
+            // Đồng bộ quyền với chế độ khởi động (licence thật hoặc giả lập); khi chế độ đổi, shell tự cập nhật qua ModeChanged.
+            var updater = _compositionRoot.Entitlement as IEntitlementUpdater;
+            if (updater != null && result.Route != StartupRoute.Recovery)
+            {
+                updater.ApplyLicense(result.LicenseStatus, result.Mode == AppMode.ReadOnlyService);
             }
 
             _presenter.SetMode(ShellModeMapper.ToModeState(result));
