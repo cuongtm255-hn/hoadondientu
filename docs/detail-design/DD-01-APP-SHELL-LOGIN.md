@@ -1198,7 +1198,7 @@ Trạng thái: ⬜ Chưa bắt đầu · 🟡 Đang làm · ✅ Hoàn thành · 
 | T01-04 | `CompositionRoot`, `Program.Main`, `AppApplicationContext`, `GlobalExceptionHandler` | WinForms | T01-03 | 🟡 | | TLS 1.2, `Register` trước khi tạo form; dùng licence/catalog giả (Debug), chọn bằng `HDDT_DEV_MODE` = Standard/StandardFirstRun/Service/ReadOnly/Recovery; Release chưa có adapter thật (DD-02/03) |
 | T01-05 | `MainShellForm`, `MainShellPresenter`, `ScreenHost`, `NavigationService`, `ScreenFactory` | WinForms | T01-04 | 🟡 | | Form (Krypton Ribbon + sidebar, partial Designer), presenter, ScreenHost xong; còn NavigationService/ScreenFactory, màn hình thật |
 | T01-06 | `StartupCoordinator` + fake licence/catalog + bảng quyết định route | Application | T01-03 | ✅ | | `StartupCoordinator` + `ILicenseService`/`ICompanyCatalog` tối thiểu, 15 test; fake ở `Infrastructure/Development` (Debug). Chưa có `ILocalSettingsStore` (chưa cần) |
-| T01-07 | `CompanyContext`, `ICompanyContextManager`, `CompanySwitchService`, `StorageGuard` | Application | T01-03 | ⬜ | | Cần repository stub từ DD-02/DD-06 |
+| T01-07 | `CompanyContext`, `ICompanyContextManager`, `CompanySwitchService`, `StorageGuard` | Application | T01-03 | ✅ | | `CompanyContext`, `ICompanyContextManager/Accessor`, `CompanySwitchService`, `StorageGuard` + 23 test. Port `ICompanyStorageOpener`, `IActiveJobService`, `IPortalSessionStore`, `IEntitlementService` chờ implement ở DD-02/05/06, T01-09, DD-03. Thêm blocker `SwitchInProgress`; chưa có `UnitOfWorkFactory` (DD-06) |
 | T01-08 | `PortalLoginForm`, `PortalLoginPresenter`, `PortalLoginCoordinator` + `DevelopmentPortalLoginBrowser` | WinForms/Infra | T01-05, T01-07 | ⬜ | | |
 | T01-09 | `InMemoryPortalSessionStore`, `IPortalApiClientFactory` (stub), fake `IPortalAuthenticationService` | Infra | T01-03 | ⬜ | | |
 | T01-10 | `UiOperationRunner`, `UserErrorPresenter`, `ConfirmationService`, logging che dữ liệu nhạy cảm | WinForms/Infra | T01-04 | ⬜ | | NFR-SEC-002 |
@@ -1229,6 +1229,7 @@ Trạng thái: ⬜ Chưa bắt đầu · 🟡 Đang làm · ✅ Hoàn thành · 
 | Ngày | Nội dung | Người thực hiện |
 |---|---|---|
 | 01/11/2026 | Chuẩn hóa tài liệu, tách DD-02/DD-03/DD-00; chưa có code | Claude Code |
+| 01/11/2026 | T01-07 xong: context, switch theo thứ tự mục 9.3 (khôi phục context cũ khi mở đích lỗi), storage guard mục 9.4; 49 test | Claude Code |
 | 01/11/2026 | T01-06 xong: `StartupCoordinator` theo bảng quyết định mục 7.4, 15 test | Claude Code |
 | 01/11/2026 | T01-03 xong, T01-04 gần xong (Program/CompositionRoot/AppApplicationContext/GlobalExceptionHandler); chạy thử Standard/Service | Claude Code |
 | 01/11/2026 | T01-01 xong; shell Krypton chạy được với dữ liệu mẫu; 10 unit test pass | Claude Code |
