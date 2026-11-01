@@ -57,6 +57,7 @@ Tài liệu này đặc tả ứng dụng Windows hỗ trợ đăng nhập vào 
 - Workbook yêu cầu `DANH SÁCH HÓA ĐƠN.xlsx`: hành vi tra cứu/xuất/in/XML, ảnh tham chiếu màn hình cổng Thuế và mẫu danh sách Excel.
 - Cổng Hóa đơn điện tử: <https://hoadondientu.gdt.gov.vn/>.
 - Bộ wireframe: [HTML tương tác](../wireframes/index.html) và [danh mục PNG](../wireframes/README.md).
+- Tài liệu dẫn xuất từ SRS: [Feature list](FEATURE-LIST.md), [Detail design](../detail-design/README.md), [Kế hoạch dự án](../plans/PROJECT-PLAN.md).
 
 Các endpoint, header, payload, giới hạn tốc độ và cơ chế token của cổng Thuế chưa được coi là cố định. Nhóm triển khai phải xác minh bằng network traffic hợp lệ trên môi trường thật và lưu mẫu đã loại dữ liệu nhạy cảm trong `docs/api-samples/`.
 

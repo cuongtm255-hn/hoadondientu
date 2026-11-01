@@ -1,80 +1,83 @@
-# Detail Design — Khung chương trình, lựa chọn doanh nghiệp và đăng nhập cổng Thuế
+# DD-01 — Khung chương trình, khởi động và đăng nhập cổng Thuế
 
 ## 1. Thông tin tài liệu
 
 | Thuộc tính | Giá trị |
 |---|---|
-| Mã tài liệu | DD-HDDT-APP-SHELL-LOGIN-001 |
-| Phiên bản | 1.0 |
+| Mã tài liệu | DD-HDDT-01 |
+| Tên | Khung chương trình, xác định chế độ, điều hướng và đăng nhập cổng Thuế |
+| Phiên bản | 1.1 (chuẩn hóa từ DD-HDDT-APP-SHELL-LOGIN-001 v1.0) |
 | Ngày | 01/11/2026 |
-| Trạng thái | Thiết kế đã được phê duyệt, chờ review tài liệu |
+| Trạng thái | Thiết kế đã phê duyệt — chờ review tài liệu |
+| Feature | [FT-01](../requirements/FEATURE-LIST.md#ft-01--khung-chương-trình-khởi-động-và-điều-hướng) · [FT-02](../requirements/FEATURE-LIST.md#ft-02--đăng-nhập-cổng-thuế-và-quản-lý-phiên) |
+| SRS | [SRS-HDDT-001 v1.1](../requirements/SRS.md) |
+| Màn hình | SCR-01 (Đăng nhập); khung dùng chung cho SCR-02…SCR-12 |
+| Wireframe | [SCR-01](../wireframes/index.html?screen=SCR-01) · [PNG](../wireframes/png/SCR-01-login.png) |
+| Phụ thuộc | [DD-00](DD-00-TECHNICAL-GATES.md) (WebView/API), [DD-02](DD-02-COMPANY-MANAGEMENT.md) (danh mục MST), [DD-03](DD-03-LICENSING.md) (entitlement) |
+| Phase triển khai | [Phase 2](../plans/PROJECT-PLAN.md#phase-2--khung-chương-trình-doanh-nghiệp-licence-và-đăng-nhập) |
 | Nền tảng | Windows Forms, C#, .NET Framework 4.5 |
-| Phạm vi | Khung ứng dụng, xác định chế độ licence, lựa chọn MST và đăng nhập cổng Thuế |
-| SRS tham chiếu | [SRS-HDDT-001 v1.1](../requirements/SRS.md) |
 
-## 2. Mục đích
+## 2. Mục đích, phạm vi và quyết định đã chốt
 
-Tài liệu này mô tả thiết kế kỹ thuật đủ chi tiết để lập trình viên có thể dựng đúng khung ứng dụng và luồng đăng nhập mà không phải tự suy đoán nghiệp vụ.
+### 2.1 Mục đích
 
-Thiết kế giải quyết các câu hỏi chính:
+Mô tả thiết kế kỹ thuật đủ chi tiết để lập trình viên dựng đúng khung ứng dụng và luồng đăng nhập mà không phải tự suy đoán nghiệp vụ. Tài liệu trả lời:
 
 - Chương trình khởi động và xác định StandardMode, ServiceMode hoặc ReadOnlyServiceMode như thế nào.
 - Form chính, điều hướng và các màn hình được tổ chức ra sao.
-- “Công ty dịch vụ” có đăng nhập riêng hay không.
-- Một MST được chọn, mở kho và đăng nhập cổng Thuế như thế nào.
-- WebView, token và API client được cách ly khỏi UI ra sao.
-- Làm thế nào bảo đảm không trộn session hoặc dữ liệu giữa hai MST.
-- Thành phần nào được phép phụ thuộc thành phần nào.
-- Những test nào bắt buộc trước khi coi khung chương trình hoàn tất.
+- Một MST được chọn, mở kho và đăng nhập cổng Thuế như thế nào; “công ty dịch vụ” có đăng nhập riêng hay không.
+- WebView, token và API client được cách ly khỏi UI ra sao; làm sao không trộn session/dữ liệu giữa hai MST.
+- Thành phần nào được phép phụ thuộc thành phần nào; test nào bắt buộc trước khi coi khung hoàn tất.
 
-## 3. Quyết định nghiệp vụ đã chốt
+### 2.2 Quyết định nghiệp vụ đã chốt
 
 1. Ứng dụng chỉ có một executable và hai chế độ sử dụng chính.
 2. StandardMode quản lý một MST và không hiển thị chức năng đa doanh nghiệp.
 3. ServiceMode được mở bằng licence theo máy, không giới hạn số MST đã khai báo.
-4. Chỉ một MST hoạt động tại một thời điểm.
-5. Mỗi MST có thư mục và SQLite riêng.
-6. Công ty dịch vụ không có tài khoản ứng dụng riêng.
-7. Đăng nhập cổng Thuế luôn là đăng nhập của MST đang hoạt động.
-8. Luồng khởi động được xác định tự động từ licence:
+4. Chỉ một MST hoạt động tại một thời điểm; mỗi MST có thư mục và SQLite riêng.
+5. Công ty dịch vụ không có tài khoản ứng dụng riêng; đăng nhập cổng Thuế luôn là của MST đang hoạt động.
+6. Luồng khởi động được xác định tự động từ licence:
    - StandardMode mở doanh nghiệp duy nhất và yêu cầu đăng nhập cổng Thuế.
-   - ServiceMode luôn mở danh sách doanh nghiệp để người dùng chọn MST.
+   - ServiceMode luôn mở danh sách doanh nghiệp để người dùng chọn MST (không mở lại MST gần nhất).
    - ReadOnlyServiceMode mở danh sách doanh nghiệp nhưng không cho đăng nhập hoặc tải mới.
-9. WebView chỉ phục vụ đăng nhập thủ công và CAPTCHA; truy xuất nghiệp vụ dùng API client trực tiếp.
-10. Token chỉ tồn tại trong bộ nhớ.
+7. WebView chỉ phục vụ đăng nhập thủ công và CAPTCHA; truy xuất nghiệp vụ dùng API client trực tiếp.
+8. Token chỉ tồn tại trong bộ nhớ.
 
-Quyết định số 8 thay thế hành vi cũ “ServiceMode mở lại MST gần nhất”.
-
-## 4. Phạm vi
-
-### 4.1 Trong phạm vi
+### 2.3 Trong phạm vi
 
 - Tạo solution và các project nền tảng.
-- `Program.Main` và composition root.
-- `AppApplicationContext`.
-- `MainShellForm` và điều hướng màn hình.
-- Khởi tạo và xác định chế độ từ licence.
-- Khai báo doanh nghiệp StandardMode lần đầu.
-- Danh sách, thêm và chọn doanh nghiệp trong ServiceMode.
-- Chuyển `CompanyContext` an toàn.
-- `PortalLoginForm` chứa WebView.
-- Thu candidate token/cookie qua abstraction.
-- Xác minh session và MST.
-- Quản lý `PortalSession` trong bộ nhớ.
-- Hành vi ReadOnlyServiceMode liên quan tới shell/login.
-- Xử lý lỗi, logging và test cho các thành phần trên.
+- `Program.Main`, composition root, `AppApplicationContext`.
+- `MainShellForm`, điều hướng, screen host.
+- Khởi tạo và xác định chế độ từ licence (consume `ILicenseService`/`IEntitlementService` của DD-03).
+- `CompanyContext`, `ICompanyContextManager`, `CompanySwitchService` (cơ chế lõi; giao diện danh mục ở DD-02).
+- `PortalLoginForm` chứa WebView, thu candidate token/cookie qua abstraction, xác minh session và MST.
+- `PortalSession` trong bộ nhớ, API client generation.
+- Xử lý lỗi, logging, ghi file atomic, đóng ứng dụng và test cho các thành phần trên.
 
-### 4.2 Ngoài phạm vi
+### 2.4 Ngoài phạm vi (chuyển sang tài liệu khác)
 
-- Endpoint/payload production của cổng Thuế chưa được xác minh.
-- Chọn implementation WebView production trước technical spike.
-- Tải, chuẩn hóa, lưu và xuất hóa đơn.
-- Tạo PDF và trình xem XML.
-- Máy chủ licence production và giao diện quản trị licence.
-- Đồng bộ hoặc xử lý song song nhiều MST.
-- Tài khoản/role nội bộ của công ty dịch vụ.
+| Nội dung | Tài liệu |
+|---|---|
+| Khai báo doanh nghiệp StandardMode lần đầu; danh sách/thêm/sửa/ngừng quản lý doanh nghiệp (SCR-10, SCR-11) | [DD-02](DD-02-COMPANY-MANAGEMENT.md) |
+| Licence server, entitlement, SCR-12, ReadOnlyServiceMode ở tầng service | [DD-03](DD-03-LICENSING.md) |
+| Technical spike WebView/API, ADR, endpoint/payload thật của cổng Thuế | [DD-00](DD-00-TECHNICAL-GATES.md) |
+| Tải, chuẩn hóa, lưu, xuất hóa đơn; PDF; trình xem XML | DD-04…DD-11 |
+| Đồng bộ/xử lý song song nhiều MST; tài khoản/role nội bộ | Ngoài phạm vi phiên bản 1 |
 
-## 5. Ràng buộc kỹ thuật
+## 3. Truy vết yêu cầu
+
+| Thành phần thiết kế | Yêu cầu SRS chính |
+|---|---|
+| Startup mode/route (mục 6–7) | BR-001, BR-016, FR-COMP-001, FR-COMP-009, FR-LIC-004..008 |
+| MainShellForm (mục 8) | FR-COMP-006, NFR-USE-003, NFR-USE-006..007, mục 10 SRS |
+| CompanyContext và chuyển MST (mục 9) | BR-017..020, FR-COMP-007..008, FR-COMP-012, NFR-REL-006 |
+| PortalLoginForm (mục 10) | FR-AUTH-001..012, BR-012, BR-020, AC-01 |
+| Session/API client (mục 11) | FR-AUTH-005, NFR-SEC-001..002, NFR-SEC-006 |
+| Bảo mật/log (mục 14) | FR-AUTH-003, NFR-SEC-001..003, NFR-SEC-005 |
+| Atomic storage/recovery (mục 16) | NFR-REL-001..003, NFR-REL-007 |
+| Test/technical gate (mục 19–20) | NFR-MNT-001, NFR-MNT-006, mục 16–17 SRS |
+
+## 4. Ràng buộc kỹ thuật
 
 - Target framework: `.NET Framework 4.5` (`net45`).
 - Không dùng `async Main`.
@@ -86,9 +89,9 @@ Quyết định số 8 thay thế hành vi cũ “ServiceMode mở lại MST g�
 - Build cần Visual Studio/MSBuild và .NET Framework 4.5 targeting pack.
 - Mọi logic chia lớp phải có thể unit test mà không khởi động WinForms.
 
-## 6. Kiến trúc solution
+## 5. Kiến trúc solution
 
-### 6.1 Cấu trúc project
+### 5.1 Cấu trúc project
 
 ```text
 src/
@@ -129,7 +132,7 @@ tests/
 └── HoaDonDienTu.Infrastructure.Tests/
 ```
 
-### 6.2 Trách nhiệm
+### 5.2 Trách nhiệm
 
 | Project | Trách nhiệm | Không được chứa |
 |---|---|---|
@@ -138,7 +141,7 @@ tests/
 | Infrastructure | HTTP, JSON, SQLite, DPAPI, WebView adapter, logging | Quyết định hiển thị UI |
 | WinForms | Form, UserControl, presenter, binding và composition root | SQL, HTTP nghiệp vụ, token persistence |
 
-### 6.3 Chiều phụ thuộc
+### 5.3 Chiều phụ thuộc
 
 ```text
 HoaDonDienTu.WinForms ───────> HoaDonDienTu.Application ───────> HoaDonDienTu.Domain
@@ -148,7 +151,7 @@ HoaDonDienTu.WinForms ───────> HoaDonDienTu.Application ───�
 
 `Application` khai báo interface; `Infrastructure` triển khai. `WinForms` chỉ biết implementation cụ thể tại composition root.
 
-### 6.4 Composition root
+### 5.4 Composition root
 
 Không dùng service locator hoặc tạo service rải rác trong event handler. `CompositionRoot` là nơi duy nhất ghép implementation production/development:
 
@@ -168,9 +171,9 @@ public sealed class CompositionRoot : IDisposable
 
 Release build không được đăng ký development adapter.
 
-## 7. Điểm khởi động và vòng đời ứng dụng
+## 6. Điểm khởi động và vòng đời ứng dụng
 
-### 7.1 `Program.Main`
+### 6.1 `Program.Main`
 
 ```csharp
 [STAThread]
@@ -192,7 +195,7 @@ private static void Main()
 
 Không thực hiện thao tác mạng dài trước `Application.Run`.
 
-### 7.2 `AppApplicationContext`
+### 6.2 `AppApplicationContext`
 
 `AppApplicationContext` sở hữu vòng đời `MainShellForm` và các form modal:
 
@@ -219,9 +222,9 @@ Trình tự:
 
 `async void` chỉ được dùng ở UI event boundary và phải bao toàn bộ body bằng handling chuẩn của `IUiOperationRunner` hoặc try/catch chuyển lỗi.
 
-## 8. Xác định chế độ và route khởi động
+## 7. Xác định chế độ và route khởi động
 
-### 8.1 Kiểu dữ liệu
+### 7.1 Kiểu dữ liệu
 
 ```csharp
 public enum AppMode
@@ -253,7 +256,7 @@ public sealed class StartupResult
 }
 ```
 
-### 8.2 Interface
+### 7.2 Interface
 
 ```csharp
 public interface IStartupCoordinator
@@ -273,7 +276,7 @@ Dependency:
 - `IClock`.
 - `IApplicationLogger`.
 
-### 8.3 State machine
+### 7.3 State machine
 
 ```text
 Created
@@ -286,7 +289,7 @@ Created
   └→ RecoveryRequired
 ```
 
-### 8.4 Bảng quyết định
+### 7.4 Bảng quyết định
 
 | Điều kiện | AppMode | StartupRoute |
 |---|---|---|
@@ -299,7 +302,7 @@ Created
 
 ServiceMode không tự mở MST gần nhất.
 
-### 8.5 Thuật toán
+### 7.5 Thuật toán
 
 ```text
 1. Đọc local settings.
@@ -318,7 +321,7 @@ ServiceMode không tự mở MST gần nhất.
 
 Nếu licence hỏng nhưng có nhiều kho, không được rơi về StandardMode rồi che mất dữ liệu.
 
-### 8.6 Sequence khởi động
+### 7.6 Sequence khởi động
 
 ```mermaid
 sequenceDiagram
@@ -344,13 +347,13 @@ sequenceDiagram
     P->>S: ApplyMode + Navigate(route)
 ```
 
-## 9. `MainShellForm`
+## 8. `MainShellForm`
 
-### 9.1 Mục tiêu
+### 8.1 Mục tiêu
 
 `MainShellForm` là cửa sổ chính duy nhất, giữ bố cục chung và vùng nội dung. Không dùng MDI.
 
-### 9.2 Cây control
+### 8.2 Cây control
 
 ```text
 MainShellForm
@@ -377,7 +380,7 @@ MainShellForm
     └── lblApplicationVersion
 ```
 
-### 9.3 Trạng thái theo chế độ
+### 8.3 Trạng thái theo chế độ
 
 | Thành phần | Standard | Service | ReadOnlyService |
 |---|---:|---:|---:|
@@ -389,7 +392,7 @@ MainShellForm
 | Thêm MST | Ẩn | Cho phép | Khóa |
 | Nhãn licence | Nhãn tĩnh/ẩn | Bản dịch vụ | Chỉ đọc – cần gia hạn |
 
-### 9.4 View contract
+### 8.4 View contract
 
 ```csharp
 public interface IMainShellView
@@ -408,7 +411,7 @@ public interface IMainShellView
 }
 ```
 
-### 9.5 Presenter
+### 8.5 Presenter
 
 ```csharp
 public sealed class MainShellPresenter : IDisposable
@@ -426,7 +429,7 @@ public sealed class MainShellPresenter : IDisposable
 
 Presenter đăng ký event tại `Initialize` và hủy đăng ký tại `Dispose`.
 
-### 9.6 Điều hướng
+### 8.6 Điều hướng
 
 ```csharp
 public enum ScreenId
@@ -462,7 +465,7 @@ public interface INavigationService
 
 `IScreenFactory` tạo UserControl + presenter. Không `new` screen trong click handler.
 
-### 9.7 Đóng màn hình
+### 8.7 Đóng màn hình
 
 Trước khi thay control trong `pnlContent`:
 
@@ -472,77 +475,9 @@ Trước khi thay control trong `pnlContent`:
 4. Remove/dispose control.
 5. Tạo screen mới.
 
-## 10. Khai báo doanh nghiệp StandardMode lần đầu
+## 9. `CompanyContext` và chuyển MST
 
-### 10.1 Giao diện
-
-`CompanySetupControl` hiển thị trong `MainShellForm`; menu nghiệp vụ bị ẩn.
-
-Trường bắt buộc:
-
-- MST.
-- Tên hiển thị.
-- Thư mục kho.
-
-### 10.2 Quy trình
-
-```text
-Nhập dữ liệu
-  → chuẩn hóa MST
-  → kiểm tra thư mục/quyền ghi
-  → kiểm tra database hiện hữu
-  → tạo cấu trúc/database tạm
-  → xác minh schema/MST
-  → commit cấu hình
-  → tạo CompanyContext
-  → mở PortalLoginForm
-```
-
-Nếu commit thất bại, không đánh dấu hồ sơ hoàn tất và không ghi đè dữ liệu đã tồn tại.
-
-## 11. Danh sách doanh nghiệp ServiceMode
-
-### 11.1 `CompanyListControl`
-
-Danh sách chỉ đọc `companies.json` và cache tổng quan:
-
-```csharp
-public sealed class CompanyCatalogItem
-{
-    public CompanyId Id { get; private set; }
-    public TaxCode TaxCode { get; private set; }
-    public string DisplayName { get; private set; }
-    public string StoragePath { get; private set; }
-    public DateTime? LastOpenedAt { get; private set; }
-    public DateTime? LastDownloadedAt { get; private set; }
-    public long CachedInvoiceCount { get; private set; }
-    public long CachedStorageBytes { get; private set; }
-    public CompanyCatalogStatus Status { get; private set; }
-}
-```
-
-Không mở SQLite của nhiều MST để dựng danh sách.
-
-### 11.2 Chọn MST
-
-```text
-Chọn “Làm việc”
-  → kiểm tra entitlement
-  → đánh giá tác vụ của context hiện tại
-  → chờ/pause/cancel theo lựa chọn người dùng
-  → xóa PortalSession
-  → đóng SQLite/file handle cũ
-  → xác minh kho mới
-  → mở CompanyContext mới
-  → cập nhật header
-  → mở PortalLoginForm
-```
-
-Trong ReadOnlyServiceMode, bước cuối là Dashboard/Kho hóa đơn; không mở form đăng nhập.
-
-## 12. `CompanyContext` và chuyển MST
-
-### 12.1 Context
+### 9.1 Context
 
 ```csharp
 public sealed class CompanyContext : IDisposable
@@ -565,7 +500,7 @@ public interface ICompanyContextAccessor
 
 Chỉ `ICompanyContextManager` được thay đổi current context.
 
-### 12.2 Switch service
+### 9.2 Switch service
 
 ```csharp
 public interface ICompanySwitchService
@@ -601,7 +536,7 @@ public enum ActiveJobResolution
 }
 ```
 
-### 12.3 Thứ tự bắt buộc
+### 9.3 Thứ tự bắt buộc
 
 1. Giữ async gate để chỉ một switch chạy.
 2. Đánh giá active job.
@@ -640,7 +575,7 @@ sequenceDiagram
     P->>L: LoginAsync(B)
 ```
 
-### 12.4 Storage guard
+### 9.4 Storage guard
 
 Trước mọi thao tác ghi:
 
@@ -654,30 +589,9 @@ Entitlement cho phép thao tác
 
 Không khớp bất kỳ điều kiện nào phải từ chối trước khi ghi.
 
-## 13. Thêm/sửa doanh nghiệp ServiceMode
+## 10. `PortalLoginForm`
 
-`CompanyEditControl` ghi theo hai pha:
-
-```text
-Pha 1
-  → validate input
-  → chuẩn bị thư mục/database tạm
-  → xác minh schema/MST/quyền
-
-Pha 2
-  → ghi companies.json.tmp
-  → đọc và xác minh lại
-  → replace atomic companies.json
-  → đổi tài nguyên tạm thành chính thức
-```
-
-MST đã có dữ liệu không được sửa. Muốn quản lý MST khác phải tạo hồ sơ/kho khác.
-
-“Ngừng quản lý” chỉ bỏ liên kết catalog, không xóa thư mục.
-
-## 14. `PortalLoginForm`
-
-### 14.1 Ý nghĩa
+### 10.1 Ý nghĩa
 
 Chỉ có một loại form đăng nhập. Form luôn đăng nhập MST đang hoạt động trên cổng Thuế.
 
@@ -687,7 +601,7 @@ Không tồn tại:
 - Username/password riêng cho công ty dịch vụ.
 - Đăng nhập đồng thời nhiều MST.
 
-### 14.2 Request
+### 10.2 Request
 
 ```csharp
 public sealed class PortalLoginRequest
@@ -708,7 +622,7 @@ Form không được mở nếu:
 - Context đang chuyển/đóng.
 - Đã có form login khác hoạt động.
 
-### 14.3 Cây control
+### 10.3 Cây control
 
 ```text
 PortalLoginForm
@@ -732,7 +646,7 @@ PortalLoginForm
 
 Tên doanh nghiệp và MST dự kiến phải luôn hiển thị.
 
-### 14.4 State machine
+### 10.4 State machine
 
 ```text
 Created
@@ -756,7 +670,7 @@ VerifyingTaxCode    → TaxCodeMismatch
 Any active state    → Cancelled
 ```
 
-### 14.5 WebView abstraction
+### 10.5 WebView abstraction
 
 ```csharp
 public interface IPortalLoginBrowser : IDisposable
@@ -777,7 +691,7 @@ public interface IPortalLoginBrowser : IDisposable
 
 Interface không giả định token nằm trong cookie, header hay storage.
 
-### 14.6 Quy trình xác minh
+### 10.6 Quy trình xác minh
 
 ```mermaid
 sequenceDiagram
@@ -807,7 +721,7 @@ sequenceDiagram
 
 Điều hướng khỏi trang login không đủ để xác nhận thành công.
 
-### 14.7 Authentication service
+### 10.7 Authentication service
 
 ```csharp
 public interface IPortalAuthenticationService
@@ -831,7 +745,7 @@ public enum PortalLoginOutcome
 }
 ```
 
-### 14.8 Coordinator
+### 10.8 Coordinator
 
 ```csharp
 public interface IPortalLoginCoordinator
@@ -852,9 +766,9 @@ Kết quả thành công:
 - Token hết hạn giữa phiên tải → quay lại screen/checkpoint trong request.
 - Cancel → quay lại screen trước và không giữ candidate token.
 
-## 15. Quản lý portal session và API client
+## 11. Quản lý portal session và API client
 
-### 15.1 Session store
+### 11.1 Session store
 
 ```csharp
 public interface IPortalSessionStore
@@ -871,7 +785,7 @@ public interface IPortalSessionStore
 - Không serialize session/token.
 - Clear khi đổi MST, logout, token hết hạn hoặc đóng app.
 
-### 15.2 API client generation
+### 11.2 API client generation
 
 Một portal API client dùng cho một generation của session:
 
@@ -894,9 +808,9 @@ public interface IPortalApiClientFactory
 }
 ```
 
-## 16. MVP và cấu trúc file WinForms
+## 12. MVP và cấu trúc file WinForms
 
-### 16.1 File
+### 12.1 File
 
 ```text
 HoaDonDienTu.WinForms/
@@ -939,7 +853,7 @@ HoaDonDienTu.WinForms/
     └── ConfirmationService.cs
 ```
 
-### 16.2 Presenter rules
+### 12.2 Presenter rules
 
 Presenter:
 
@@ -959,7 +873,7 @@ View:
 - Không tạo service.
 - Không nuốt exception.
 
-### 16.3 UI operation runner
+### 12.3 UI operation runner
 
 ```csharp
 public interface IUiOperationRunner
@@ -980,7 +894,7 @@ Trách nhiệm:
 - Map exception sang `UserFacingError`.
 - Luôn phục hồi UI trong `finally`.
 
-### 16.4 File chính của Application
+### 12.4 File chính của Application
 
 ```text
 HoaDonDienTu.Application/
@@ -1011,7 +925,7 @@ HoaDonDienTu.Application/
     └── IApplicationLogger.cs
 ```
 
-### 16.5 File chính của Infrastructure
+### 12.5 File chính của Infrastructure
 
 ```text
 HoaDonDienTu.Infrastructure/
@@ -1037,7 +951,7 @@ HoaDonDienTu.Infrastructure/
     └── Adapter production được chọn sau ADR
 ```
 
-## 17. Threading và bất đồng bộ
+## 13. Threading và bất đồng bộ
 
 - Service I/O trả `Task`/`Task<T>`.
 - Chỉ UI event handler được `async void`.
@@ -1049,73 +963,15 @@ HoaDonDienTu.Infrastructure/
 - Chỉ dùng background task cho CPU/file API đồng bộ và phải có progress/cancellation.
 - Khi dispose screen/form, cancel operation rồi chờ cleanup hợp lý trước khi giải phóng dependency.
 
-## 18. Licence
+## 14. Bảo mật
 
-### 18.1 Local entitlement
-
-- `license.dat` được DPAPI `LocalMachine` bảo vệ.
-- File vẫn phải có chữ ký bất đối xứng của server.
-- Public key xác minh được nhúng trong application.
-- DPAPI không thay thế chữ ký.
-- Thư mục áp dụng ACL phù hợp.
-- Thời gian sử dụng ngoại tuyến tối đa là 30 ngày kể từ lần xác thực trực tuyến thành công gần nhất.
-
-### 18.2 Dữ liệu gửi server
-
-Chỉ gửi:
-
-- Licence key.
-- Mã máy đã băm.
-- Phiên bản ứng dụng.
-
-Không gửi:
-
-- MST.
-- Số lượng/danh sách khách hàng.
-- Token Thuế.
-- Hóa đơn.
-- Đường dẫn kho.
-
-### 18.3 ReadOnlyServiceMode
-
-Được phép:
-
-- Mở các MST đã có.
-- Xem, tìm, in, xuất và sao lưu dữ liệu cũ.
-
-Không được phép:
-
-- Thêm MST.
-- Đăng nhập cổng Thuế.
-- Tải mới.
-- Sửa cấu hình nghiệp vụ quan trọng.
-
-Kiểm soát ở cả UI và application service.
-
-## 19. WebView technical gate
-
-Detail Design không chọn WebView cụ thể. Trước implementation production phải:
-
-1. Thử WebBrowser/CefSharp hoặc lựa chọn phù hợp khác trên máy đích.
-2. Xác nhận tương thích .NET Framework 4.5.
-3. Render được cổng Thuế thật.
-4. Nhập CAPTCHA thủ công được.
-5. Phát hiện và lấy được session hợp lệ.
-6. Xóa session giữa hai MST.
-7. Chặn/kiểm soát điều hướng ngoài domain.
-8. Ghi quyết định tại `docs/decisions/`.
-
-Không đưa API WebView cụ thể ra ngoài Infrastructure adapter.
-
-## 20. Bảo mật
-
-### 20.1 TLS
+### 14.1 TLS
 
 - Bật TLS 1.2.
 - Không callback chấp nhận mọi chứng thư.
 - Không hạ TLS để xử lý lỗi.
 
-### 20.2 Dữ liệu xác thực
+### 14.2 Dữ liệu xác thực
 
 Không được:
 
@@ -1125,7 +981,7 @@ Không được:
 - Lưu token trong SQLite/JSON/settings.
 - Đưa token vào view state.
 
-### 20.3 Log
+### 14.3 Log
 
 Được phép:
 
@@ -1144,9 +1000,9 @@ Không được phép:
 - XML/request/response body thật.
 - Dữ liệu cá nhân không cần thiết.
 
-## 21. Xử lý lỗi
+## 15. Xử lý lỗi
 
-### 21.1 Taxonomy
+### 15.1 Taxonomy
 
 ```csharp
 public enum ErrorCategory
@@ -1180,7 +1036,7 @@ public sealed class UserFacingError
 
 Thông báo phải nêu thao tác, doanh nghiệp bị ảnh hưởng, dữ liệu đã giữ hay chưa, hành động tiếp theo và correlation ID.
 
-### 21.2 Global handler
+### 15.2 Global handler
 
 Đăng ký:
 
@@ -1190,7 +1046,7 @@ Thông báo phải nêu thao tác, doanh nghiệp bị ảnh hưởng, dữ li�
 
 Global handler không được dùng để che lỗi rồi tiếp tục trong trạng thái không xác định.
 
-### 21.3 Recovery rules
+### 15.3 Recovery rules
 
 - Không tạo database rỗng thay file lỗi/mất.
 - Không ghi đè `companies.json` lỗi.
@@ -1198,7 +1054,7 @@ Global handler không được dùng để che lỗi rồi tiếp tục trong tr
 - Lỗi server licence không đồng nghĩa bị thu hồi.
 - Nếu đổi context thất bại, phục hồi context trước hoặc vào Recovery.
 
-## 22. Ghi file atomic
+## 16. Ghi file atomic
 
 Áp dụng cho `companies.json`, licence cache và cấu hình:
 
@@ -1212,9 +1068,9 @@ ghi <file>.tmp cùng volume
 
 Không ghi đè trực tiếp file đang dùng.
 
-## 23. Đóng ứng dụng
+## 17. Đóng ứng dụng
 
-### 23.1 Không có tác vụ ghi
+### 17.1 Không có tác vụ ghi
 
 ```text
 FormClosing
@@ -1224,7 +1080,7 @@ FormClosing
   → ExitThread
 ```
 
-### 23.2 Có tác vụ ghi
+### 17.2 Có tác vụ ghi
 
 ```text
 FormClosing
@@ -1237,70 +1093,7 @@ FormClosing
 
 Không dùng `Environment.Exit` cho luồng thường.
 
-## 24. Kiểm thử
-
-### 24.1 StartupCoordinator
-
-- Không licence + chưa có doanh nghiệp → StandardFirstRun.
-- Không licence + một doanh nghiệp → StandardPortalLogin.
-- Licence hợp lệ → ServiceCompanySelection.
-- Licence offline còn hạn → Service + cảnh báo.
-- Licence mất hiệu lực + nhiều kho → ReadOnlyCompanySelection.
-- Catalog lỗi → Recovery, không tạo file mới.
-- Cancellation không để migration dở dang.
-
-### 24.2 MainShellPresenter
-
-- Standard ẩn selector/menu doanh nghiệp.
-- Service hiện selector/menu doanh nghiệp.
-- ReadOnly khóa login/tải/thêm MST.
-- Session thay đổi cập nhật header.
-- Navigation bị từ chối khi screen không thể đóng.
-- Dispose hủy event subscription.
-
-### 24.3 PortalLoginPresenter
-
-- Không context → không mở browser.
-- Browser init → WaitingForUser.
-- Candidate đúng MST → Success.
-- Candidate sai MST → clear + mismatch.
-- Candidate/token lỗi → retry.
-- Cancel → clear + return screen.
-- Hai login đồng thời → một form.
-- View/log không chứa token.
-
-### 24.4 CompanySwitchService
-
-- Chuyển khi không có job.
-- Chuyển với pause/cancel.
-- Context cũ đóng trước context mới.
-- Mở target lỗi → phục hồi context cũ.
-- Session clear trước switch.
-- Context/MST không khớp → từ chối.
-- ReadOnly mở kho nhưng không login.
-
-### 24.5 Integration
-
-- Atomic JSON và `.bak` recovery.
-- Hai MST có hai SQLite độc lập.
-- Service không giữ hai context.
-- DPAPI licence cache.
-- Chữ ký licence sai.
-- Portal/licence HTTP handler độc lập.
-- Session generation cũ bị vô hiệu.
-- Database locked/schema sai/path mất.
-
-### 24.6 UI smoke
-
-- Standard khởi động tới login.
-- Service khởi động tại danh sách.
-- Chọn MST mở login đúng tên/MST.
-- Hủy login quay lại đúng screen.
-- Bật licence hiện menu mà không cài lại.
-- ReadOnly không có action tải.
-- Đóng app thực hiện cleanup.
-
-## 25. Development adapter
+## 18. Development adapter
 
 Được phép trong Debug để dựng/test khung:
 
@@ -1316,61 +1109,130 @@ Yêu cầu:
 - UI phải hoạt động qua cùng interface với production adapter.
 - Không coi endpoint/payload fake là tài liệu API thật.
 
-## 26. Thứ tự triển khai khuyến nghị
+## 19. Kiểm thử
 
-1. Tạo solution/project và test project.
-2. Tạo Domain value object/enums tối thiểu.
-3. Tạo Application interface/result/state.
-4. Dựng composition root và `AppApplicationContext`.
-5. Dựng `MainShellForm`, screen host và navigation.
-6. Dựng `StartupCoordinator` với fake licence/catalog.
-7. Dựng Standard first-run company setup.
-8. Dựng Service company list/edit/switch.
-9. Dựng `PortalLoginForm` qua development browser adapter.
-10. Dựng in-memory session và fake verification.
-11. Thêm error/logging/cleanup.
-12. Hoàn thành unit/integration/UI smoke test.
-13. Thực hiện WebView/API technical spike và ADR.
-14. Thay development adapter bằng production adapter đã xác minh.
+### 19.1 StartupCoordinator
 
-## 27. Definition of Done
+- Không licence + chưa có doanh nghiệp → StandardFirstRun.
+- Không licence + một doanh nghiệp → StandardPortalLogin.
+- Licence hợp lệ → ServiceCompanySelection.
+- Licence offline còn hạn → Service + cảnh báo.
+- Licence mất hiệu lực + nhiều kho → ReadOnlyCompanySelection.
+- Catalog lỗi → Recovery, không tạo file mới.
+- Cancellation không để migration dở dang.
 
-- Solution build bằng MSBuild với net45 targeting pack.
-- Dependency đúng chiều.
-- Không có nghiệp vụ trong `.Designer.cs`.
-- Chạy được Standard, Service và ReadOnly bằng development configuration.
-- Service luôn mở danh sách doanh nghiệp khi khởi động.
-- Chỉ một `CompanyContext`, `PortalSession` và `PortalLoginForm` tồn tại.
-- Sai MST không tạo session hoặc ghi dữ liệu.
-- Token không xuất hiện trong file/log/view state.
-- Test startup, presenter, session và switch pass.
-- README/CLAUDE.md có lệnh build/test thực tế sau khi solution được tạo.
-- Không có secret hoặc dữ liệu doanh nghiệp thật trong repository.
+### 19.2 MainShellPresenter
 
-## 28. Ma trận truy vết
+- Standard ẩn selector/menu doanh nghiệp.
+- Service hiện selector/menu doanh nghiệp.
+- ReadOnly khóa login/tải/thêm MST.
+- Session thay đổi cập nhật header.
+- Navigation bị từ chối khi screen không thể đóng.
+- Dispose hủy event subscription.
 
-| Thành phần Detail Design | Yêu cầu SRS chính |
-|---|---|
-| Startup mode/route | BR-001, BR-016, FR-COMP-001, FR-LIC-004..008 |
-| MainShellForm | FR-COMP-006, NFR-USE-003, NFR-USE-006..007 |
-| Company setup/list | FR-SET-001..003, FR-COMP-002..005 |
-| Company switch/context | BR-017..020, FR-COMP-007..012, NFR-REL-006 |
-| PortalLoginForm | FR-AUTH-001..012, BR-020 |
-| Session/API client | NFR-SEC-001..002, NFR-SEC-006 |
-| ReadOnlyServiceMode | BR-022, FR-LIC-007..008 |
-| Atomic storage/recovery | NFR-REL-001..003, NFR-REL-007 |
-| Test/technical gate | NFR-MNT-001..006, mục 16–17 SRS |
+### 19.3 PortalLoginPresenter
 
-## 29. Điểm chưa được phép tự quyết định khi code
+- Không context → không mở browser.
+- Browser init → WaitingForUser.
+- Candidate đúng MST → Success.
+- Candidate sai MST → clear + mismatch.
+- Candidate/token lỗi → retry.
+- Cancel → clear + return screen.
+- Hai login đồng thời → một form.
+- View/log không chứa token.
 
-Các mục sau cần bằng chứng technical spike/ADR, không được lập trình viên tự chọn và hard-code:
+### 19.4 CompanySwitchService
 
-- WebView engine production.
-- Cách phát hiện login thành công.
-- Vị trí/định dạng token hoặc cookie.
-- Endpoint xác minh phiên/MST.
-- Endpoint nghiệp vụ hóa đơn.
-- Header/payload/pagination/rate limit cổng Thuế.
-- Thuật toán/chính sách licence production ngoài contract đã mô tả.
+- Chuyển khi không có job.
+- Chuyển với pause/cancel.
+- Context cũ đóng trước context mới.
+- Mở target lỗi → phục hồi context cũ.
+- Session clear trước switch.
+- Context/MST không khớp → từ chối.
+- ReadOnly mở kho nhưng không login.
 
-Khi chưa có quyết định, code chỉ được dừng ở interface và development adapter.
+### 19.5 Integration
+
+- Atomic JSON và `.bak` recovery.
+- Hai MST có hai SQLite độc lập.
+- Service không giữ hai context.
+- DPAPI licence cache.
+- Chữ ký licence sai.
+- Portal/licence HTTP handler độc lập.
+- Session generation cũ bị vô hiệu.
+- Database locked/schema sai/path mất.
+
+### 19.6 UI smoke
+
+- Standard khởi động tới login.
+- Service khởi động tại danh sách.
+- Chọn MST mở login đúng tên/MST.
+- Hủy login quay lại đúng screen.
+- Bật licence hiện menu mà không cài lại.
+- ReadOnly không có action tải.
+- Đóng app thực hiện cleanup.
+
+## 20. Điểm chưa được phép tự quyết định khi code
+
+Các mục sau cần bằng chứng technical spike/ADR (xem [DD-00](DD-00-TECHNICAL-GATES.md)), không được lập trình viên tự chọn và hard-code:
+
+- WebView engine production (gate G-01).
+- Cách phát hiện login thành công, vị trí/định dạng token hoặc cookie (G-01, G-02).
+- Endpoint xác minh phiên/MST và endpoint nghiệp vụ hóa đơn (G-02).
+- Header/payload/pagination/rate limit cổng Thuế (G-02, G-05).
+- Thuật toán/chính sách licence production ngoài contract đã mô tả (G-06, [DD-03](DD-03-LICENSING.md)).
+
+Khi chưa có quyết định, code chỉ được dừng ở interface và development adapter. Không đưa API WebView cụ thể ra ngoài Infrastructure adapter.
+
+## 21. Theo dõi tiến độ implement
+
+Trạng thái: ⬜ Chưa bắt đầu · 🟡 Đang làm · ✅ Hoàn thành · ⛔ Bị chặn. Cập nhật bảng này cùng PR triển khai và đồng bộ trạng thái tổng ở [PROJECT-PLAN](../plans/PROJECT-PLAN.md).
+
+### 21.1 Công việc
+
+| ID | Công việc | Lớp | Phụ thuộc | Trạng thái | PR/Commit | Ghi chú |
+|---|---|---|---|---|---|---|
+| T01-01 | Tạo solution, 4 project nền tảng và 3 test project (mục 5) | All | — | ⬜ | | Cần net45 targeting pack |
+| T01-02 | Domain value object/enums tối thiểu (`CompanyId`, `TaxCode`, `AppMode`, …) | Domain | T01-01 | ⬜ | | |
+| T01-03 | Application interface/result/state (`IStartupCoordinator`, `INavigationService`, `UserFacingError`, …) | Application | T01-02 | ⬜ | | |
+| T01-04 | `CompositionRoot`, `Program.Main`, `AppApplicationContext`, `GlobalExceptionHandler` | WinForms | T01-03 | ⬜ | | TLS 1.2 bật trước kết nối |
+| T01-05 | `MainShellForm`, `MainShellPresenter`, `ScreenHost`, `NavigationService`, `ScreenFactory` | WinForms | T01-04 | ⬜ | | |
+| T01-06 | `StartupCoordinator` + fake licence/catalog + bảng quyết định route | Application | T01-03 | ⬜ | | Phụ thuộc interface DD-03/DD-02 |
+| T01-07 | `CompanyContext`, `ICompanyContextManager`, `CompanySwitchService`, `StorageGuard` | Application | T01-03 | ⬜ | | Cần repository stub từ DD-02/DD-06 |
+| T01-08 | `PortalLoginForm`, `PortalLoginPresenter`, `PortalLoginCoordinator` + `DevelopmentPortalLoginBrowser` | WinForms/Infra | T01-05, T01-07 | ⬜ | | |
+| T01-09 | `InMemoryPortalSessionStore`, `IPortalApiClientFactory` (stub), fake `IPortalAuthenticationService` | Infra | T01-03 | ⬜ | | |
+| T01-10 | `UiOperationRunner`, `UserErrorPresenter`, `ConfirmationService`, logging che dữ liệu nhạy cảm | WinForms/Infra | T01-04 | ⬜ | | NFR-SEC-002 |
+| T01-11 | `AtomicJsonWriter` và quy trình `.tmp` → verify → replace + `.bak` | Infra | T01-01 | ⬜ | | Dùng chung DD-02/DD-03 |
+| T01-12 | Quy trình đóng ứng dụng (mục 17) | WinForms | T01-05, T01-09 | ⬜ | | |
+| T01-13 | Unit test Startup, MainShellPresenter, PortalLoginPresenter, CompanySwitchService (mục 19.1–19.4) | Tests | T01-06..T01-09 | ⬜ | | |
+| T01-14 | Integration test (mục 19.5) | Tests | T01-11 | ⬜ | | |
+| T01-15 | UI smoke test (mục 19.6) | Tests | T01-13 | ⬜ | | |
+| T01-16 | Thay development adapter bằng production adapter đã xác minh | Infra | DD-00 G-01, G-02 | ⛔ | | Chờ ADR WebView + API discovery |
+| T01-17 | Cập nhật `CLAUDE.md`/`README.md` với lệnh build/test thực tế | Docs | T01-01 | ⬜ | | |
+
+### 21.2 Definition of Done
+
+- [ ] Solution build bằng MSBuild với net45 targeting pack.
+- [ ] Dependency đúng chiều (mục 5.3); không có nghiệp vụ trong `.Designer.cs`.
+- [ ] Chạy được Standard, Service và ReadOnly bằng development configuration.
+- [ ] Service luôn mở danh sách doanh nghiệp khi khởi động.
+- [ ] Chỉ một `CompanyContext`, `PortalSession` và `PortalLoginForm` tồn tại.
+- [ ] Sai MST không tạo session hoặc ghi dữ liệu.
+- [ ] Token không xuất hiện trong file/log/view state.
+- [ ] Test startup, presenter, session và switch pass.
+- [ ] `README.md`/`CLAUDE.md` có lệnh build/test thực tế.
+- [ ] Không có secret hoặc dữ liệu doanh nghiệp thật trong repository.
+- [ ] Development adapter không được đăng ký trong Release composition root.
+
+### 21.3 Nhật ký tiến độ
+
+| Ngày | Nội dung | Người thực hiện |
+|---|---|---|
+| 01/11/2026 | Chuẩn hóa tài liệu, tách DD-02/DD-03/DD-00; chưa có code | Claude Code |
+
+## 22. Lịch sử thay đổi tài liệu
+
+| Phiên bản | Ngày | Thay đổi |
+|---|---|---|
+| 1.0 | 01/11/2026 | Bản đầu `DD-HDDT-APP-SHELL-LOGIN-001` (thư mục `architecture/`) |
+| 1.1 | 01/11/2026 | Chuyển sang `detail-design/`, chuẩn hóa theo mẫu; tách phần doanh nghiệp → DD-02, licence → DD-03, WebView gate → DD-00; thêm truy vết và theo dõi tiến độ |

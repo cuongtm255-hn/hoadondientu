@@ -1,0 +1,143 @@
+# DD-06 — Chuẩn hóa, lưu XML, chống trùng và kho dữ liệu SQLite theo MST
+
+## 1. Thông tin tài liệu
+
+| Thuộc tính | Giá trị |
+|---|---|
+| Mã tài liệu | DD-HDDT-06 |
+| Tên | Schema `company.db`, chuẩn hóa metadata, khóa chống trùng, ghi XML atomic, phiên bản hóa, cấu trúc thư mục |
+| Phiên bản | 1.0 |
+| Ngày | 01/11/2026 |
+| Trạng thái | Thiết kế — chờ review; thư viện SQLite chờ gate G-08 |
+| Feature | [FT-07](../requirements/FEATURE-LIST.md#ft-07--chuẩn-hóa-lưu-xml-chống-trùng-và-phiên-bản-hóa) |
+| SRS | BR-008..010, 013, 018; FR-STORE-001..010; mục 9; NFR-REL-001, 003, 004; NFR-MNT-003; AC-04, AC-05 |
+| Màn hình | Không có (hạ tầng dữ liệu); hiển thị ở SCR-05/06 |
+| Phụ thuộc | [DD-00](DD-00-TECHNICAL-GATES.md) (G-02, G-08), [DD-01](DD-01-APP-SHELL-LOGIN.md) (`CompanyContext`, `StorageGuard`, atomic) |
+| Phase triển khai | [Phase 3](../plans/PROJECT-PLAN.md#phase-3--tải-hóa-đơn-end-to-end) |
+
+## 2. Mục đích và phạm vi
+
+Định nghĩa cách một hóa đơn nhận từ cổng Thuế trở thành bản ghi metadata + file XML bền vững trong kho riêng của đúng MST. Đây là nền cho Kho hóa đơn, xuất dữ liệu, sao lưu và khôi phục.
+
+Ngoài phạm vi: tạo PDF (DD-08), truy vấn giao diện (DD-07), đóng gói sao lưu (DD-11).
+
+## 3. Cấu trúc thư mục
+
+Theo SRS mục 9.4:
+
+```text
+<StorageRoot>\                      (companies.json, license.dat ở cấp cài đặt)
+└── Companies\<MST>\
+    ├── Data\company.db
+    ├── <yyyy>\<MM>\{MuaVao|BanRa}\{XML|PDF}\
+    ├── Exports\  Backups\  Logs\
+```
+
+- Database lưu đường dẫn **tương đối** so với thư mục `<MST>` để cả kho di chuyển được.
+- Tên file: `<yyyyMMdd>_<MST-doi-tac>_<mau-so>_<ky-hieu>_<so-hoa-don>_<version>.xml`; ký tự không hợp lệ với Windows thay bằng `_`; thêm hậu tố chống va chạm; kiểm tra giới hạn độ dài đường dẫn.
+- `InvoiceFileNamer` là lớp thuần, có unit test (NFR-MNT-001).
+
+## 4. Schema SQLite (logic)
+
+| Bảng | Cột chính | Ghi chú |
+|---|---|---|
+| `SchemaInfo` | `Version`, `AppliedAt` | Một bản ghi hiện hành |
+| `CompanySettings` | `TaxCode`, `DisplayName`, `Config` | Một bản ghi; MST khóa sau khi có dữ liệu (FR-SET-002) |
+| `Invoice` | `InvoiceId`, `PortalInvoiceId`, `BusinessKey` (UNIQUE), `Direction`, 19 trường mục 9.1 SRS, `StatusRaw`, `CheckResultRaw`, `FirstSeenAt`, `LastSeenAt`, `CurrentVersionId`, `FileIntegrity` | Index: số hóa đơn, MST đối tác, ngày lập, direction |
+| `InvoiceVersion` | `VersionId`, `InvoiceId`, `VersionNo`, `Sha256`, `CreatedAt`, `IsCurrent`, `SourceSessionId` | Nhiều phiên bản/hóa đơn |
+| `FileAsset` | `FileId`, `VersionId`, `Kind` (XML/PDF), `RelativePath`, `SizeBytes`, `Sha256`, `DownloadedAt`, `Status`, `LastCheckedAt` | PDF ghi `SourceVersionId` + ngày tạo |
+| `DownloadSession` / `DownloadSegment` / `DownloadEvent` | xem [DD-05](DD-05-DOWNLOAD-ENGINE.md) | |
+| `ExportRecord` | `ExportId`, `Kind`, `Scope`, `Path`, `Manifest`, `CreatedAt` | Xem [DD-09](DD-09-EXPORT.md) |
+
+- Bật transaction; WAL nếu provider hỗ trợ; `PRAGMA integrity_check` trong quy trình chẩn đoán/sao lưu (NFR-REL-003).
+- Migration có version, chạy theo thứ tự, luôn sao lưu trước khi nâng cấp (NFR-MNT-003).
+- Mọi truy cập đi qua `ICompanyUnitOfWorkFactory` của `CompanyContext`; không có truy cập database toàn cục (BR-018).
+
+## 5. Chuẩn hóa và khóa chống trùng
+
+```csharp
+public sealed class NormalizedInvoice { /* 19 trường mục 9.1 SRS + Direction + PortalInvoiceId + raw status */ }
+
+public interface IInvoiceNormalizer
+{
+    NormalizedInvoice Normalize(PortalInvoiceDto dto, InvoiceDirection direction);
+}
+
+public static class BusinessKey
+{
+    // Ưu tiên PortalInvoiceId; thiếu → Direction|SellerTaxCode|FormSymbol|InvoiceSymbol|InvoiceNumber|IssueDate
+    public static string Build(NormalizedInvoice invoice);
+}
+```
+
+- Mua vào và bán ra dùng chung một mô hình (FR-STORE-001); số hóa đơn, ký hiệu giữ dạng text để bảo toàn số 0 đầu.
+- Trạng thái và kết quả kiểm tra lưu cả giá trị chuẩn hóa và giá trị nguồn; bảng ánh xạ có unit test.
+- Mapping nằm trong Application/Infrastructure, độc lập với UI; thay đổi schema API được xử lý ở adapter (NFR-MNT-002).
+
+## 6. Quy trình lưu một hóa đơn
+
+```text
+UpsertAsync(dto, xmlStream)
+  guard: CompanyContext khớp, MST phiên khớp (NFR-SEC-006)
+  1. Normalize → BusinessKey
+  2. Ghi XML vào file tạm cùng volume (…\XML\*.tmp)
+  3. Kiểm tra XML đọc được (XmlReader, DtdProcessing.Prohibit) và tính SHA-256   (FR-STORE-003)
+  4. Tìm Invoice theo BusinessKey:
+        không có            → tạo Invoice + InvoiceVersion #1 (IsCurrent)
+        có, hash trùng      → chỉ cập nhật LastSeenAt                           (FR-STORE-006, BR-009)
+        có, hash khác       → tạo InvoiceVersion mới, đặt IsCurrent, giữ bản cũ (FR-STORE-007, BR-010)
+  5. Đổi tên file tạm → file chính thức (atomic rename), rồi commit transaction  (FR-STORE-004)
+  6. Lỗi ở bất kỳ bước nào: xóa file tạm, rollback, ghi DownloadEvent; không báo thành công (FR-STORE-010)
+```
+
+Thứ tự "đổi tên rồi commit" cùng quy tắc quét file mồ côi (file có trong thư mục nhưng không có `FileAsset`) bảo đảm mất điện không làm mất hóa đơn đã commit (NFR-REL-001).
+
+## 7. Kiểm tra toàn vẹn
+
+`IFileIntegrityChecker.CheckAsync(scope)` so sánh `FileAsset` với đĩa: thiếu, không đọc được XML, sai SHA-256. Kết quả ghi `FileIntegrity`/`LastCheckedAt` và hiển thị cảnh báo cụ thể ở Kho hóa đơn; không tự thay file (FR-STORE-009, 010). Hành động "tải lại XML" do người dùng khởi tạo qua DD-05.
+
+## 8. Kiểm thử
+
+### 8.1 Unit
+
+- `BusinessKey` ưu tiên ID cổng; khóa dự phòng ổn định; phân biệt mua/bán.
+- `InvoiceFileNamer`: ký tự cấm, hậu tố va chạm, độ dài tối đa.
+- Ánh xạ trạng thái/kết quả kiểm tra; chuẩn hóa số 0 đầu.
+- Quy tắc phiên bản hóa: trùng hash / khác hash / mới (AC-04, AC-05).
+
+### 8.2 Integration
+
+- SQLite: transaction, rollback, migration lên/xuống bằng backup, tìm kiếm 100.000 bản ghi (NFR-PERF-002).
+- File: ghi atomic, file bị khóa, hết dung lượng, sai quyền, mất điện giả lập giữa bước 5.
+- Hai MST hai database độc lập; ghi sai context bị từ chối.
+- XML hỏng không tạo file chính thức; integrity checker phát hiện thiếu/sai hash.
+
+## 9. Theo dõi tiến độ implement
+
+Trạng thái: ⬜ Chưa bắt đầu · 🟡 Đang làm · ✅ Hoàn thành · ⛔ Bị chặn.
+
+### 9.1 Công việc
+
+| ID | Công việc | Lớp | Phụ thuộc | Trạng thái | PR/Commit | Ghi chú |
+|---|---|---|---|---|---|---|
+| T06-01 | Domain: `NormalizedInvoice`, `BusinessKey`, trạng thái/kết quả kiểm tra, `InvoiceFileNamer` | Domain | T01-02 | ⬜ | | |
+| T06-02 | Schema + `CompanyDatabaseInitializer` + `SchemaVersionReader` + migration framework | Infra | G-08 | ⛔ | | Chờ chọn SQLite provider |
+| T06-03 | Repository `Invoice`/`InvoiceVersion`/`FileAsset` + unit-of-work factory | Infra | T06-02 | ⬜ | | |
+| T06-04 | `IInvoiceNormalizer` + mapping từ DTO cổng | Application/Infra | G-02 | ⛔ | | Chờ API discovery |
+| T06-05 | `InvoiceStorageService.UpsertAsync` (file tạm, hash, phiên bản hóa) | Application | T06-01, T06-03 | ⬜ | | |
+| T06-06 | `IFileIntegrityChecker` + quét file mồ côi | Application | T06-05 | ⬜ | | |
+| T06-07 | Tạo cấu trúc thư mục kho + kiểm tra quyền/dung lượng (`CompanyStorageValidator`) | Infra | T02-03 | ⬜ | | Dùng chung DD-02 |
+| T06-08 | Unit test (mục 8.1) | Tests | T06-01..T06-05 | ⬜ | | |
+| T06-09 | Integration test (mục 8.2) | Tests | T06-05..T06-07 | ⬜ | | |
+
+### 9.2 Nhật ký tiến độ
+
+| Ngày | Nội dung | Người thực hiện |
+|---|---|---|
+| 01/11/2026 | Tạo tài liệu; chưa có code | Claude Code |
+
+## 10. Lịch sử thay đổi tài liệu
+
+| Phiên bản | Ngày | Thay đổi |
+|---|---|---|
+| 1.0 | 01/11/2026 | Bản đầu |

@@ -40,7 +40,9 @@ Cổng Thuế giới hạn một lần tra cứu trong phạm vi một tháng. �
 ## Tài liệu
 
 - [SRS đầy đủ](docs/requirements/SRS.md)
-- [Detail Design — Khung chương trình và đăng nhập](docs/architecture/DETAIL-DESIGN-APPLICATION-SHELL-LOGIN.md)
+- [Danh sách tính năng](docs/requirements/FEATURE-LIST.md)
+- [Detail design theo tính năng](docs/detail-design/README.md), gồm [Khung chương trình và đăng nhập](docs/detail-design/DD-01-APP-SHELL-LOGIN.md)
+- [Kế hoạch và tiến độ theo phase](docs/plans/PROJECT-PLAN.md)
 - [Wireframe HTML tương tác](docs/wireframes/index.html)
 - [Danh mục wireframe PNG](docs/wireframes/README.md)
 - [Chỉ mục tài liệu](docs/README.md)
@@ -73,19 +75,20 @@ Cổng Thuế giới hạn một lần tra cứu trong phạm vi một tháng. �
 src/                  Mã nguồn ứng dụng
 tests/                Unit/integration tests
 docs/
-├── requirements/     SRS và yêu cầu nghiệm thu
+├── requirements/     SRS, feature list và yêu cầu nghiệm thu
+├── detail-design/    Detail design theo tính năng, kèm theo dõi tiến độ implement
 ├── wireframes/       HTML tương tác và PNG
-├── architecture/     Kiến trúc và luồng dữ liệu
+├── architecture/     Tổng quan kiến trúc xuyên tính năng
 ├── decisions/        ADR
 ├── api-samples/      Mẫu API đã loại dữ liệu nhạy cảm
-├── plans/            Kế hoạch triển khai
+├── plans/            Kế hoạch và tiến độ dự án theo phase
 ├── progress/         Ghi chú bàn giao giữa các phiên
 └── runbooks/         Build, release và xử lý sự cố
 ```
 
 ## Trạng thái phát triển
 
-Repository hiện ở giai đoạn đặc tả/thiết kế; solution và project source chưa được tạo.
+Repository hiện ở **Phase 0 — Yêu cầu và thiết kế** (SRS, wireframe, feature list và detail design đã có, chờ review); solution và project source chưa được tạo. Xem [kế hoạch theo phase](docs/plans/PROJECT-PLAN.md).
 
 Khi có solution, các lệnh dự kiến:
 
