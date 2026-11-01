@@ -28,6 +28,13 @@ The portal login has a CAPTCHA, so the app does **not** automate login:
 
 Planned layering (not yet created): UI (WinForms) → services (period splitting, search, export) → portal API client (token-bearing HttpClient) / WebView token capture. Keep period-splitting logic (quarter/year/custom → monthly windows) UI-independent so it is unit-testable.
 
+## Testing policy: mock data only, real portal only in Release
+
+- **Do not hit the real portal (`hoadondientu.gdt.gov.vn`) from tests, dev runs, spikes or demos.** All testing and development use mock data (`MockPortalHandler`, `MockInvoiceDataset`, development adapters). Real API calls happen only in the released product (Release build, real user, real login).
+- **Mark test/mock mode visibly.** Whenever the app or a test runs on mock data it must say so: a visible `TEST`/`MOCK` label in the UI (title bar or banner), mock data clearly labelled as fake (e.g. "mẫu", "(mô phỏng)", XML comment "DỮ LIỆU GIẢ"), and automated tests tagged (`Category`, names/fixtures that make the mock explicit). Mock code stays Debug-only (`#if DEBUG`) and must never be reachable from Release.
+- **Sole exception: trying out the first-time login feature** (user-driven WebView login on the real portal to verify login capture). Even then: the user enters credentials and CAPTCHA manually, nothing is automated, no invoice/search/download API is called, and no secrets are stored or logged.
+- Never paste real traffic, tokens, passwords or cookies into the repo (see the API contract note below); commit only sanitized samples.
+
 ## Constraints
 
 - Target framework is `net45`: no `async Main`, no modern C# runtime APIs; check package compatibility with .NET 4.5. TLS 1.2 must be enabled explicitly (`ServicePointManager.SecurityProtocol`) for the portal.
