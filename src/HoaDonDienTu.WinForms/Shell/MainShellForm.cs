@@ -21,7 +21,44 @@ namespace HoaDonDienTu.WinForms.Shell
             {
                 navDashboard, navDownload, navInvoiceArchive, navDownloadHistory, navCompanies, navSettings
             };
+#if DEBUG
+            ApplyTestMarker();
+#endif
         }
+
+#if DEBUG
+        /// <summary>
+        /// Chính sách test (CLAUDE.md): bản Debug chạy hoàn toàn trên dữ liệu giả nên phải luôn hiện nhãn TEST/MOCK ở tiêu đề và banner
+        /// trên cùng. Không có trong bản Release.
+        /// </summary>
+        public const string TestMarker = "[TEST] DỮ LIỆU GIẢ";
+
+        private void ApplyTestMarker()
+        {
+            Text += " — " + TestMarker;
+
+            var banner = new KryptonPanel
+            {
+                Name = "pnlTestBanner",
+                Dock = DockStyle.Top,
+                Height = 26,
+                PanelBackStyle = PaletteBackStyle.PanelCustom1
+            };
+            banner.StateCommon.Color1 = System.Drawing.Color.FromArgb(255, 193, 7);
+            var label = new KryptonLabel
+            {
+                Name = "lblTestBanner",
+                Dock = DockStyle.Fill,
+                Values = { Text = "CHẾ ĐỘ TEST — dữ liệu giả, không gọi cổng Thuế thật" }
+            };
+            label.StateCommon.ShortText.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            label.StateCommon.ShortText.Color1 = System.Drawing.Color.FromArgb(60, 40, 0);
+            label.StateCommon.ShortText.TextH = PaletteRelativeAlign.Center;
+            banner.Controls.Add(label);
+            Controls.Add(banner);
+            banner.SendToBack();
+        }
+#endif
 
         public IWin32Window OwnerWindow
         {

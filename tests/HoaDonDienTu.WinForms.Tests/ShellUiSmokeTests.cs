@@ -385,6 +385,32 @@ namespace HoaDonDienTu.WinForms.Tests
             Assert.That(Control<KryptonCheckButton>("rdoPurchase").Checked, Is.False);
         }
 
+#if DEBUG
+        // ---- Chính sách test (CLAUDE.md): bản Debug luôn hiện nhãn TEST/MOCK ----
+
+        [Test]
+        public void DebugBuild_AlwaysShowsTestMarker_InTitleAndBanner()
+        {
+            Start("Standard");
+
+            Assert.That(_form.Text, Does.Contain(MainShellForm.TestMarker));
+            var banner = Control<KryptonPanel>("pnlTestBanner");
+            Assert.That(banner.Visible, Is.True);
+            Assert.That(banner.Dock, Is.EqualTo(DockStyle.Top));
+            Assert.That(Control<KryptonLabel>("lblTestBanner").Values.Text, Does.Contain("dữ liệu giả"));
+        }
+
+        [TestCase("Service")]
+        [TestCase("ReadOnly")]
+        [TestCase("StandardFirstRun")]
+        public void TestMarker_IsShownInEveryDevelopmentMode(string mode)
+        {
+            Start(mode);
+
+            Assert.That(Control<KryptonPanel>("pnlTestBanner").Visible, Is.True);
+        }
+#endif
+
         // ---- SCR-10 / SCR-11 (DD-02 mục 8.3) ----
 
         private System.Windows.Forms.Control CurrentScreenControl()
