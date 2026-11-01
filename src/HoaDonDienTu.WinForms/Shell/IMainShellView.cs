@@ -1,9 +1,10 @@
 using System;
 using System.Windows.Forms;
+using HoaDonDienTu.WinForms.Navigation;
 
 namespace HoaDonDienTu.WinForms.Shell
 {
-    public interface IMainShellView
+    public interface IMainShellView : INavigationView
     {
         IWin32Window OwnerWindow { get; }
 
@@ -16,8 +17,6 @@ namespace HoaDonDienTu.WinForms.Shell
         void ShowCompany(CompanyHeaderViewState state);
         void ShowPortalSession(PortalSessionViewState state);
         void ShowOperation(OperationViewState state);
-        void ShowScreen(Control screen);
-        void SelectNavigation(HoaDonDienTu.Application.Navigation.ScreenId screen);
         void ShowError(string title, string message);
 
         /// <summary>Đóng cửa sổ chính mà không hỏi lại; chỉ gọi sau khi quy trình đóng đã hoàn tất.</summary>

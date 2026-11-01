@@ -12,6 +12,7 @@ using HoaDonDienTu.Application.Startup;
 using HoaDonDienTu.Domain.Companies;
 using HoaDonDienTu.Infrastructure.Portal;
 using HoaDonDienTu.WinForms.Login;
+using HoaDonDienTu.WinForms.Navigation;
 using HoaDonDienTu.WinForms.Shell;
 using NUnit.Framework;
 
@@ -30,6 +31,7 @@ namespace HoaDonDienTu.WinForms.Tests
         private FakePrompt _prompt;
         private RecordingErrors _errors;
         private RecordingLogger _logger;
+        private FakeScreenFactory _screens;
         private MainShellPresenter _presenter;
 
         [SetUp]
@@ -44,9 +46,11 @@ namespace HoaDonDienTu.WinForms.Tests
             _errors = new RecordingErrors();
             _logger = new RecordingLogger();
             var shutdown = new ShutdownCoordinator(_contextManager, _jobs, _store, _prompt, _logger);
+            _screens = new FakeScreenFactory();
+            var navigation = new NavigationService(_screens, _view, new FakeEntitlement(), _contextManager, _logger);
             _presenter = new MainShellPresenter(
                 _view, _login, _contextManager, _store,
-                new UiOperationRunner(new UserErrorMapper(), _logger), _errors, shutdown);
+                new UiOperationRunner(new UserErrorMapper(), _logger), _errors, shutdown, navigation);
             _presenter.Initialize();
         }
 
@@ -57,6 +61,20 @@ namespace HoaDonDienTu.WinForms.Tests
 
             Assert.That(_view.Selected, Is.EqualTo(ScreenId.InvoiceArchive));
             Assert.That(_view.ShownScreens.Count, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void NavigationRequested_WhenCurrentScreenCannotClose_ShowsReason_AndKeepsScreen()
+        {
+            _view.RaiseNavigation(ScreenId.InvoiceArchive);
+            _screens.Created[0].CanClose = false;
+
+            _view.RaiseNavigation(ScreenId.Settings);
+
+            Assert.That(_view.Selected, Is.EqualTo(ScreenId.InvoiceArchive));
+            Assert.That(_view.ShownScreens.Count, Is.EqualTo(1));
+            Assert.That(_view.Errors.Count, Is.EqualTo(1));
+            Assert.That(_screens.Created[0].Disposed, Is.False);
         }
 
         [Test]
@@ -81,7 +99,7 @@ namespace HoaDonDienTu.WinForms.Tests
         [Test]
         public void PortalLogin_BuildsRequestForCurrentCompanyAndScreen()
         {
-            _presenter.Show(ScreenId.InvoiceArchive);
+            _presenter.ShowAsync(ScreenId.InvoiceArchive).GetAwaiter().GetResult();
 
             _view.RaisePortalLogin();
 

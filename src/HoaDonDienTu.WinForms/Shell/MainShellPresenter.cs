@@ -1,5 +1,6 @@
 using System;
 using System.Threading;
+using System.Threading.Tasks;
 using HoaDonDienTu.Application.Authentication;
 using HoaDonDienTu.Application.Common;
 using HoaDonDienTu.Application.Companies;
@@ -18,7 +19,7 @@ namespace HoaDonDienTu.WinForms.Shell
         private readonly IUiOperationRunner _runner;
         private readonly IUserErrorPresenter _errors;
         private readonly ShutdownCoordinator _shutdown;
-        private ScreenId _currentScreen = ScreenId.Initializing;
+        private readonly INavigationService _navigation;
         private bool _initialized;
 
         public MainShellPresenter(
@@ -28,7 +29,8 @@ namespace HoaDonDienTu.WinForms.Shell
             IPortalSessionStore sessionStore,
             IUiOperationRunner runner,
             IUserErrorPresenter errors,
-            ShutdownCoordinator shutdown)
+            ShutdownCoordinator shutdown,
+            INavigationService navigation)
         {
             if (view == null) throw new ArgumentNullException("view");
             if (loginCoordinator == null) throw new ArgumentNullException("loginCoordinator");
@@ -37,6 +39,7 @@ namespace HoaDonDienTu.WinForms.Shell
             if (runner == null) throw new ArgumentNullException("runner");
             if (errors == null) throw new ArgumentNullException("errors");
             if (shutdown == null) throw new ArgumentNullException("shutdown");
+            if (navigation == null) throw new ArgumentNullException("navigation");
             _view = view;
             _loginCoordinator = loginCoordinator;
             _context = context;
@@ -44,6 +47,7 @@ namespace HoaDonDienTu.WinForms.Shell
             _runner = runner;
             _errors = errors;
             _shutdown = shutdown;
+            _navigation = navigation;
         }
 
         public void Initialize()
@@ -69,16 +73,10 @@ namespace HoaDonDienTu.WinForms.Shell
             _sessionStore.SessionChanged -= OnSessionChanged;
         }
 
-        public void ShowInitializing()
+        /// <summary>Điều hướng không qua event của view (dùng khi khởi động).</summary>
+        public Task<NavigationResult> ShowAsync(ScreenId target)
         {
-            _view.ShowScreen(new PlaceholderScreenControl("Đang khởi tạo...", "Đang xác định chế độ làm việc"));
-        }
-
-        public void Show(ScreenId target)
-        {
-            _currentScreen = target;
-            _view.SelectNavigation(target);
-            _view.ShowScreen(new PlaceholderScreenControl(TitleOf(target), "SCR · chưa implement"));
+            return _navigation.NavigateAsync(target, null, CancellationToken.None);
         }
 
         public void RefreshPortalSession()
@@ -91,12 +89,27 @@ namespace HoaDonDienTu.WinForms.Shell
 
         private void OnNavigationRequested(object sender, NavigationRequestedEventArgs e)
         {
-            Show(e.Target);
+            Navigate(e.Target);
         }
 
         private void OnCompanySelectorRequested(object sender, EventArgs e)
         {
-            Show(ScreenId.CompanyList);
+            Navigate(ScreenId.CompanyList);
+        }
+
+        private async void Navigate(ScreenId target)
+        {
+            await _runner.RunAsync(
+                "Điều hướng",
+                async token =>
+                {
+                    var result = await _navigation.NavigateAsync(target, null, token);
+                    if (!result.Succeeded && !string.IsNullOrEmpty(result.Reason))
+                    {
+                        _view.ShowError("Điều hướng", result.Reason);
+                    }
+                },
+                state => { if (state.Error != null) _errors.Show(state.Error); });
         }
 
         private void OnSessionChanged(object sender, EventArgs e)
@@ -141,7 +154,7 @@ namespace HoaDonDienTu.WinForms.Shell
 
             var company = _context.Current;
             var request = new PortalLoginRequest(
-                company.CompanyId, company.TaxCode, LoginReason.Manual, _currentScreen, null);
+                company.CompanyId, company.TaxCode, LoginReason.Manual, _navigation.CurrentScreen, null);
 
             await _runner.RunAsync(
                 "Đăng nhập cổng Thuế",
@@ -164,20 +177,6 @@ namespace HoaDonDienTu.WinForms.Shell
                 });
 
             RefreshPortalSession();
-        }
-
-        private static string TitleOf(ScreenId id)
-        {
-            switch (id)
-            {
-                case ScreenId.Dashboard: return "Tổng quan";
-                case ScreenId.Download: return "Tải hóa đơn";
-                case ScreenId.InvoiceArchive: return "Kho hóa đơn";
-                case ScreenId.DownloadHistory: return "Lịch sử tải";
-                case ScreenId.CompanyList: return "Doanh nghiệp";
-                case ScreenId.Settings: return "Cài đặt";
-                default: return id.ToString();
-            }
         }
     }
 }

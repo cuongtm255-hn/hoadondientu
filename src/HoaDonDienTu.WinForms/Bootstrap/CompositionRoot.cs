@@ -13,6 +13,7 @@ using HoaDonDienTu.Infrastructure.Logging;
 using HoaDonDienTu.Infrastructure.Portal;
 using HoaDonDienTu.WinForms.Common;
 using HoaDonDienTu.WinForms.Login;
+using HoaDonDienTu.WinForms.Navigation;
 using HoaDonDienTu.WinForms.Shell;
 #if DEBUG
 using HoaDonDienTu.Infrastructure.Development;
@@ -38,6 +39,8 @@ namespace HoaDonDienTu.WinForms.Bootstrap
         public IUserErrorPresenter ErrorPresenter { get; private set; }
         public IConfirmationService Confirmation { get; private set; }
         public ShutdownCoordinator ShutdownCoordinator { get; private set; }
+        public IEntitlementService Entitlement { get; private set; }
+        public IScreenFactory ScreenFactory { get; private set; }
 
         public static CompositionRoot Create()
         {
@@ -58,6 +61,7 @@ namespace HoaDonDienTu.WinForms.Bootstrap
             root.OperationRunner = new UiOperationRunner(root.ErrorMapper, logger);
             root.ErrorPresenter = new UserErrorPresenter();
             root.Confirmation = new ConfirmationService();
+            root.ScreenFactory = Navigation.ScreenFactory.CreateDefault();
             root.ComposeEnvironment();
             return root;
         }
@@ -113,6 +117,8 @@ namespace HoaDonDienTu.WinForms.Bootstrap
                 Logger);
 
             var contextManager = new CompanyContextManager(new DevelopmentCompanyStorageOpener());
+            var entitlement = new DevelopmentEntitlementService(mode);
+            Entitlement = entitlement;
             ContextManager = contextManager;
             var jobsRunning = Environment.GetEnvironmentVariable("HDDT_DEV_JOB") == "1";
             ShutdownCoordinator = new ShutdownCoordinator(
@@ -123,7 +129,7 @@ namespace HoaDonDienTu.WinForms.Bootstrap
                 Logger);
             PortalLoginCoordinator = new PortalLoginCoordinator(
                 contextManager,
-                new DevelopmentEntitlementService(mode),
+                entitlement,
                 SessionStore,
                 new FakePortalAuthenticationService(null, Clock),
                 () => new DevelopmentPortalLoginBrowser(

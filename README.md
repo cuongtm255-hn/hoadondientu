@@ -88,13 +88,18 @@ docs/
 
 ## Trạng thái phát triển
 
-Repository hiện ở **Phase 0 — Yêu cầu và thiết kế** (SRS, wireframe, feature list và detail design đã có, chờ review); solution và project source chưa được tạo. Xem [kế hoạch theo phase](docs/plans/PROJECT-PLAN.md).
+Repository đang ở **Phase 1 — Nền tảng** (tài liệu Phase 0 chờ review). Solution `src/HoaDonDienTu.sln` đã có khung chương trình (Krypton Ribbon), khởi động theo chế độ, đăng nhập cổng Thuế (trình duyệt giả ở Debug), chuyển MST và đóng ứng dụng an toàn; các màn hình nghiệp vụ vẫn là placeholder và WebView/API cổng Thuế thật chưa được chọn. Xem [kế hoạch theo phase](docs/plans/PROJECT-PLAN.md).
 
-Khi có solution, các lệnh dự kiến:
+Build và test (PowerShell; `msbuild`/`vstest` của Visual Studio 2022 không có trong PATH):
 
 ```powershell
-msbuild HoaDonDienTu.sln /p:Configuration=Debug /restore
-vstest.console.exe path\to\Tests.dll
+$vs = "C:\Program Files\Microsoft Visual Studio\2022\Community"
+& "$vs\MSBuild\Current\Bin\MSBuild.exe" src\HoaDonDienTu.sln -restore -v:m
+& "$vs\Common7\IDE\CommonExtensions\Microsoft\TestWindow\vstest.console.exe" (Get-ChildItem tests\*\bin\Debug\net45\*.Tests.dll).FullName
 ```
 
-Máy build cần Visual Studio/MSBuild và .NET Framework 4.5 targeting pack.
+Test UI (`Category=UiSmoke`) mở cửa sổ thật nên cần desktop tương tác; trên máy không có desktop thêm `/TestCaseFilter:"TestCategory!=UiSmoke"` khi chạy `vstest`.
+
+Chạy thử bản Debug: `src\HoaDonDienTu.WinForms\bin\Debug\HoaDonDienTu.exe`. Đặt biến môi trường `HDDT_DEV_MODE` = `Standard` (mặc định), `StandardFirstRun`, `Service`, `ReadOnly` hoặc `Recovery` để thử từng chế độ với dữ liệu giả; `HDDT_DEV_JOB=1` giả lập tác vụ tải đang chạy. Các adapter giả chỉ được biên dịch ở cấu hình Debug.
+
+Máy build cần Visual Studio/MSBuild và .NET Framework 4.5 targeting pack. UI dùng Krypton Toolkit/Ribbon `5.500.2008` (bản cuối có build net45).

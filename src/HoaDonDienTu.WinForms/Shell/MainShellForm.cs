@@ -114,10 +114,9 @@ namespace HoaDonDienTu.WinForms.Shell
             else if (ribbonButton != null) tag = ribbonButton.Tag;
             if (!(tag is ScreenId)) return;
 
-            var target = (ScreenId)tag;
-            SelectNavigation(target);
+            // Việc đánh dấu mục menu do NavigationService quyết định sau khi điều hướng thành công hay bị chặn.
             var handler = NavigationRequested;
-            if (handler != null) handler(this, new NavigationRequestedEventArgs(target));
+            if (handler != null) handler(this, new NavigationRequestedEventArgs((ScreenId)tag));
         }
 
         private void OnCompanySelectorClick(object sender, EventArgs e)

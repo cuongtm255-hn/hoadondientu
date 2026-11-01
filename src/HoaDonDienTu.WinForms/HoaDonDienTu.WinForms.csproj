@@ -56,6 +56,9 @@
       <DependentUpon>PortalLoginForm.cs</DependentUpon>
     </Compile>
     <Compile Include="Login\PortalLoginPresenter.cs" />
+    <Compile Include="Navigation\IScreen.cs" />
+    <Compile Include="Navigation\NavigationService.cs" />
+    <Compile Include="Navigation\ScreenFactory.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Shell\IMainShellView.cs" />
     <Compile Include="Shell\MainShellForm.cs">

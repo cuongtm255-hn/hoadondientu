@@ -5,6 +5,7 @@ using HoaDonDienTu.Application.Common;
 using HoaDonDienTu.Application.Navigation;
 using HoaDonDienTu.Application.Startup;
 using HoaDonDienTu.Domain.Common;
+using HoaDonDienTu.WinForms.Navigation;
 using HoaDonDienTu.WinForms.Shell;
 
 namespace HoaDonDienTu.WinForms.Bootstrap
@@ -14,6 +15,7 @@ namespace HoaDonDienTu.WinForms.Bootstrap
     {
         private readonly CompositionRoot _compositionRoot;
         private readonly MainShellForm _mainShell;
+        private readonly NavigationService _navigation;
         private readonly MainShellPresenter _presenter;
         private readonly CancellationTokenSource _cancellation = new CancellationTokenSource();
 
@@ -21,6 +23,12 @@ namespace HoaDonDienTu.WinForms.Bootstrap
         {
             _compositionRoot = compositionRoot;
             _mainShell = compositionRoot.CreateMainShell();
+            _navigation = new NavigationService(
+                compositionRoot.ScreenFactory,
+                _mainShell,
+                compositionRoot.Entitlement,
+                compositionRoot.ContextManager,
+                compositionRoot.Logger);
             _presenter = new MainShellPresenter(
                 _mainShell,
                 compositionRoot.PortalLoginCoordinator,
@@ -28,9 +36,9 @@ namespace HoaDonDienTu.WinForms.Bootstrap
                 compositionRoot.SessionStore,
                 compositionRoot.OperationRunner,
                 compositionRoot.ErrorPresenter,
-                compositionRoot.ShutdownCoordinator);
+                compositionRoot.ShutdownCoordinator,
+                _navigation);
             _presenter.Initialize();
-            _presenter.ShowInitializing();
 
             _mainShell.Shown += OnMainShellShown;
             _mainShell.FormClosed += OnMainShellClosed;
@@ -42,6 +50,7 @@ namespace HoaDonDienTu.WinForms.Bootstrap
             try
             {
                 // Progress<T> báo qua SynchronizationContext nên có thể đến sau khi InitializeAsync xong.
+                await _presenter.ShowAsync(ScreenId.Initializing);
                 var startupCompleted = false;
                 var progress = new Progress<StartupProgress>(p =>
                 {
@@ -79,9 +88,10 @@ namespace HoaDonDienTu.WinForms.Bootstrap
             // Service/ReadOnly luôn mở danh sách doanh nghiệp, không tự mở MST gần nhất.
             ScreenId target;
             if (result.Route == StartupRoute.Recovery) target = ScreenId.Recovery;
+            else if (result.Route == StartupRoute.StandardFirstRun) target = ScreenId.CompanyEdit;
             else if (result.Mode == AppMode.Standard) target = ScreenId.Dashboard;
             else target = ScreenId.CompanyList;
-            _presenter.Show(target);
+            await _presenter.ShowAsync(target);
         }
 
         private void OnMainShellClosed(object sender, FormClosedEventArgs e)
@@ -95,6 +105,7 @@ namespace HoaDonDienTu.WinForms.Bootstrap
         {
             if (disposing)
             {
+                _navigation.Dispose();
                 _cancellation.Dispose();
                 _mainShell.Dispose();
             }

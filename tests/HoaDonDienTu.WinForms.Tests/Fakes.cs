@@ -11,7 +11,9 @@ using HoaDonDienTu.Application.Startup;
 using HoaDonDienTu.Domain.Common;
 using HoaDonDienTu.Domain.Companies;
 using HoaDonDienTu.Domain.Licensing;
+using HoaDonDienTu.Application.Navigation;
 using HoaDonDienTu.WinForms.Login;
+using HoaDonDienTu.WinForms.Navigation;
 
 namespace HoaDonDienTu.WinForms.Tests
 {
@@ -232,6 +234,61 @@ namespace HoaDonDienTu.WinForms.Tests
         private static int Count(EventHandler handler)
         {
             return handler == null ? 0 : handler.GetInvocationList().Length;
+        }
+    }
+
+    internal sealed class FakeScreen : IScreen
+    {
+        private readonly System.Collections.Generic.List<string> _log;
+
+        public FakeScreen(ScreenId id, System.Collections.Generic.List<string> log)
+        {
+            Id = id;
+            _log = log;
+            View = new Control();
+        }
+
+        public ScreenId Id { get; private set; }
+        public Control View { get; private set; }
+        public bool CanClose = true;
+        public Exception CanCloseException;
+        public Task<bool> PendingCanClose;
+        public bool Cancelled;
+        public bool Disposed;
+
+        public Task<bool> CanCloseAsync(CancellationToken cancellationToken)
+        {
+            if (CanCloseException != null) throw CanCloseException;
+            if (PendingCanClose != null) return PendingCanClose;
+            return Task.FromResult(CanClose);
+        }
+
+        public void CancelOperations()
+        {
+            Cancelled = true;
+            _log.Add("cancel:" + Id);
+        }
+
+        public void Dispose()
+        {
+            Disposed = true;
+            _log.Add("dispose:" + Id);
+        }
+    }
+
+    internal sealed class FakeScreenFactory : IScreenFactory
+    {
+        public System.Collections.Generic.List<string> Log = new System.Collections.Generic.List<string>();
+        public System.Collections.Generic.List<FakeScreen> Created = new System.Collections.Generic.List<FakeScreen>();
+        public System.Collections.Generic.HashSet<ScreenId> Failing = new System.Collections.Generic.HashSet<ScreenId>();
+
+        public IScreen Create(ScreenId id, object parameter)
+        {
+            Log.Add("create:" + id);
+            if (Failing.Contains(id)) throw new InvalidOperationException("cannot create " + id);
+            var screen = new FakeScreen(id, Log);
+            Created.Add(screen);
+            return screen;
         }
     }
 }
