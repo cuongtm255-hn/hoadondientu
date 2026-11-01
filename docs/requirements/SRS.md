@@ -6,11 +6,11 @@
 |---|---|
 | Tên sản phẩm | Ứng dụng tải và quản lý hóa đơn điện tử |
 | Mã tài liệu | SRS-HDDT-001 |
-| Phiên bản | 1.0 |
+| Phiên bản | 1.1 |
 | Ngày | 01/11/2026 |
 | Trạng thái | Baseline thiết kế đã được xác nhận |
 | Nền tảng | Windows Forms, C#, .NET Framework 4.5 |
-| Đối tượng sử dụng | Kế toán thuế của một doanh nghiệp |
+| Đối tượng sử dụng | Kế toán thuế doanh nghiệp; công ty dịch vụ kế toán quản lý nhiều khách hàng |
 
 ## 2. Mục đích
 
@@ -22,7 +22,9 @@ Tài liệu này đặc tả ứng dụng Windows hỗ trợ đăng nhập vào 
 
 ### 3.1 Trong phạm vi phiên bản 1
 
-- Một doanh nghiệp, một mã số thuế trên mỗi máy.
+- Chế độ chuẩn quản lý một doanh nghiệp/MST trên mỗi máy.
+- Chế độ dịch vụ được mở khóa bằng licence theo máy, không giới hạn số MST đã khai báo nhưng chỉ một MST hoạt động tại một thời điểm.
+- Mỗi MST trong chế độ dịch vụ có thư mục và SQLite riêng; không trộn dữ liệu giữa các doanh nghiệp.
 - Người dùng đăng nhập thủ công trong WebView và tự xử lý CAPTCHA.
 - Tra cứu hóa đơn điện tử mua vào và bán ra.
 - Chọn kỳ theo tháng, quý, năm hoặc ngày bắt đầu/ngày kết thúc.
@@ -34,12 +36,14 @@ Tài liệu này đặc tả ứng dụng Windows hỗ trợ đăng nhập vào 
 - Xuất danh sách Excel theo bố cục mẫu của cổng Thuế.
 - Xuất ZIP chứa XML và in/xuất PDF.
 - Theo dõi tiến độ, tiếp tục sau gián đoạn và thử lại lỗi.
-- Sao lưu và khôi phục dữ liệu của đúng doanh nghiệp đang cấu hình.
+- Sao lưu và khôi phục độc lập dữ liệu của đúng doanh nghiệp đang hoạt động.
+- Kích hoạt licence trực tuyến, kiểm tra quyền cục bộ và gia hạn xác thực khi có Internet.
 
 ### 3.2 Ngoài phạm vi phiên bản 1
 
 - Tự động nhập tài khoản, mật khẩu hoặc giải CAPTCHA.
-- Quản lý nhiều doanh nghiệp/MST trên cùng một cài đặt.
+- Tải nền, đăng nhập hoặc xử lý đồng thời nhiều MST.
+- Báo cáo, tìm kiếm hoặc xuất dữ liệu tổng hợp xuyên nhiều MST.
 - Đồng bộ đám mây hoặc chia sẻ dữ liệu thời gian thực giữa nhiều máy.
 - Chỉnh sửa nội dung XML hóa đơn.
 - Lập, ký, phát hành, thay thế hoặc điều chỉnh hóa đơn.
@@ -70,6 +74,11 @@ Các endpoint, header, payload, giới hạn tốc độ và cơ chế token c�
 | XML gốc | File XML lấy từ cổng Thuế, được lưu và kiểm tra mã băm |
 | PDF phát sinh | Bản trình bày được tạo khi xem/in; có thể tạo lại từ dữ liệu hợp lệ |
 | Kho hóa đơn | Màn hình tra cứu dữ liệu đã lưu cục bộ |
+| Chế độ chuẩn (`StandardMode`) | Chế độ mặc định, chỉ quản lý một MST và không hiển thị chức năng đa doanh nghiệp |
+| Chế độ dịch vụ (`ServiceMode`) | Chế độ được licence mở khóa để quản lý danh mục nhiều MST trên cùng máy |
+| Chế độ dịch vụ chỉ đọc (`ReadOnlyServiceMode`) | Trạng thái licence không còn hiệu lực; cho xem/xuất/sao lưu dữ liệu cũ nhưng không thêm MST hoặc tải mới |
+| MST đang hoạt động | Doanh nghiệp duy nhất có database, phiên đăng nhập và tác vụ được mở tại một thời điểm |
+| Danh mục doanh nghiệp | Tệp định tuyến tối thiểu chứa MST, tên hiển thị, đường dẫn kho và số liệu tổng quan lưu đệm; không chứa hóa đơn |
 
 ## 6. Tổng quan sản phẩm
 
@@ -79,9 +88,12 @@ Các endpoint, header, payload, giới hạn tốc độ và cơ chế token c�
 WinForms UI
 ├── WebView đăng nhập thủ công
 ├── Tổng quan / Tải / Kho / Lịch sử / Cài đặt
+├── Kích hoạt licence / Quản lý doanh nghiệp khi được cấp quyền
 └── Trình xem XML/PDF
         │
 Application Services
+├── Licence và feature entitlement
+├── Danh mục doanh nghiệp / chuyển CompanyContext
 ├── Quản lý phiên xác thực
 ├── Chia kỳ theo tháng
 ├── Hàng đợi tải và checkpoint
@@ -91,8 +103,10 @@ Application Services
         │
 Infrastructure
 ├── Portal API Client dùng token
-├── SQLite repository
-├── File archive
+├── Licence API Client và bộ kiểm tra chữ ký
+├── Company catalog cục bộ
+├── SQLite repository riêng theo MST
+├── File archive riêng theo MST
 └── Logging đã che dữ liệu nhạy cảm
 ```
 
@@ -103,6 +117,7 @@ UI không được tự thực hiện logic chia kỳ, phân trang hoặc ghi fi
 | Vai trò | Mục tiêu |
 |---|---|
 | Kế toán thuế | Tải đủ hóa đơn theo kỳ, kiểm tra, tìm kiếm, xuất và lưu hồ sơ |
+| Kế toán dịch vụ | Quản lý danh mục khách hàng và lần lượt xử lý từng MST mà không trộn dữ liệu |
 | Quản trị máy/IT | Cài đặt, cấp quyền thư mục, sao lưu, hỗ trợ kết nối và cập nhật cấu hình |
 
 Phiên bản 1 không có phân quyền nội bộ theo vai trò. Quyền truy cập phụ thuộc tài khoản Windows và tài khoản cổng Thuế.
@@ -112,6 +127,7 @@ Phiên bản 1 không có phân quyền nội bộ theo vai trò. Quyền truy c
 - Windows có .NET Framework 4.5 và TLS 1.2.
 - Máy có quyền ghi vào thư mục kho được cấu hình.
 - Có kết nối HTTPS đến cổng Thuế.
+- Có kết nối HTTPS đến máy chủ licence khi kích hoạt và xác thực định kỳ; được phép ngoại tuyến trong thời gian ân hạn.
 - Có trình điều khiển WebView tương thích với cổng Thuế và .NET Framework 4.5.
 - Có máy in Windows khi sử dụng chức năng in.
 
@@ -123,12 +139,14 @@ Phiên bản 1 không có phân quyền nội bộ theo vai trò. Quyền truy c
 - `ServicePointManager.SecurityProtocol` phải bật TLS 1.2 trước kết nối.
 - Không giả định endpoint/payload khi chưa có mẫu traffic đã xác minh.
 - Công nghệ WebView phải được quyết định bằng ADR sau một technical spike trên cổng Thuế thật.
+- Licence chỉ mở quyền tính năng; kiểm tra quyền phải tồn tại ở cả UI và application service.
+- Máy chủ licence không được nhận MST khách hàng, hóa đơn, token Thuế hoặc đường dẫn kho dữ liệu.
 
 ## 7. Quy tắc nghiệp vụ
 
 | Mã | Quy tắc |
 |---|---|
-| BR-001 | Mỗi cài đặt chỉ quản lý một MST doanh nghiệp. |
+| BR-001 | Không có licence dịch vụ, mỗi cài đặt chỉ quản lý một MST và không hiển thị chức năng đa doanh nghiệp. |
 | BR-002 | Ngày bắt đầu và kết thúc đều được tính vào phạm vi tra cứu. |
 | BR-003 | Mỗi đoạn tải không được vượt qua ranh giới tháng. |
 | BR-004 | Quý dùng quý dương lịch: Q1 01/01–31/03, Q2 01/04–30/06, Q3 01/07–30/09, Q4 01/10–31/12. |
@@ -143,6 +161,16 @@ Phiên bản 1 không có phân quyền nội bộ theo vai trò. Quyền truy c
 | BR-013 | Không tự động xóa hóa đơn, XML hoặc phiên bản lịch sử. |
 | BR-014 | PDF không được coi là chứng từ gốc thay thế XML. |
 | BR-015 | STT trong danh sách/Excel là số thứ tự hiển thị, không phải khóa dữ liệu. |
+| BR-016 | Licence dịch vụ được cấp theo máy và không giới hạn số MST đã khai báo trên máy đó. |
+| BR-017 | Chỉ một MST được hoạt động tại một thời điểm; không giữ nhiều phiên đăng nhập hoặc tải nền cho MST khác. |
+| BR-018 | Mỗi MST phải có một thư mục và một SQLite riêng; hóa đơn không được lưu trong database dùng chung. |
+| BR-019 | Khi chuyển MST, tác vụ hiện tại phải dừng an toàn, token bị xóa khỏi bộ nhớ và database cũ phải đóng trước khi mở kho mới. |
+| BR-020 | MST trả về từ phiên cổng Thuế phải khớp MST đang hoạt động trước khi cho phép tải hoặc ghi dữ liệu. |
+| BR-021 | `companies.json` chỉ giữ thông tin định tuyến và số liệu tổng quan lưu đệm, không chứa hóa đơn hay dữ liệu xác thực. |
+| BR-022 | Hết licence không được làm mất quyền xem, in, xuất hoặc sao lưu dữ liệu đã lưu; các thao tác thêm MST và tải mới bị khóa. |
+| BR-023 | Ngừng quản lý một doanh nghiệp chỉ loại hồ sơ khỏi danh mục, không tự động xóa thư mục dữ liệu. |
+| BR-024 | Licence phải được xác thực trực tuyến khi kích hoạt và gắn với mã định danh máy đã băm. |
+| BR-025 | Không gửi danh sách/số lượng MST hoặc dữ liệu nghiệp vụ tới máy chủ licence. |
 
 ## 8. Yêu cầu chức năng
 
@@ -160,6 +188,8 @@ Phiên bản 1 không có phân quyền nội bộ theo vai trò. Quyền truy c
 | FR-AUTH-008 | Sau khi đăng nhập lại, ứng dụng phải quay về phiên tải trước và cho phép tiếp tục. |
 | FR-AUTH-009 | Đăng xuất phải xóa token trong bộ nhớ, cookie phiên và dữ liệu WebView liên quan. |
 | FR-AUTH-010 | Khi đóng/mở lại ứng dụng, người dùng phải đăng nhập lại; token không được lưu bền vững. |
+| FR-AUTH-011 | Sau đăng nhập, ứng dụng phải đối chiếu MST của phiên cổng Thuế với MST đang hoạt động; nếu không khớp phải hủy phiên và không ghi dữ liệu. |
+| FR-AUTH-012 | Chuyển MST phải xóa token/cookie của MST cũ trước khi mở màn hình đăng nhập cho MST mới. |
 
 ### 8.2 Chọn loại và phạm vi hóa đơn
 
@@ -192,6 +222,8 @@ Phiên bản 1 không có phân quyền nội bộ theo vai trò. Quyền truy c
 | FR-JOB-010 | Khi mở lại ứng dụng, các phiên chưa hoàn tất phải xuất hiện trong Tổng quan/Lịch sử với hành động `Tiếp tục`. |
 | FR-JOB-011 | Hoàn tất phiên phải cung cấp hành động mở Kho hóa đơn với bộ lọc cùng loại và phạm vi. |
 | FR-JOB-012 | Thời gian chờ và giới hạn tốc độ phải cấu hình được ở lớp hạ tầng, không đặt trong UI. |
+| FR-JOB-013 | Tác vụ tải phải được gắn với MST và đường dẫn kho tại thời điểm tạo; không được tiếp tục khi `CompanyContext` không còn khớp. |
+| FR-JOB-014 | Ứng dụng không được khởi chạy hoặc duy trì tác vụ tải cho MST không hoạt động. |
 
 ### 8.4 Chuẩn hóa, lưu XML và chống trùng
 
@@ -265,8 +297,8 @@ Phiên bản 1 không có phân quyền nội bộ theo vai trò. Quyền truy c
 
 | Mã | Yêu cầu |
 |---|---|
-| FR-SET-001 | Lần chạy đầu phải yêu cầu nhập MST, tên doanh nghiệp và chọn thư mục kho. |
-| FR-SET-002 | Sau khi kho có dữ liệu, thay đổi MST phải bị khóa; muốn đổi phải tạo kho mới ngoài luồng phiên bản 1. |
+| FR-SET-001 | Lần chạy đầu phải yêu cầu nhập MST, tên doanh nghiệp và chọn thư mục kho; hồ sơ này trở thành doanh nghiệp mặc định. |
+| FR-SET-002 | Sau khi kho có dữ liệu, MST của kho phải bị khóa; trong ServiceMode muốn dùng MST khác phải tạo hồ sơ và kho riêng. |
 | FR-SET-003 | Ứng dụng phải kiểm tra quyền đọc/ghi và dung lượng trước khi lưu cấu hình thư mục. |
 | FR-SET-004 | Cài đặt phải hiển thị dung lượng database, XML, PDF và bản xuất. |
 | FR-SET-005 | Người dùng phải có thể tạo gói sao lưu nhất quán khi không có transaction ghi đang hoạt động. |
@@ -274,6 +306,42 @@ Phiên bản 1 không có phân quyền nội bộ theo vai trò. Quyền truy c
 | FR-SET-007 | Khôi phục phải kiểm tra MST, manifest, schema và mã băm trước khi thay đổi dữ liệu hiện hành. |
 | FR-SET-008 | Trước khôi phục, ứng dụng phải tạo điểm sao lưu an toàn của dữ liệu hiện hành hoặc yêu cầu người dùng cung cấp vị trí. |
 | FR-SET-009 | Cài đặt phải có hành động kiểm tra kết nối và mở thư mục kho. |
+
+### 8.10 Quản lý doanh nghiệp và chuyển MST
+
+| Mã | Yêu cầu |
+|---|---|
+| FR-COMP-001 | Chức năng quản lý nhiều doanh nghiệp chỉ được hiển thị khi entitlement là `ServiceMode` hoặc `ReadOnlyServiceMode`. |
+| FR-COMP-002 | ServiceMode phải cung cấp SCR-10 để tìm và liệt kê doanh nghiệp theo tên hoặc MST. |
+| FR-COMP-003 | Danh sách phải hiển thị tên, MST, kỳ tải gần nhất, thời điểm cập nhật, tổng số hóa đơn, dung lượng và trạng thái được lưu đệm. |
+| FR-COMP-004 | Người dùng phải có thể thêm hồ sơ tại SCR-11 với MST, tên hiển thị và đường dẫn kho; MST không được trùng trong danh mục. |
+| FR-COMP-005 | Mỗi hồ sơ phải trỏ tới một thư mục riêng chứa `company.db`; tạo hồ sơ không được mở đồng thời database của hồ sơ khác. |
+| FR-COMP-006 | Header của SCR-02 đến SCR-09 trong ServiceMode phải hiển thị bộ chọn doanh nghiệp và MST đang hoạt động. |
+| FR-COMP-007 | Chuyển MST phải kiểm tra tác vụ hiện tại; nếu đang chạy phải cho chọn tiếp tục chờ, tạm dừng hoặc hủy trước khi chuyển. |
+| FR-COMP-008 | `CompanySwitchService` phải đóng tác vụ, xóa token, đóng SQLite cũ rồi mới tạo `CompanyContext` và mở SQLite mới. |
+| FR-COMP-009 | Khi khởi động ServiceMode, ứng dụng phải mở lại MST được sử dụng gần nhất nếu kho còn hợp lệ. |
+| FR-COMP-010 | Người dùng phải có thể mở thư mục, sao lưu, sửa tên hiển thị/đường dẫn và ngừng quản lý từng doanh nghiệp. |
+| FR-COMP-011 | Ngừng quản lý phải yêu cầu xác nhận và không xóa thư mục; xóa dữ liệu vật lý là quy trình riêng ngoài màn hình danh mục. |
+| FR-COMP-012 | Nếu đường dẫn kho bị mất, ứng dụng phải cho xác định lại thư mục và xác minh MST/schema trước khi liên kết. |
+| FR-COMP-013 | Khi nâng cấp từ StandardMode, kho hiện hữu phải được đăng ký làm doanh nghiệp đầu tiên mà không tải lại hoặc di chuyển dữ liệu nếu không cần. |
+| FR-COMP-014 | Phiên bản này không được cung cấp danh sách hóa đơn, báo cáo hoặc export tổng hợp xuyên MST. |
+
+### 8.11 Licence và quyền tính năng
+
+| Mã | Yêu cầu |
+|---|---|
+| FR-LIC-001 | SCR-09 phải luôn có mục `Bản quyền`; StandardMode chỉ hiển thị thông tin ứng dụng và ô nhập licence key. |
+| FR-LIC-002 | Ứng dụng phải gửi licence key, mã máy đã băm và phiên bản ứng dụng qua HTTPS để kích hoạt. |
+| FR-LIC-003 | Phản hồi phải là entitlement có chữ ký gồm loại licence, mã máy, ngày phát hành, ngày hết hạn nếu có và tập tính năng. |
+| FR-LIC-004 | Ứng dụng phải kiểm tra chữ ký và ràng buộc mã máy cục bộ mỗi lần khởi động. |
+| FR-LIC-005 | Khi có Internet, ứng dụng phải xác thực lại với máy chủ; khi máy chủ tạm thời không khả dụng, được dùng ngoại tuyến tối đa 30 ngày kể từ lần xác thực thành công gần nhất. |
+| FR-LIC-006 | Licence hợp lệ phải bật ServiceMode ngay mà không cần cài lại ứng dụng. |
+| FR-LIC-007 | Licence hết hạn, bị thu hồi hoặc quá thời gian ngoại tuyến phải chuyển sang ReadOnlyServiceMode. |
+| FR-LIC-008 | ReadOnlyServiceMode phải cho chuyển giữa MST đã có để xem, tìm, in, xuất và sao lưu; phải khóa thêm MST, đăng nhập Thuế, tải mới và sửa cấu hình nghiệp vụ quan trọng. |
+| FR-LIC-009 | Người dùng phải có thể hủy kích hoạt trực tuyến để chuyển licence sang máy khác; trường hợp mất máy do nhà cung cấp reset. |
+| FR-LIC-010 | Licence key đầy đủ không được ghi log; entitlement cục bộ phải được mã hóa theo máy và xác minh chữ ký. |
+| FR-LIC-011 | Thay đổi ngày giờ hệ thống bất thường phải yêu cầu xác thực trực tuyến trước thao tác có quyền ServiceMode. |
+| FR-LIC-012 | Việc kiểm tra entitlement phải được thực hiện ở application service, không chỉ bằng ẩn/hiện control giao diện. |
 
 ## 9. Dữ liệu
 
@@ -307,7 +375,7 @@ Ngoài các trường trên, database lưu ID cổng Thuế, chiều hóa đơn,
 
 | Bảng/thực thể | Mục đích | Khóa/liên kết chính |
 |---|---|---|
-| `CompanySettings` | MST, tên, đường dẫn kho và cấu hình | Một bản ghi hoạt động |
+| `CompanySettings` | MST, tên và cấu hình của kho hiện tại | Một bản ghi trong `company.db` của MST đó |
 | `Invoice` | Metadata hiện hành và khóa tìm kiếm | `InvoiceId`, `PortalInvoiceId`, `BusinessKey` |
 | `InvoiceVersion` | Các phiên bản XML của hóa đơn | Nhiều phiên bản thuộc một `Invoice` |
 | `FileAsset` | XML/PDF, đường dẫn, hash, kích thước, trạng thái | Thuộc `InvoiceVersion` |
@@ -316,6 +384,8 @@ Ngoài các trường trên, database lưu ID cổng Thuế, chiều hóa đơn,
 | `DownloadEvent` | Tiến độ, cảnh báo và lỗi đã che dữ liệu nhạy cảm | Thuộc session/segment |
 | `ExportRecord` | File Excel/ZIP/PDF đã tạo | Phạm vi, đường dẫn, manifest, thời điểm |
 | `SchemaInfo` | Phiên bản database và migration | Một bản ghi hiện hành |
+
+Ngoài SQLite nghiệp vụ, ứng dụng có `companies.json` ở cấp cài đặt để định tuyến tới các kho. Tệp này chỉ gồm ID hồ sơ, MST, tên hiển thị, đường dẫn, cờ hoạt động gần nhất và số liệu tổng quan lưu đệm. `license.dat` lưu entitlement đã mã hóa theo máy và có chữ ký; hai tệp này không chứa hóa đơn hoặc phiên đăng nhập Thuế.
 
 ### 9.3 Trạng thái phiên tải
 
@@ -333,20 +403,24 @@ Nháp → Đang chạy → Hoàn tất
 ### 9.4 Cấu trúc thư mục
 
 ```text
-Documents\HoaDonDienTu\<MST>\
-├── Data\
-│   └── hoadondientu.db
-├── 2026\
-│   └── 04\
-│       ├── MuaVao\
-│       │   ├── XML\
-│       │   └── PDF\
-│       └── BanRa\
-│           ├── XML\
-│           └── PDF\
-├── Exports\
-├── Backups\
-└── Logs\
+Documents\HoaDonDienTu\
+├── companies.json
+├── license.dat
+└── Companies\
+    └── <MST>\
+        ├── Data\
+        │   └── company.db
+        ├── 2026\
+        │   └── 04\
+        │       ├── MuaVao\
+        │       │   ├── XML\
+        │       │   └── PDF\
+        │       └── BanRa\
+        │           ├── XML\
+        │           └── PDF\
+        ├── Exports\
+        ├── Backups\
+        └── Logs\
 ```
 
 Mẫu tên file:
@@ -359,14 +433,16 @@ Mẫu tên file:
 - Tên file phải có hậu tố chống va chạm khi các trường nghiệp vụ trùng.
 - Database lưu đường dẫn tương đối để có thể di chuyển cả kho.
 - File log không được chứa token hoặc toàn bộ XML.
+- Mỗi thư mục `<MST>` là một đơn vị sao lưu, khôi phục và bàn giao độc lập.
+- Danh mục không được dùng như database hóa đơn chung; số liệu tổng quan chỉ là cache cập nhật khi đóng/chuyển kho.
 
 ## 10. Đặc tả màn hình và điều hướng
 
-Ứng dụng dùng thanh điều hướng bên trái sau đăng nhập. Header luôn hiển thị tên/MST doanh nghiệp, trạng thái đăng nhập và tác vụ đang chạy.
+Ứng dụng dùng thanh điều hướng bên trái sau đăng nhập. Header luôn hiển thị tên/MST doanh nghiệp, trạng thái đăng nhập và tác vụ đang chạy. Trong ServiceMode, tên/MST là bộ chọn mở SCR-10; trong StandardMode đây là nhãn tĩnh.
 
 | Mã | Màn hình | Mục tiêu | Điều hướng vào | Điều hướng ra | Wireframe |
 |---|---|---|---|---|---|
-| SCR-01 | Đăng nhập | Đăng nhập thủ công, lấy token | Khởi động; token hết hạn | SCR-02; quay lại SCR-04 khi đăng nhập lại | [HTML](../wireframes/index.html?screen=SCR-01) · [PNG](../wireframes/png/SCR-01-login.png) |
+| SCR-01 | Đăng nhập | Đăng nhập thủ công, lấy token và xác minh đúng MST hoạt động | Khởi động; token hết hạn; sau khi chuyển MST | SCR-02; quay lại SCR-04 khi đăng nhập lại | [HTML](../wireframes/index.html?screen=SCR-01) · [PNG](../wireframes/png/SCR-01-login.png) |
 | SCR-02 | Tổng quan | Trạng thái và công việc cần xử lý | Sau đăng nhập; menu | SCR-03/04/05/08/09 | [HTML](../wireframes/index.html?screen=SCR-02) · [PNG](../wireframes/png/SCR-02-dashboard.png) |
 | SCR-03 | Tải hóa đơn | Cấu hình và bắt đầu phiên tải | Menu; hành động nhanh | SCR-04 | [HTML](../wireframes/index.html?screen=SCR-03) · [PNG](../wireframes/png/SCR-03-download.png) |
 | SCR-04 | Tiến độ/chi tiết phiên | Theo dõi, dừng, tiếp tục, thử lại | SCR-03/02/08 | SCR-01 khi hết token; SCR-05 khi xem kết quả | [HTML](../wireframes/index.html?screen=SCR-04) · [PNG](../wireframes/png/SCR-04-progress.png) |
@@ -374,7 +450,10 @@ Mẫu tên file:
 | SCR-06 | Chi tiết hóa đơn | Xem metadata, file và phiên bản | SCR-05 | SCR-05; SCR-07 | [HTML](../wireframes/index.html?screen=SCR-06) · [PNG](../wireframes/png/SCR-06-detail.png) |
 | SCR-07 | Xem chứng từ | Xem XML/PDF và in | SCR-06 | SCR-06 | [HTML](../wireframes/index.html?screen=SCR-07) · [PNG](../wireframes/png/SCR-07-viewer.png) |
 | SCR-08 | Lịch sử tải | Tìm phiên và xử lý lỗi | Menu; SCR-02 | SCR-04; SCR-05 | [HTML](../wireframes/index.html?screen=SCR-08) · [PNG](../wireframes/png/SCR-08-history.png) |
-| SCR-09 | Cài đặt | Doanh nghiệp, kho, sao lưu | Menu | SCR-02; hộp thoại sao lưu/khôi phục | [HTML](../wireframes/index.html?screen=SCR-09) · [PNG](../wireframes/png/SCR-09-settings.png) |
+| SCR-09 | Cài đặt | Doanh nghiệp hoạt động, kho, sao lưu và lối vào bản quyền | Menu | SCR-02/12; hộp thoại sao lưu/khôi phục | [HTML](../wireframes/index.html?screen=SCR-09) · [PNG](../wireframes/png/SCR-09-settings.png) |
+| SCR-10 | Quản lý doanh nghiệp | Danh mục, tìm kiếm và chọn MST hoạt động | Bộ chọn MST; sau kích hoạt licence | SCR-02/11; sao lưu/mở thư mục/ngừng quản lý | [HTML](../wireframes/index.html?screen=SCR-10) · [PNG](../wireframes/png/SCR-10-companies.png) |
+| SCR-11 | Thêm/sửa doanh nghiệp | Khai báo MST và kho độc lập | SCR-10 | SCR-10; SCR-01 sau khi tạo và kích hoạt | [HTML](../wireframes/index.html?screen=SCR-11) · [PNG](../wireframes/png/SCR-11-company-edit.png) |
+| SCR-12 | Bản quyền | Kích hoạt, xem trạng thái, xác thực và hủy kích hoạt | SCR-09 | SCR-09; SCR-10 sau kích hoạt | [HTML](../wireframes/index.html?screen=SCR-12) · [PNG](../wireframes/png/SCR-12-license.png) |
 
 ### 10.1 Yêu cầu chung cho màn hình
 
@@ -384,6 +463,8 @@ Mẫu tên file:
 - Lỗi phải nêu đối tượng, nguyên nhân có thể hiểu được và hành động tiếp theo.
 - Không hiển thị token, cookie hoặc dữ liệu xác thực kỹ thuật.
 - Khi có tác vụ chạy, đóng ứng dụng phải hỏi `Tiếp tục chạy`, `Tạm dừng và thoát` hoặc `Hủy` theo khả năng kỹ thuật đã xác minh.
+- Trong ServiceMode, tên và MST đang hoạt động phải luôn hiển thị tại các màn hình tải, xuất, khôi phục và thao tác dữ liệu.
+- ReadOnlyServiceMode phải có nhãn `Chỉ đọc – cần gia hạn licence` và vô hiệu hóa hành động bị khóa bằng cả UI lẫn application service.
 
 ## 11. Giao diện bên ngoài
 
@@ -408,6 +489,14 @@ Mẫu tên file:
 - Ghi file phải atomic khi hệ thống file hỗ trợ: file tạm cùng volume rồi rename.
 - Thông báo rõ khi đường dẫn quá dài, file bị khóa, không đủ quyền hoặc hết dung lượng.
 
+### 11.4 Máy chủ licence
+
+- Giao tiếp HTTPS và pin/kiểm tra chứng thư theo chính sách phát hành được duyệt.
+- Request kích hoạt chỉ gồm licence key, mã máy đã băm và phiên bản ứng dụng; không gồm MST hoặc dữ liệu cổng Thuế.
+- Response phải có chữ ký bất đối xứng để ứng dụng xác minh ngoại tuyến bằng public key nhúng.
+- API phải hỗ trợ kích hoạt, xác thực trạng thái và hủy kích hoạt thiết bị.
+- Timeout/lỗi 5xx không được đồng nghĩa licence bị thu hồi; ứng dụng áp dụng thời gian ngoại tuyến còn lại.
+
 ## 12. Yêu cầu phi chức năng
 
 ### 12.1 Bảo mật
@@ -419,6 +508,9 @@ Mẫu tên file:
 | NFR-SEC-003 | Trình xem XML không được thực thi script, external entity hoặc tài nguyên ngoài không được phép. |
 | NFR-SEC-004 | Khôi phục/sao lưu phải kiểm tra đúng MST và tính toàn vẹn manifest. |
 | NFR-SEC-005 | Ứng dụng phải tuân theo quyền truy cập file của Windows, không tự mở rộng quyền. |
+| NFR-SEC-006 | Mọi thao tác ghi phải xác minh `CompanyContext.MST` khớp hồ sơ kho và MST phiên Thuế. |
+| NFR-SEC-007 | `license.dat` phải được mã hóa bằng cơ chế gắn với máy và vẫn phải xác minh chữ ký máy chủ sau khi giải mã. |
+| NFR-SEC-008 | Máy chủ licence và log kích hoạt không được nhận MST, số lượng khách hàng hoặc dữ liệu hóa đơn. |
 
 ### 12.2 Hiệu năng và khả năng mở rộng
 
@@ -429,6 +521,8 @@ Mẫu tên file:
 | NFR-PERF-003 | Mở ứng dụng đến màn hình đăng nhập/tổng quan không quá 5 giây trong điều kiện thông thường. |
 | NFR-PERF-004 | Bảng chỉ tải trang dữ liệu cần hiển thị; không nạp toàn bộ XML vào bộ nhớ. |
 | NFR-PERF-005 | Xuất ZIP/Excel phải hiển thị tiến độ và cho phép hủy an toàn. |
+| NFR-PERF-006 | SCR-10 phải hiển thị danh mục từ cache mà không mở đồng thời SQLite của nhiều MST. |
+| NFR-PERF-007 | Chuyển giữa hai kho hợp lệ không có tác vụ chạy phải hoàn tất trong 5 giây ở điều kiện thông thường. |
 
 ### 12.3 Độ tin cậy
 
@@ -439,6 +533,8 @@ Mẫu tên file:
 | NFR-REL-003 | Database phải bật cơ chế transaction và kiểm tra integrity trong quy trình chẩn đoán/sao lưu. |
 | NFR-REL-004 | File XML phải có SHA-256 và trạng thái kiểm tra gần nhất. |
 | NFR-REL-005 | Ứng dụng không được báo phiên hoàn tất khi còn đoạn chưa hoàn tất mà không ghi `Hoàn tất có lỗi`. |
+| NFR-REL-006 | Lỗi hoặc đóng tiến trình trong lúc chuyển MST không được để hai database cùng hoạt động; lần mở sau chọn kho hợp lệ cuối cùng. |
+| NFR-REL-007 | Mất/corrupt `companies.json` không được tạo kho rỗng đè lên dữ liệu; phải cho quét/liên kết lại các kho hiện hữu. |
 
 ### 12.4 Khả dụng
 
@@ -449,6 +545,8 @@ Mẫu tên file:
 | NFR-USE-003 | Mỗi màn hình chỉ có một hành động chính nổi bật. |
 | NFR-USE-004 | Bộ lọc Kho hóa đơn phải được giữ trong phiên làm việc khi xem chi tiết rồi quay lại. |
 | NFR-USE-005 | Tiến độ và lỗi phải đọc được mà không phụ thuộc riêng vào màu sắc. |
+| NFR-USE-006 | StandardMode không được hiển thị bộ chọn MST hoặc màn hình quản lý doanh nghiệp; mục `Bản quyền` vẫn truy cập được. |
+| NFR-USE-007 | Mọi hộp thoại chuyển, sao lưu hoặc khôi phục phải nêu rõ tên và MST bị tác động. |
 
 ### 12.5 Bảo trì và kiểm thử
 
@@ -459,6 +557,7 @@ Mẫu tên file:
 | NFR-MNT-003 | Database schema phải có version và migration có thể rollback bằng backup. |
 | NFR-MNT-004 | Log phải có correlation ID theo session/segment nhưng không chứa token. |
 | NFR-MNT-005 | Build/release phải ghi rõ phiên bản ứng dụng, schema và WebView engine. |
+| NFR-MNT-006 | `LicenseService`, `CompanyCatalog`, `CompanySwitchService`, `CompanyContext` và `StorageGuard` phải tách khỏi WinForms và có test tự động. |
 
 ## 13. Xử lý lỗi
 
@@ -473,6 +572,13 @@ Mẫu tên file:
 | Không có quyền ghi | Tạm dừng | Cho chọn thư mục khác hoặc mở Cài đặt |
 | File bị sửa/mất | Không xóa metadata | Cảnh báo trong Kho và cho kiểm tra/tải lại |
 | Database lỗi | Dừng thao tác ghi | Đề nghị sao lưu file hiện trạng và chạy chẩn đoán/khôi phục |
+| Licence gắn máy khác | Không kích hoạt | Hướng dẫn hủy kích hoạt máy cũ hoặc yêu cầu nhà cung cấp reset |
+| Máy chủ licence tạm lỗi | Dùng thời gian ngoại tuyến còn lại | Hiển thị lần xác thực cuối và ngày cần kết nối lại |
+| Licence hết hạn/thu hồi | Chuyển chỉ đọc | Cho xem/in/xuất/sao lưu; hướng dẫn gia hạn hoặc kích hoạt lại |
+| MST đăng nhập không khớp | Xóa phiên, không ghi dữ liệu | Hiển thị MST đang chọn và yêu cầu đăng nhập đúng doanh nghiệp |
+| Trùng MST trong danh mục | Không tạo kho mới | Mở hồ sơ đã tồn tại hoặc cho sửa đường dẫn |
+| Mất đường dẫn kho | Không tạo database thay thế | Cho xác định lại thư mục và kiểm tra MST/schema |
+| SQLite kho khác đang mở | Hủy chuyển MST | Đóng an toàn kho cũ hoặc khởi động lại sau khi phục hồi trạng thái |
 
 Mọi lỗi người dùng nhìn thấy phải có: đối tượng bị ảnh hưởng, thời điểm, bước thất bại, dữ liệu đã được giữ hay chưa và hành động tiếp theo.
 
@@ -541,19 +647,58 @@ Mở một hóa đơn chưa có PDF sẽ tạo PDF từ phiên bản XML hiện 
 
 Gói sao lưu có manifest hợp lệ và khôi phục được trên kho cùng MST; gói khác MST bị từ chối trước khi thay đổi dữ liệu.
 
+### AC-12 — Ẩn tính năng khi chưa có licence
+
+1. Khởi động với StandardMode.
+2. SCR-02 đến SCR-09 không hiển thị bộ chọn MST hoặc lối vào SCR-10/11.
+3. `Cài đặt > Bản quyền` vẫn mở SCR-12 và cho nhập key.
+4. Các application service từ chối lệnh thêm/chuyển MST nếu gọi ngoài UI.
+
+### AC-13 — Kích hoạt ServiceMode
+
+1. Nhập key hợp lệ trên SCR-12 khi có Internet.
+2. Server nhận key, mã máy đã băm và phiên bản ứng dụng; không nhận MST/dữ liệu hóa đơn.
+3. Ứng dụng xác minh chữ ký, lưu `license.dat` và bật bộ chọn MST/SCR-10 mà không cài lại.
+4. Kho StandardMode hiện hữu xuất hiện như doanh nghiệp đầu tiên và dữ liệu không bị di chuyển hoặc tải lại ngoài nhu cầu migration.
+
+### AC-14 — Thêm và chuyển MST
+
+1. Tạo hai hồ sơ MST A và B với hai thư mục/SQLite khác nhau.
+2. Đăng nhập và tải một hóa đơn cho A.
+3. Chuyển sang B; token A và kết nối database A bị đóng trước khi mở B.
+4. Đăng nhập nhầm tài khoản A khi B đang hoạt động bị từ chối, không có file/bản ghi nào được ghi vào kho B.
+5. Quay lại A vẫn thấy đúng hóa đơn và lịch sử của A; B không hiển thị dữ liệu của A.
+
+### AC-15 — Chuyển MST khi có tác vụ
+
+Khi A đang tải, yêu cầu chuyển sang B phải buộc người dùng chờ, tạm dừng hoặc hủy. B chỉ được kích hoạt sau khi checkpoint A được ghi, tác vụ dừng và database A đóng an toàn.
+
+### AC-16 — Licence mất hiệu lực
+
+1. Licence hết hạn, bị thu hồi hoặc quá 30 ngày không xác thực.
+2. Ứng dụng chuyển ReadOnlyServiceMode và vẫn cho mở từng MST đã có để xem, tìm, in, xuất và sao lưu.
+3. Thêm MST, đăng nhập Thuế, tải mới và sửa cấu hình nghiệp vụ bị từ chối ở cả UI và application service.
+4. Kích hoạt/gia hạn thành công khôi phục ServiceMode mà không chuyển đổi dữ liệu.
+
+### AC-17 — Ngừng quản lý và khôi phục liên kết
+
+Ngừng quản lý một MST loại hồ sơ khỏi `companies.json` nhưng giữ nguyên thư mục. Người dùng có thể liên kết lại đúng thư mục sau khi ứng dụng xác minh MST, schema và tính toàn vẹn.
+
 ## 15. Ma trận truy vết màn hình–chức năng
 
-| Nhóm yêu cầu | SCR-01 | SCR-02 | SCR-03 | SCR-04 | SCR-05 | SCR-06 | SCR-07 | SCR-08 | SCR-09 |
-|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| AUTH | X | X |  | X |  |  |  |  | X |
-| SEARCH |  |  | X | X |  |  |  |  |  |
-| JOB |  | X | X | X |  |  |  | X |  |
-| STORE |  |  |  | X | X | X | X |  | X |
-| ARCHIVE |  | X |  | X | X | X |  | X |  |
-| DETAIL/PDF |  |  |  |  | X | X | X |  |  |
-| EXPORT |  |  |  |  | X | X | X |  |  |
-| HISTORY |  | X |  | X | X |  |  | X |  |
-| SETTINGS/BACKUP |  |  |  |  |  |  |  |  | X |
+| Nhóm yêu cầu | SCR-01 | SCR-02 | SCR-03 | SCR-04 | SCR-05 | SCR-06 | SCR-07 | SCR-08 | SCR-09 | SCR-10 | SCR-11 | SCR-12 |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| AUTH | X | X |  | X |  |  |  |  | X |  | X |  |
+| SEARCH |  |  | X | X |  |  |  |  |  |  |  |  |
+| JOB |  | X | X | X |  |  |  | X |  | X |  |  |
+| STORE |  |  |  | X | X | X | X |  | X | X | X |  |
+| ARCHIVE |  | X |  | X | X | X |  | X |  |  |  |  |
+| DETAIL/PDF |  |  |  |  | X | X | X |  |  |  |  |  |
+| EXPORT |  |  |  |  | X | X | X |  |  | X |  |  |
+| HISTORY |  | X |  | X | X |  |  | X |  | X |  |  |
+| SETTINGS/BACKUP |  |  |  |  |  |  |  |  | X | X | X | X |
+| COMPANY | X | X | X | X | X | X | X | X | X | X | X |  |
+| LICENCE |  |  |  |  |  |  |  |  | X | X | X | X |
 
 ## 16. Kiểm thử bắt buộc
 
@@ -567,6 +712,10 @@ Gói sao lưu có manifest hợp lệ và khôi phục được trên kho cùng 
 - Quy tắc tên file và ký tự Windows không hợp lệ.
 - Mapping trạng thái/kết quả kiểm tra.
 - Manifest ZIP/backup.
+- Chuyển trạng thái entitlement Standard/Service/ReadOnlyService.
+- Trình tự đóng/mở `CompanyContext` và từ chối context/MST không khớp.
+- Đọc/ghi atomic `companies.json`, phát hiện trùng MST và cache tổng quan.
+- Kiểm tra chữ ký licence, mã máy, hạn dùng, thời gian ngoại tuyến và lệch đồng hồ.
 
 ### 16.2 Integration test
 
@@ -575,6 +724,9 @@ Gói sao lưu có manifest hợp lệ và khôi phục được trên kho cùng 
 - Ghi file atomic, file bị khóa, hết dung lượng và sai quyền.
 - Excel/ZIP/PDF với dữ liệu tiếng Việt, số 0 đầu và ngoại tệ.
 - Token hết hạn, 401/403, timeout, lỗi 5xx và schema thay đổi.
+- Kích hoạt/xác thực/hủy kích hoạt licence với server giả lập và lỗi mạng.
+- Hai kho MST độc lập, chuyển qua lại, database/file bị khóa và đường dẫn kho bị mất.
+- Nâng cấp kho StandardMode thành hồ sơ đầu tiên trong ServiceMode.
 
 ### 16.3 UAT trên cổng thật
 
@@ -585,6 +737,8 @@ Gói sao lưu có manifest hợp lệ và khôi phục được trên kho cùng 
 - Xuất Excel so với mẫu cổng.
 - XML ZIP và PDF/in.
 - Đăng nhập lại giữa phiên và tiếp tục.
+- Đăng nhập đúng/sai MST sau khi chuyển doanh nghiệp.
+- Xác minh chỉ có một phiên Thuế và một SQLite hoạt động tại mọi thời điểm.
 
 ## 17. Các cổng kỹ thuật trước khi triển khai
 
@@ -595,6 +749,8 @@ Các mục dưới đây không làm thay đổi yêu cầu nghiệp vụ nhưng
 3. **PDF strategy:** xác định dùng PDF/print endpoint của cổng hay render XML theo mẫu đã xác minh; kết quả phải nhất quán với dữ liệu XML.
 4. **Excel fidelity:** so sánh file xuất với workbook mẫu về cột, kiểu dữ liệu, tiêu đề và phạm vi ngày.
 5. **Rate limit:** xác định nhịp gọi an toàn và hành vi khi nhận 429/giới hạn tương đương.
+6. **Licence protocol:** chốt API, thuật toán chữ ký, tạo mã máy, mã hóa cục bộ, chu kỳ xác thực, hủy/reset thiết bị và chính sách lệch đồng hồ.
+7. **Company switch safety:** technical spike chứng minh đóng tác vụ/token/SQLite theo đúng thứ tự và phục hồi an toàn sau crash.
 
 Mỗi cổng phải có bằng chứng thử nghiệm và quyết định được lưu trong `docs/decisions/` trước khi code phụ thuộc vào lựa chọn đó.
 
@@ -602,11 +758,15 @@ Mỗi cổng phải có bằng chứng thử nghiệm và quyết định đư�
 
 Các quyết định đã được xác nhận:
 
-- Một doanh nghiệp/MST trên mỗi máy.
+- Một ứng dụng có hai chế độ: StandardMode một MST và ServiceMode đa MST được licence mở khóa.
+- Licence theo máy, kích hoạt trực tuyến, không giới hạn số MST và không gửi danh sách MST lên máy chủ licence.
+- Chỉ một MST hoạt động tại một thời điểm; không tải nền hoặc giữ đồng thời nhiều phiên đăng nhập.
+- Mỗi MST có thư mục và SQLite riêng; `companies.json` chỉ là danh mục định tuyến/cache.
+- Tính năng đa MST được ẩn trong StandardMode; mục kích hoạt licence vẫn luôn hiện.
+- Licence mất hiệu lực chuyển sang chỉ đọc, vẫn cho xem/in/xuất/sao lưu dữ liệu cũ.
 - Ứng dụng nghiệp vụ kế toán với Kho hóa đơn làm trung tâm.
 - Thanh điều hướng bên trái.
 - XML lưu tự động; PDF tạo khi xem/in.
 - SQLite kết hợp kho file có cấu trúc.
 - Tải tuần tự theo tháng, có checkpoint và tiếp tục.
 - Wireframe được bàn giao ở cả HTML và PNG.
-

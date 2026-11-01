@@ -45,6 +45,9 @@
     .app-main { display: grid; grid-template-rows: 70px 1fr; min-width: 0; }
     .app-header { border-bottom: 1px solid var(--line); display: flex; align-items: center; padding: 0 25px; gap: 15px; background: #fff; }
     .app-header .company { font-weight: bold; }
+    .app-header .company.service-company { cursor: pointer; border: 1px solid var(--line); border-radius: 5px; padding: 8px 34px 8px 11px; position: relative; background: #fff; min-width: 270px; }
+    .app-header .company.service-company::after { content: "▾"; position: absolute; right: 11px; top: 8px; color: var(--muted); }
+    .app-header .company.service-company:hover { border-color: var(--line-dark); background: #faf8f4; }
     .app-header .tax-code { color: var(--muted); font-size: 12px; }
     .header-spacer { flex: 1; }
     .session-status { border: 1px solid #89a895; color: var(--good); border-radius: 16px; padding: 6px 10px; font-size: 12px; }
@@ -117,6 +120,10 @@
     .compact-settings .panel-head { min-height: 42px; padding: 9px 15px; }
     .compact-settings .panel-body { padding: 11px 15px; }
     .compact-settings .storage-bar { margin: 8px 0; }
+    .mode-banner { display: flex; align-items: center; gap: 10px; border: 1px solid #91b6a0; background: #f1faf4; color: #285f43; border-radius: 5px; padding: 10px 13px; font-size: 12px; margin-bottom: 14px; }
+    .company-avatar { width: 34px; height: 34px; border-radius: 5px; display: grid; place-items: center; background: #e5e9ec; color: #40515d; font-weight: bold; }
+    .license-box { border: 1px dashed #9da8b1; background: #fafbfb; border-radius: 6px; padding: 18px; }
+    .readonly-note { border: 1px solid #cea2a2; background: #fff4f4; color: #7b3434; border-radius: 5px; padding: 10px 13px; font-size: 12px; }
     .login-screen { background: #eef1f3; display: grid; grid-template-rows: 76px 1fr 42px; }
     .login-top { background: #273746; color: #fff; display: flex; align-items: center; padding: 0 30px; gap: 12px; }
     .login-top b { font-size: 19px; }
@@ -150,6 +157,9 @@
     <a data-screen-link="SCR-07" href="?screen=SCR-07">07 Chứng từ</a>
     <a data-screen-link="SCR-08" href="?screen=SCR-08">08 Lịch sử</a>
     <a data-screen-link="SCR-09" href="?screen=SCR-09">09 Cài đặt</a>
+    <a data-screen-link="SCR-10" href="?screen=SCR-10">10 Doanh nghiệp</a>
+    <a data-screen-link="SCR-11" href="?screen=SCR-11">11 Thêm MST</a>
+    <a data-screen-link="SCR-12" href="?screen=SCR-12">12 Bản quyền</a>
     <span class="hint">HTML trao đổi kỹ thuật · 1440 × 900</span>
   </nav>
 
@@ -320,7 +330,7 @@
         <div class="content compact-settings">
           <div class="page-title"><div><h1>Cài đặt</h1><p>Thông tin doanh nghiệp, lưu trữ, sao lưu và kết nối</p></div><div class="page-actions"><a class="button primary">Lưu thay đổi</a></div></div>
           <div class="grid-2" style="grid-template-columns:260px 1fr">
-            <div class="panel"><div class="list-row" style="grid-template-columns:1fr"><b>Doanh nghiệp</b></div><div class="list-row" style="grid-template-columns:1fr;background:#f1f3f4"><b>Lưu trữ và sao lưu</b></div><div class="list-row" style="grid-template-columns:1fr"><b>Kết nối cổng Thuế</b></div><div class="list-row" style="grid-template-columns:1fr"><b>Nhật ký và chẩn đoán</b></div><div class="list-row" style="grid-template-columns:1fr"><b>Thông tin ứng dụng</b></div></div>
+            <div class="panel"><div class="list-row" style="grid-template-columns:1fr"><b>Doanh nghiệp đang hoạt động</b></div><div class="list-row" style="grid-template-columns:1fr;background:#f1f3f4"><b>Lưu trữ và sao lưu</b></div><div class="list-row" style="grid-template-columns:1fr"><b>Kết nối cổng Thuế</b></div><div class="list-row" style="grid-template-columns:1fr"><b>Nhật ký và chẩn đoán</b></div><a class="list-row" style="grid-template-columns:1fr;color:inherit;text-decoration:none" href="?screen=SCR-12"><b>Bản quyền ứng dụng →</b></a><div class="list-row" style="grid-template-columns:1fr"><b>Thông tin ứng dụng</b></div></div>
             <div>
               <div class="panel"><div class="panel-head"><b>Thư mục kho dữ liệu</b></div><div class="panel-body"><div class="field"><label>Đường dẫn gốc</label><div style="display:grid;grid-template-columns:1fr 110px;gap:8px"><div class="input">D:\DuLieu\HoaDonDienTu\0101234567</div><a class="button">Chọn thư mục</a></div></div><div class="alert" style="margin-top:12px;margin-bottom:0">Đã kiểm tra quyền đọc/ghi · Còn trống 184 GB</div></div></div>
               <div class="panel"><div class="panel-head"><b>Dung lượng sử dụng</b><a class="button" style="margin-left:auto">Mở thư mục kho</a></div><div class="panel-body"><div class="storage-bar"><span>Database</span><div class="progress"><span style="width:8%"></span></div><b class="right">84 MB</b></div><div class="storage-bar"><span>XML</span><div class="progress"><span style="width:72%"></span></div><b class="right">7,4 GB</b></div><div class="storage-bar"><span>PDF đã tạo</span><div class="progress"><span style="width:24%"></span></div><b class="right">2,1 GB</b></div><div class="storage-bar"><span>File xuất</span><div class="progress"><span style="width:12%"></span></div><b class="right">1,2 GB</b></div></div></div>
@@ -333,6 +343,81 @@
     </div><div class="screen-ref">SCR-09 · Cài đặt</div>
   </section>
 
+  <section class="screen" data-screen="SCR-10" hidden>
+    <div class="app-shell">
+      <aside class="sidebar"><div class="brand"><b>HÓA ĐƠN<br>ĐIỆN TỬ</b><span>Bản dịch vụ kế toán</span></div><nav class="side-nav"><a href="?screen=SCR-02">▣ Tổng quan</a><a href="?screen=SCR-03">⇩ Tải hóa đơn</a><a href="?screen=SCR-05">▤ Kho hóa đơn</a><a href="?screen=SCR-08">◷ Lịch sử tải</a><a class="active" href="?screen=SCR-10">▦ Doanh nghiệp</a><a href="?screen=SCR-09">⚙ Cài đặt</a></nav><div class="sidebar-bottom">ServiceMode · Licence hợp lệ<br>Chỉ 1 MST hoạt động</div></aside>
+      <main class="app-main">
+        <header class="app-header"><div><div class="company service-company" data-company-switch>CÔNG TY TNHH MẪU</div><div class="tax-code">MST 0101234567 · Đang hoạt động</div></div><div class="header-spacer"></div><span class="tag good">Bản dịch vụ</span><span class="session-status">● Đã đăng nhập</span></header>
+        <div class="content">
+          <div class="page-title"><div><h1>Quản lý doanh nghiệp</h1><p>Chọn một MST để làm việc; mỗi doanh nghiệp sử dụng kho dữ liệu riêng</p></div><div class="page-actions"><a class="button" href="?screen=SCR-09">Cài đặt kho</a><a class="button primary" href="?screen=SCR-11">Thêm doanh nghiệp</a></div></div>
+          <div class="mode-banner"><b>✓ Licence dịch vụ đang hoạt động</b><span>Không giới hạn số MST trên máy này · chỉ một MST được mở tại một thời điểm</span><a href="?screen=SCR-12" style="margin-left:auto;color:inherit">Xem bản quyền</a></div>
+          <div class="cards">
+            <div class="card"><div class="label">Doanh nghiệp đang quản lý</div><div class="value">18</div><div class="sub">Không giới hạn theo licence</div></div>
+            <div class="card"><div class="label">Đã cập nhật trong tháng</div><div class="value">14</div><div class="sub">4 doanh nghiệp cần kiểm tra</div></div>
+            <div class="card"><div class="label">Tổng dung lượng</div><div class="value">86,4 GB</div><div class="sub">Các kho được cách ly</div></div>
+            <div class="card"><div class="label">MST đang hoạt động</div><div class="value" style="font-size:17px">0101234567</div><div class="sub">Công ty TNHH Mẫu</div></div>
+          </div>
+          <div class="panel"><div class="panel-body"><div class="toolbar" style="margin:0"><div class="input wide placeholder" style="width:420px">Tìm theo tên doanh nghiệp hoặc mã số thuế</div><div class="select" style="width:190px">Mọi trạng thái ▾</div><a class="button">Tìm kiếm</a><span class="muted small" style="margin-left:auto">Số liệu tổng quan được lưu đệm khi đóng kho</span></div></div></div>
+          <div class="table-wrap"><table><thead><tr><th>Doanh nghiệp</th><th>MST</th><th>Kỳ tải gần nhất</th><th>Cập nhật</th><th class="right">Hóa đơn</th><th class="right">Dung lượng</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>
+            <tr><td><div style="display:flex;gap:9px"><span class="company-avatar">M</span><div><b>Công ty TNHH Mẫu</b><div class="muted small">D:\DuLieu\HDDT\0101234567</div></div></div></td><td>0101234567</td><td>Tháng 10/2026</td><td>01/11/2026 09:42</td><td class="right">24.862</td><td class="right">10,8 GB</td><td><span class="tag good">Đang làm việc</span></td><td><a class="button" href="?screen=SCR-02">Mở</a></td></tr>
+            <tr><td><div style="display:flex;gap:9px"><span class="company-avatar">A</span><div><b>Công ty Cổ phần An Phú</b><div class="muted small">D:\DuLieu\HDDT\0312345678</div></div></div></td><td>0312345678</td><td>Quý 3/2026</td><td>31/10/2026 16:20</td><td class="right">18.415</td><td class="right">7,6 GB</td><td><span class="tag warn">Chưa đăng nhập</span></td><td><a class="button">Làm việc</a></td></tr>
+            <tr><td><div style="display:flex;gap:9px"><span class="company-avatar">B</span><div><b>Công ty TNHH Bình Minh</b><div class="muted small">E:\KhachHang\0209988776</div></div></div></td><td>0209988776</td><td>Tháng 10/2026</td><td>29/10/2026 11:05</td><td class="right">9.208</td><td class="right">4,1 GB</td><td><span class="tag bad">Cần xử lý</span></td><td><a class="button">Chi tiết</a></td></tr>
+            <tr><td><div style="display:flex;gap:9px"><span class="company-avatar">T</span><div><b>Công ty Thương mại Thành Công</b><div class="muted small">D:\DuLieu\HDDT\0105566778</div></div></div></td><td>0105566778</td><td>Năm 2025</td><td>15/10/2026 08:30</td><td class="right">31.704</td><td class="right">13,2 GB</td><td><span class="tag">Sẵn sàng</span></td><td><a class="button">Làm việc</a></td></tr>
+          </tbody></table></div>
+          <div class="pager"><span>Hiển thị 1–4 trong 18 doanh nghiệp</span><span><a class="button disabled">Trước</a> <a class="button">Sau</a></span></div>
+        </div>
+      </main>
+    </div><div class="screen-ref">SCR-10 · Quản lý doanh nghiệp</div>
+  </section>
+
+  <section class="screen" data-screen="SCR-11" hidden>
+    <div class="app-shell">
+      <aside class="sidebar"><div class="brand"><b>HÓA ĐƠN<br>ĐIỆN TỬ</b><span>Bản dịch vụ kế toán</span></div><nav class="side-nav"><a href="?screen=SCR-02">▣ Tổng quan</a><a href="?screen=SCR-03">⇩ Tải hóa đơn</a><a href="?screen=SCR-05">▤ Kho hóa đơn</a><a href="?screen=SCR-08">◷ Lịch sử tải</a><a class="active" href="?screen=SCR-10">▦ Doanh nghiệp</a><a href="?screen=SCR-09">⚙ Cài đặt</a></nav><div class="sidebar-bottom">ServiceMode · Licence hợp lệ<br>Tạo một kho độc lập</div></aside>
+      <main class="app-main">
+        <header class="app-header"><div><div class="company service-company" data-company-switch>CÔNG TY TNHH MẪU</div><div class="tax-code">MST 0101234567 · Đang hoạt động</div></div><div class="header-spacer"></div><span class="tag good">Bản dịch vụ</span><span class="session-status">● Đã đăng nhập</span></header>
+        <div class="content">
+          <div class="breadcrumb"><a href="?screen=SCR-10">Quản lý doanh nghiệp</a> / Thêm doanh nghiệp</div>
+          <div class="page-title"><div><h1>Thêm doanh nghiệp</h1><p>Tạo hồ sơ và kho dữ liệu riêng cho một mã số thuế</p></div><div class="page-actions"><a class="button" href="?screen=SCR-10">Hủy</a><a class="button primary" href="?screen=SCR-01">Tạo và chuyển sang MST này</a></div></div>
+          <div class="grid-2" style="grid-template-columns:1.25fr .75fr">
+            <div>
+              <div class="panel"><div class="panel-head"><b>1. Thông tin doanh nghiệp</b><span class="tag" style="margin-left:auto">Bắt buộc</span></div><div class="panel-body"><div class="field-grid"><div class="field"><label>Mã số thuế</label><div class="input">0319988776</div><span class="muted small">Dùng để kiểm tra phiên đăng nhập và cách ly kho</span></div><div class="field"><label>Tên hiển thị</label><div class="input">Công ty TNHH Minh Long</div><span class="muted small">Có thể cập nhật sau khi đăng nhập</span></div></div></div></div>
+              <div class="panel"><div class="panel-head"><b>2. Kho dữ liệu riêng</b></div><div class="panel-body"><div class="field"><label>Thư mục kho</label><div style="display:grid;grid-template-columns:1fr 120px;gap:8px"><div class="input">D:\DuLieu\HDDT\0319988776</div><a class="button">Chọn thư mục</a></div></div><div class="alert" style="margin-top:13px;margin-bottom:0">Thư mục sẽ chứa <b>company.db</b>, XML, PDF cache, file xuất, bản sao lưu và log của riêng MST 0319988776.</div></div></div>
+              <div class="panel"><div class="panel-head"><b>3. Kiểm tra trước khi tạo</b></div><div class="panel-body"><div class="list-row" style="grid-template-columns:30px 1fr 100px"><b>✓</b><span>MST chưa tồn tại trong danh mục</span><span class="tag good">Hợp lệ</span></div><div class="list-row" style="grid-template-columns:30px 1fr 100px"><b>✓</b><span>Thư mục có quyền đọc/ghi và còn trống 184 GB</span><span class="tag good">Hợp lệ</span></div><div class="list-row" style="grid-template-columns:30px 1fr 100px"><b>✓</b><span>Licence dịch vụ đang hoạt động trên máy này</span><span class="tag good">Hợp lệ</span></div></div></div>
+            </div>
+            <div>
+              <div class="panel"><div class="panel-head"><b>Sau khi tạo</b></div><div class="panel-body"><ol class="small" style="line-height:2;margin:0;padding-left:20px"><li>Dừng an toàn tác vụ của MST hiện tại nếu có.</li><li>Xóa token hiện tại khỏi bộ nhớ.</li><li>Đóng SQLite của MST hiện tại.</li><li>Tạo và mở kho 0319988776.</li><li>Mở SCR-01 để đăng nhập cổng Thuế.</li><li>Chỉ chấp nhận phiên có đúng MST 0319988776.</li></ol></div></div>
+              <div class="readonly-note"><b>Không lưu tài khoản hoặc mật khẩu.</b><br>Việc thêm hồ sơ chỉ tạo kho dữ liệu; người dùng vẫn phải đăng nhập thủ công và tự nhập CAPTCHA.</div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div><div class="screen-ref">SCR-11 · Thêm / sửa doanh nghiệp</div>
+  </section>
+
+  <section class="screen" data-screen="SCR-12" hidden>
+    <div class="app-shell">
+      <aside class="sidebar"><div class="brand"><b>HÓA ĐƠN<br>ĐIỆN TỬ</b><span>Kho chứng từ doanh nghiệp</span></div><nav class="side-nav"><a href="?screen=SCR-02">▣ Tổng quan</a><a href="?screen=SCR-03">⇩ Tải hóa đơn</a><a href="?screen=SCR-05">▤ Kho hóa đơn</a><a href="?screen=SCR-08">◷ Lịch sử tải</a><a class="active" href="?screen=SCR-09">⚙ Cài đặt</a></nav><div class="sidebar-bottom">Phiên bản ứng dụng 1.1<br>Chế độ chuẩn</div></aside>
+      <main class="app-main">
+        <header class="app-header"><div><div class="company">CÔNG TY TNHH MẪU</div><div class="tax-code">MST 0101234567</div></div><div class="header-spacer"></div><span class="session-status">● Đã đăng nhập</span></header>
+        <div class="content">
+          <div class="breadcrumb"><a href="?screen=SCR-09">Cài đặt</a> / Bản quyền</div>
+          <div class="page-title"><div><h1>Bản quyền ứng dụng</h1><p>Kích hoạt licence được nhà cung cấp cấp cho máy này</p></div><div class="page-actions"><a class="button" href="?screen=SCR-09">Quay lại cài đặt</a></div></div>
+          <div class="grid-2" style="grid-template-columns:.8fr 1.2fr">
+            <div>
+              <div class="panel"><div class="panel-head"><b>Trạng thái hiện tại</b></div><div class="panel-body"><div style="display:flex;align-items:center;gap:12px;margin-bottom:16px"><span class="company-avatar">S</span><div><b>Chế độ chuẩn</b><div class="muted small">Không có licence mở rộng trên máy này</div></div></div><div class="kv"><div class="k">Thiết bị</div><div>DESKTOP-KETOAN-01</div><div class="k">Mã máy</div><div>84B2-••••-19C7</div><div class="k">Xác thực gần nhất</div><div>Chưa kích hoạt</div><div class="k">Phiên bản</div><div>1.1.0 · Schema v1</div></div></div></div>
+              <div class="alert">Mục kích hoạt luôn hiển thị. Các chức năng tương ứng với licence chỉ xuất hiện sau khi key được máy chủ xác thực thành công.</div>
+            </div>
+            <div>
+              <div class="panel"><div class="panel-head"><b>Kích hoạt licence</b><span class="tag" style="margin-left:auto">Yêu cầu Internet</span></div><div class="panel-body"><div class="license-box"><div class="field"><label>Licence key</label><div class="input" style="font-family:Consolas,monospace;letter-spacing:1px">HDDT-SVC-••••-••••-••••</div><span class="muted small">Key được kiểm tra trực tuyến và gắn với máy này. Không gửi MST hoặc dữ liệu hóa đơn.</span></div><div style="display:flex;justify-content:flex-end;gap:8px;margin-top:15px"><a class="button">Kiểm tra kết nối</a><a class="button primary" href="?screen=SCR-10">Kích hoạt</a></div></div></div></div>
+              <div class="panel"><div class="panel-head"><b>Dữ liệu gửi khi kích hoạt</b></div><div class="panel-body"><table><tbody><tr><td><b>Licence key</b></td><td>Xác định quyền đã mua</td></tr><tr><td><b>Mã máy đã băm</b></td><td>Ràng buộc licence với thiết bị</td></tr><tr><td><b>Phiên bản ứng dụng</b></td><td>Kiểm tra tương thích entitlement</td></tr><tr><td><b>Không gửi</b></td><td>MST, danh sách khách hàng, hóa đơn, token Thuế, đường dẫn kho</td></tr></tbody></table></div></div>
+              <div class="panel"><div class="panel-head"><b>Sau khi kích hoạt</b></div><div class="panel-body small">Ứng dụng kiểm tra chữ ký, lưu entitlement được bảo vệ theo máy và tự mở các chức năng được cấp phép mà không cần cài đặt lại. Khi máy chủ tạm thời không truy cập được, licence đã xác thực có thể tiếp tục hoạt động tối đa 30 ngày.</div></div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div><div class="screen-ref">SCR-12 · Kích hoạt / quản lý licence</div>
+  </section>
+
   <script>
     (function () {
       var params = new URLSearchParams(window.location.search);
@@ -340,6 +425,28 @@
       var capture = params.get('capture') === '1';
       var available = Array.prototype.map.call(document.querySelectorAll('[data-screen]'), function (el) { return el.getAttribute('data-screen'); });
       if (available.indexOf(screen) < 0) screen = 'SCR-02';
+      if (screen !== 'SCR-12') {
+        document.querySelectorAll('.app-header .company').forEach(function (el) {
+          el.classList.add('service-company');
+          el.setAttribute('data-company-switch', '');
+          el.setAttribute('title', 'Mở danh sách doanh nghiệp');
+          el.setAttribute('tabindex', '0');
+        });
+        document.querySelectorAll('.side-nav').forEach(function (nav) {
+          if (nav.querySelector('a[href*="SCR-10"]')) return;
+          var settings = nav.querySelector('a[href*="SCR-09"]');
+          var companyLink = document.createElement('a');
+          companyLink.href = '?screen=SCR-10';
+          companyLink.textContent = '▦ Doanh nghiệp';
+          nav.insertBefore(companyLink, settings);
+        });
+      }
+      document.querySelectorAll('[data-company-switch]').forEach(function (el) {
+        el.addEventListener('click', function () { window.location.href = '?screen=SCR-10'; });
+        el.addEventListener('keydown', function (event) {
+          if (event.key === 'Enter' || event.key === ' ') window.location.href = '?screen=SCR-10';
+        });
+      });
       if (capture) document.body.classList.add('capture');
       document.querySelectorAll('[data-screen]').forEach(function (el) { el.hidden = el.getAttribute('data-screen') !== screen; });
       document.querySelectorAll('[data-screen-link]').forEach(function (el) { if (el.getAttribute('data-screen-link') === screen) el.classList.add('active'); });

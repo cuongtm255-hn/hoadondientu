@@ -23,7 +23,9 @@ Cổng Thuế giới hạn một lần tra cứu trong phạm vi một tháng. �
 - Xuất danh sách Excel theo mẫu cổng Thuế.
 - Xuất ZIP XML có manifest và mã băm.
 - Lịch sử phiên tải, chống trùng và giữ phiên bản XML thay đổi.
-- Sao lưu/khôi phục dữ liệu cho một doanh nghiệp/MST trên mỗi máy.
+- Chế độ chuẩn quản lý một doanh nghiệp/MST trên mỗi máy.
+- Chế độ dịch vụ được mở bằng licence theo máy, cho phép khai báo không giới hạn MST nhưng chỉ làm việc với một MST tại một thời điểm.
+- Mỗi MST có SQLite và thư mục XML/PDF cache riêng để sao lưu, khôi phục hoặc bàn giao độc lập.
 
 ## Quy trình đăng nhập
 
@@ -45,7 +47,11 @@ Cổng Thuế giới hạn một lần tra cứu trong phạm vi một tháng. �
 
 ## Quyết định thiết kế chính
 
-- Một doanh nghiệp/MST trên mỗi máy.
+- Một ứng dụng có hai chế độ: chế độ chuẩn một MST và chế độ dịch vụ đa MST được licence mở khóa.
+- Licence theo máy, kích hoạt trực tuyến, không giới hạn số MST và không gửi MST/dữ liệu hóa đơn tới máy chủ licence.
+- Chỉ một MST hoạt động tại một thời điểm; chuyển MST sẽ đóng token, tác vụ và SQLite hiện tại trước khi mở kho mới.
+- Mỗi MST có thư mục và SQLite riêng; không có database hóa đơn dùng chung.
+- Khi licence dịch vụ mất hiệu lực, dữ liệu cũ vẫn được xem, in, xuất và sao lưu ở chế độ chỉ đọc.
 - Giao diện ứng dụng nghiệp vụ kế toán với thanh điều hướng bên trái.
 - Kho hóa đơn là trung tâm tra cứu và xử lý.
 - SQLite lưu metadata/checkpoint; file XML/PDF lưu trong kho có cấu trúc theo năm, tháng và loại hóa đơn.

@@ -8,6 +8,8 @@ Index of where context lives. Keep files short; link rather than duplicate.
 - [Wireframe HTML tương tác](wireframes/index.html)
 - [Danh mục wireframe PNG](wireframes/README.md)
 
+SRS và wireframe hiện mô tả cả `StandardMode` một MST và `ServiceMode` đa MST kích hoạt bằng licence theo máy. ServiceMode chỉ mở một MST tại một thời điểm và cách ly SQLite/thư mục theo từng doanh nghiệp.
+
 | Folder | Put here |
 |---|---|
 | `requirements/` | PM requirements, feature specs, acceptance criteria (source: portal "Tra cứu" behaviour + period-selection extension) |
