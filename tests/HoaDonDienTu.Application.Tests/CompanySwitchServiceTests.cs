@@ -321,14 +321,15 @@ namespace HoaDonDienTu.Application.Tests
                 _log = log;
             }
 
-            public bool IsAuthenticated { get; set; }
-            public TaxCode TaxCode { get; set; }
+            public event EventHandler SessionChanged { add { } remove { } }
+            public bool HasActiveSession { get { return false; } }
+            public PortalSessionSnapshot GetSnapshot() { return null; }
+            public PortalSession GetSessionForApi() { return null; }
+            public void Set(PortalSession session) { }
 
             public void Clear()
             {
                 _log.Add("session.clear");
-                IsAuthenticated = false;
-                TaxCode = null;
             }
         }
 

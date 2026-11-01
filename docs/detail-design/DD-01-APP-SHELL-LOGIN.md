@@ -1200,7 +1200,7 @@ Trạng thái: ⬜ Chưa bắt đầu · 🟡 Đang làm · ✅ Hoàn thành · 
 | T01-06 | `StartupCoordinator` + fake licence/catalog + bảng quyết định route | Application | T01-03 | ✅ | | `StartupCoordinator` + `ILicenseService`/`ICompanyCatalog` tối thiểu, 15 test; fake ở `Infrastructure/Development` (Debug). Chưa có `ILocalSettingsStore` (chưa cần) |
 | T01-07 | `CompanyContext`, `ICompanyContextManager`, `CompanySwitchService`, `StorageGuard` | Application | T01-03 | ✅ | | `CompanyContext`, `ICompanyContextManager/Accessor`, `CompanySwitchService`, `StorageGuard` + 23 test. Port `ICompanyStorageOpener`, `IActiveJobService`, `IPortalSessionStore`, `IEntitlementService` chờ implement ở DD-02/05/06, T01-09, DD-03. Thêm blocker `SwitchInProgress`; chưa có `UnitOfWorkFactory` (DD-06) |
 | T01-08 | `PortalLoginForm`, `PortalLoginPresenter`, `PortalLoginCoordinator` + `DevelopmentPortalLoginBrowser` | WinForms/Infra | T01-05, T01-07 | ⬜ | | |
-| T01-09 | `InMemoryPortalSessionStore`, `IPortalApiClientFactory` (stub), fake `IPortalAuthenticationService` | Infra | T01-03 | ⬜ | | |
+| T01-09 | `InMemoryPortalSessionStore`, `IPortalApiClientFactory` (stub), fake `IPortalAuthenticationService` | Infra | T01-03 | ✅ | | `InMemoryPortalSessionStore`, `PortalSession/Snapshot/Material` (che token), `PortalApiClientProvider` (1 client/generation), fake `IPortalAuthenticationService` + stub `IPortalApiClientFactory` (Debug); 11 test. Thêm `GetSessionForApi()` và `SessionChanged` so với mục 11.1 |
 | T01-10 | `UiOperationRunner`, `UserErrorPresenter`, `ConfirmationService`, logging che dữ liệu nhạy cảm | WinForms/Infra | T01-04 | ⬜ | | NFR-SEC-002 |
 | T01-11 | `AtomicJsonWriter` và quy trình `.tmp` → verify → replace + `.bak` | Infra | T01-01 | ⬜ | | Dùng chung DD-02/DD-03 |
 | T01-12 | Quy trình đóng ứng dụng (mục 17) | WinForms | T01-05, T01-09 | ⬜ | | |
@@ -1229,6 +1229,7 @@ Trạng thái: ⬜ Chưa bắt đầu · 🟡 Đang làm · ✅ Hoàn thành · 
 | Ngày | Nội dung | Người thực hiện |
 |---|---|---|
 | 01/11/2026 | Chuẩn hóa tài liệu, tách DD-02/DD-03/DD-00; chưa có code | Claude Code |
+| 01/11/2026 | T01-09 xong: session store trong bộ nhớ, client provider theo generation, adapter giả; 60 test | Claude Code |
 | 01/11/2026 | T01-07 xong: context, switch theo thứ tự mục 9.3 (khôi phục context cũ khi mở đích lỗi), storage guard mục 9.4; 49 test | Claude Code |
 | 01/11/2026 | T01-06 xong: `StartupCoordinator` theo bảng quyết định mục 7.4, 15 test | Claude Code |
 | 01/11/2026 | T01-03 xong, T01-04 gần xong (Program/CompositionRoot/AppApplicationContext/GlobalExceptionHandler); chạy thử Standard/Service | Claude Code |

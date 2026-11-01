@@ -95,15 +95,18 @@ namespace HoaDonDienTu.Application.Tests
 
         private sealed class Session : IPortalSessionStore
         {
+            private readonly PortalSessionSnapshot _snapshot;
+
             public Session(bool authenticated, TaxCode taxCode)
             {
-                IsAuthenticated = authenticated;
-                TaxCode = taxCode;
+                if (authenticated) _snapshot = new PortalSessionSnapshot(Id, taxCode, DateTime.UtcNow, 1);
             }
 
-            public bool IsAuthenticated { get; private set; }
-            public TaxCode TaxCode { get; private set; }
-
+            public event EventHandler SessionChanged { add { } remove { } }
+            public bool HasActiveSession { get { return _snapshot != null; } }
+            public PortalSessionSnapshot GetSnapshot() { return _snapshot; }
+            public PortalSession GetSessionForApi() { return null; }
+            public void Set(PortalSession session) { }
             public void Clear() { }
         }
 

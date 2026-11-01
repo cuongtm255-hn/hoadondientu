@@ -54,7 +54,8 @@ namespace HoaDonDienTu.Application.Companies
 
             if (requiresPortalSession)
             {
-                if (!_portalSession.IsAuthenticated || !current.TaxCode.Equals(_portalSession.TaxCode))
+                var session = _portalSession.GetSnapshot();
+                if (session == null || !current.TaxCode.Equals(session.TaxCode))
                     throw new StorageGuardException("Phiên cổng Thuế không thuộc MST của kho đang mở.");
             }
 

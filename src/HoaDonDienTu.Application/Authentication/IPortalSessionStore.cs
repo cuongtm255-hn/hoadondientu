@@ -1,15 +1,24 @@
-using HoaDonDienTu.Domain.Companies;
+using System;
 
 namespace HoaDonDienTu.Application.Authentication
 {
-    /// <summary>Phiên cổng Thuế chỉ giữ trong bộ nhớ (T01-09 cung cấp implementation).</summary>
+    /// <summary>Chỉ một phiên cổng Thuế trong bộ nhớ; không serialize, không ghi đĩa (DD-01 mục 11.1).</summary>
     public interface IPortalSessionStore
     {
-        bool IsAuthenticated { get; }
+        bool HasActiveSession { get; }
 
-        /// <summary>MST của phiên đã xác minh; null khi chưa đăng nhập.</summary>
-        TaxCode TaxCode { get; }
+        /// <summary>Snapshot không chứa token; null khi chưa có phiên.</summary>
+        PortalSessionSnapshot GetSnapshot();
 
+        /// <summary>Chỉ dành cho lớp API client. UI không được dùng.</summary>
+        PortalSession GetSessionForApi();
+
+        void Set(PortalSession session);
+
+        /// <summary>Gọi khi đổi MST, logout, token hết hạn hoặc đóng app.</summary>
         void Clear();
+
+        /// <summary>Phát khi Set hoặc Clear.</summary>
+        event EventHandler SessionChanged;
     }
 }
