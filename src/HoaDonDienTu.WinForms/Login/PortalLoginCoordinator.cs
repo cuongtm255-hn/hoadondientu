@@ -23,6 +23,7 @@ namespace HoaDonDienTu.WinForms.Login
         private readonly IPortalSessionStore _sessionStore;
         private readonly IPortalAuthenticationService _authentication;
         private readonly Func<IPortalLoginBrowser> _browserFactory;
+        private readonly Func<IPortalLoginView> _viewFactory;
         private readonly IApplicationLogger _logger;
         private int _active;
 
@@ -32,6 +33,7 @@ namespace HoaDonDienTu.WinForms.Login
             IPortalSessionStore sessionStore,
             IPortalAuthenticationService authentication,
             Func<IPortalLoginBrowser> browserFactory,
+            Func<IPortalLoginView> viewFactory,
             IApplicationLogger logger)
         {
             if (context == null) throw new ArgumentNullException("context");
@@ -39,12 +41,14 @@ namespace HoaDonDienTu.WinForms.Login
             if (sessionStore == null) throw new ArgumentNullException("sessionStore");
             if (authentication == null) throw new ArgumentNullException("authentication");
             if (browserFactory == null) throw new ArgumentNullException("browserFactory");
+            if (viewFactory == null) throw new ArgumentNullException("viewFactory");
             if (logger == null) throw new ArgumentNullException("logger");
             _context = context;
             _entitlement = entitlement;
             _sessionStore = sessionStore;
             _authentication = authentication;
             _browserFactory = browserFactory;
+            _viewFactory = viewFactory;
             _logger = logger;
         }
 
@@ -71,12 +75,13 @@ namespace HoaDonDienTu.WinForms.Login
                     return Task.FromResult(PortalLoginResult.Failure(PortalLoginOutcome.NotAllowed, "Chế độ hiện tại không cho phép đăng nhập cổng Thuế."));
                 }
 
-                using (var form = new PortalLoginForm())
+                var view = _viewFactory();
+                using (view as IDisposable)
                 using (var presenter = new PortalLoginPresenter(
-                    form, request, _context, _browserFactory(), _authentication, _sessionStore, _logger))
+                    view, request, _context, _browserFactory(), _authentication, _sessionStore, _logger))
                 {
                     presenter.Initialize();
-                    form.ShowDialog(owner);
+                    view.ShowModal(owner);
                     var result = presenter.Result
                         ?? PortalLoginResult.Failure(PortalLoginOutcome.Cancelled, null);
                     return Task.FromResult(result);

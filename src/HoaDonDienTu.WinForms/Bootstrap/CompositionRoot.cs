@@ -128,6 +128,7 @@ namespace HoaDonDienTu.WinForms.Bootstrap
                 new FakePortalAuthenticationService(null, Clock),
                 () => new DevelopmentPortalLoginBrowser(
                     () => contextManager.HasCurrent ? contextManager.Current.TaxCode.Value : string.Empty),
+                () => new PortalLoginForm(),
                 Logger);
 #else
             throw new NotSupportedException("Licence/catalog/kho/xác thực production chưa có (DD-02, DD-03, T01-16).");

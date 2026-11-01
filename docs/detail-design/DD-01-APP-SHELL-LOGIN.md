@@ -1204,7 +1204,7 @@ Trạng thái: ⬜ Chưa bắt đầu · 🟡 Đang làm · ✅ Hoàn thành · 
 | T01-10 | `UiOperationRunner`, `UserErrorPresenter`, `ConfirmationService`, logging che dữ liệu nhạy cảm | WinForms/Infra | T01-04 | ✅ | | `LogSanitizer` (Authorization/cookie/token/mật khẩu/CAPTCHA/licence key/JWT/CCCD/XML) áp dụng trong `FileApplicationLogger` (một dòng/bản ghi, không ghi stack trace); `UiOperationRunner` + `UserErrorMapper` (không đưa message exception vào thông báo); `UserErrorPresenter`, `ConfirmationService`; 35 test |
 | T01-11 | `AtomicJsonWriter` và quy trình `.tmp` → verify → replace + `.bak` | Infra | T01-01 | ✅ | | `AtomicJsonWriter` (`Infrastructure/Persistence`): ghi `.tmp` write-through → đọc lại + xác minh → `File.Replace`; `.bak` chỉ cập nhật từ bản hợp lệ, file hỏng được chép sang `.corrupt`; `Read` tự lùi về `.bak`, không bao giờ đọc `.tmp`. Độc lập thư viện JSON (nơi gọi truyền hàm xác minh); 14 test |
 | T01-12 | Quy trình đóng ứng dụng (mục 17) | WinForms | T01-05, T01-09 | ✅ | | `ShutdownCoordinator` (Application): không job → xóa phiên + đóng kho; có job → hỏi qua `ShutdownPromptForm` (Chờ / Tạm dừng / Hủy / Ở lại), job lỗi thì không đóng, lỗi dọn dẹp chỉ ghi log. `MainShellForm` hoãn FormClosing (UserClosing/TaskManagerClosing) rồi `CloseShell()`; không dùng `Environment.Exit`. Dev: `HDDT_DEV_JOB=1`. 9 test + thử tay |
-| T01-13 | Unit test Startup, MainShellPresenter, PortalLoginPresenter, CompanySwitchService (mục 19.1–19.4) | Tests | T01-06..T01-09 | ⬜ | | |
+| T01-13 | Unit test Startup, MainShellPresenter, PortalLoginPresenter, CompanySwitchService (mục 19.1–19.4) | Tests | T01-06..T01-09 | ✅ | | Startup (16), CompanySwitchService (11), StorageGuard (7) ở Application.Tests; `tests/HoaDonDienTu.WinForms.Tests` mới: `PortalLoginPresenter` (18), `PortalLoginCoordinator` (7, gate một form), `MainShellPresenter` (13), `ShellModeMapper` (5). `PortalLoginCoordinator` nhận `Func<IPortalLoginView>` để test được. **Chưa phủ:** "navigation bị từ chối khi screen không thể đóng" (mục 19.2) — cần `NavigationService` + `CanCloseAsync` (phần còn lại của T01-05) |
 | T01-14 | Integration test (mục 19.5) | Tests | T01-11 | ⬜ | | |
 | T01-15 | UI smoke test (mục 19.6) | Tests | T01-13 | ⬜ | | |
 | T01-16 | Thay development adapter bằng production adapter đã xác minh | Infra | DD-00 G-01, G-02 | ⛔ | | Chờ ADR WebView + API discovery |
@@ -1229,6 +1229,7 @@ Trạng thái: ⬜ Chưa bắt đầu · 🟡 Đang làm · ✅ Hoàn thành · 
 | Ngày | Nội dung | Người thực hiện |
 |---|---|---|
 | 01/11/2026 | Chuẩn hóa tài liệu, tách DD-02/DD-03/DD-00; chưa có code | Claude Code |
+| 01/11/2026 | T01-13 xong: test presenter/coordinator/mapper, dự án WinForms.Tests; 163 test pass | Claude Code |
 | 01/11/2026 | T01-12 xong: quy trình đóng ứng dụng; 119 test | Claude Code |
 | 01/11/2026 | T01-11 xong: AtomicJsonWriter + recovery từ .bak; 109 test | Claude Code |
 | 01/11/2026 | T01-10 xong: sanitizer log, UiOperationRunner, error mapper/presenter, confirmation; 95 test | Claude Code |

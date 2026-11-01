@@ -44,6 +44,7 @@ MSB="/c/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin
 VT="/c/Program Files/Microsoft Visual Studio/2022/Community/Common7/IDE/CommonExtensions/Microsoft/TestWindow/vstest.console.exe"
 "$MSB" src/HoaDonDienTu.sln -restore -nologo -v:m   # build
 "$VT" tests/HoaDonDienTu.Domain.Tests/bin/Debug/net45/HoaDonDienTu.Domain.Tests.dll /TestCaseFilter:"Name~TryParse"   # tests (NUnit 3.13 + adapter 3.17)
+# all: pass every tests/*/bin/Debug/net45/*.Tests.dll (Domain, Application, Infrastructure, WinForms) to vstest
 ```
 
 UI: Krypton Toolkit/Ribbon **5.500.2008** (last line with a net45 build; 60+ needs net462). The WinForms project is an old-style csproj (designer-friendly); forms follow `X.cs` + `X.Designer.cs` partial pairs. In `HoaDonDienTu.WinForms`, `Application` resolves to the `HoaDonDienTu.Application` namespace, so write `System.Windows.Forms.Application`.

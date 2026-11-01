@@ -17,6 +17,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HoaDonDienTu.Application.Te
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HoaDonDienTu.Infrastructure.Tests", "..\tests\HoaDonDienTu.Infrastructure.Tests\HoaDonDienTu.Infrastructure.Tests.csproj", "{88CAD473-2FDF-4844-9999-34852B5DAB00}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HoaDonDienTu.WinForms.Tests", "..\tests\HoaDonDienTu.WinForms.Tests\HoaDonDienTu.WinForms.Tests.csproj", "{9B623CEC-67EC-4C6E-85B9-55EF2A881A15}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -54,5 +56,9 @@ Global
 		{88CAD473-2FDF-4844-9999-34852B5DAB00}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{88CAD473-2FDF-4844-9999-34852B5DAB00}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{88CAD473-2FDF-4844-9999-34852B5DAB00}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9B623CEC-67EC-4C6E-85B9-55EF2A881A15}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9B623CEC-67EC-4C6E-85B9-55EF2A881A15}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9B623CEC-67EC-4C6E-85B9-55EF2A881A15}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9B623CEC-67EC-4C6E-85B9-55EF2A881A15}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

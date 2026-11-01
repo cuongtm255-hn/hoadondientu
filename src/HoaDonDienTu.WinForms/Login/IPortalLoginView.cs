@@ -41,5 +41,8 @@ namespace HoaDonDienTu.WinForms.Login
         void ShowState(PortalLoginViewState state);
         void HostBrowser(Control browserView);
         void CloseView();
+
+        /// <summary>Hiển thị dạng modal và chỉ trả về khi view đã đóng.</summary>
+        void ShowModal(IWin32Window owner);
     }
 }

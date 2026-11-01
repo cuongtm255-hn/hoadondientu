@@ -42,6 +42,11 @@ namespace HoaDonDienTu.WinForms.Login
             pnlBrowserHost.Controls.Add(browserView);
         }
 
+        public void ShowModal(IWin32Window owner)
+        {
+            ShowDialog(owner);
+        }
+
         public void CloseView()
         {
             _closingByPresenter = true;
