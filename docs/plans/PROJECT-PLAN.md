@@ -94,7 +94,7 @@ Mỗi phase kết thúc khi đạt đủ **tiêu chí thoát**; không bắt đ�
 | Nhóm task | Mô tả | DD | Trạng thái |
 |---|---|---|---|
 | T01-16 | Thay development adapter bằng production login adapter | [DD-01](../detail-design/DD-01-APP-SHELL-LOGIN.md#21-theo-dõi-tiến-độ-implement) | ⛔ (G-01, G-02) |
-| T04-01…T04-08 | Chia kỳ, SCR-03 | [DD-04](../detail-design/DD-04-PERIOD-DOWNLOAD-CONFIG.md#7-theo-dõi-tiến-độ-implement) | ⬜ |
+| T04-01…T04-08 | Chia kỳ, SCR-03 | [DD-04](../detail-design/DD-04-PERIOD-DOWNLOAD-CONFIG.md#7-theo-dõi-tiến-độ-implement) | ✅ (T04-07 🟡 chờ DD-05) |
 | T05-01…T05-11 | Orchestrator, checkpoint, SCR-04, API client | [DD-05](../detail-design/DD-05-DOWNLOAD-ENGINE.md#8-theo-dõi-tiến-độ-implement) | ⬜ |
 | T06-01…T06-09 | Chuẩn hóa, lưu XML, phiên bản hóa, toàn vẹn | [DD-06](../detail-design/DD-06-INVOICE-STORAGE.md#9-theo-dõi-tiến-độ-implement) | ⬜ |
 
@@ -141,7 +141,7 @@ Số task lấy từ bảng theo dõi trong từng DD (cập nhật khi đổi t
 | FT-01/02 Khung + đăng nhập | [DD-01](../detail-design/DD-01-APP-SHELL-LOGIN.md) | 1–3 | 17 | 15 | 1 | 1 | T01-14 một phần; T01-16 chờ gate |
 | FT-03 Doanh nghiệp | [DD-02](../detail-design/DD-02-COMPANY-MANAGEMENT.md) | 2 | 10 | 0 | 0 | 0 | |
 | FT-04 Licence | [DD-03](../detail-design/DD-03-LICENSING.md) | 2 | 8 | 0 | 0 | 2 | Chờ G-06 |
-| FT-05 Chọn kỳ | [DD-04](../detail-design/DD-04-PERIOD-DOWNLOAD-CONFIG.md) | 3 | 8 | 0 | 0 | 0 | Bộ lọc dùng cấu hình nháp (G-02) |
+| FT-05 Chọn kỳ | [DD-04](../detail-design/DD-04-PERIOD-DOWNLOAD-CONFIG.md) | 3 | 8 | 7 | 1 | 0 | T04-07 chờ DD-05; bộ lọc theo cấu hình nháp (G-02) |
 | FT-06 Hàng đợi tải | [DD-05](../detail-design/DD-05-DOWNLOAD-ENGINE.md) | 3 | 11 | 0 | 1 | 2 | T05-06 client + cổng giả xong; chờ G-02/G-05 để khớp thật |
 | FT-07 Lưu trữ | [DD-06](../detail-design/DD-06-INVOICE-STORAGE.md) | 3 (T06-02 sớm ở 2) | 9 | 0 | 0 | 1 | Chờ G-08 (SQLite) |
 | FT-08 Kho hóa đơn | [DD-07](../detail-design/DD-07-INVOICE-ARCHIVE.md) | 4 | 9 | 0 | 0 | 0 | |
@@ -149,7 +149,7 @@ Số task lấy từ bảng theo dõi trong từng DD (cập nhật khi đổi t
 | FT-10 Xuất | [DD-09](../detail-design/DD-09-EXPORT.md) | 5 | 7 | 0 | 0 | 2 | Chờ G-04, G-09 |
 | FT-11 Tổng quan/lịch sử | [DD-10](../detail-design/DD-10-DASHBOARD-HISTORY.md) | 5 | 7 | 0 | 0 | 0 | |
 | FT-12 Cài đặt/sao lưu | [DD-11](../detail-design/DD-11-SETTINGS-BACKUP.md) | 5 | 8 | 0 | 0 | 0 | |
-| **Tổng** | | | **112** | **15** | **2** | **9** | DD-01 (dev adapter) + client cổng Thuế theo cấu hình/cổng giả |
+| **Tổng** | | | **112** | **22** | **3** | **9** | DD-01 (dev adapter) + client cổng Thuế theo cấu hình/cổng giả + SCR-03 |
 
 ## 5. Phụ thuộc quan trọng
 
@@ -178,5 +178,6 @@ G-03/G-04/G-09 chặn tương ứng T08-05, T09-02/03
 | Ngày | Thay đổi |
 |---|---|
 | 01/11/2026 | Tạo kế hoạch; hoàn thành tài liệu Phase 0 (bản nháp chờ review) |
+| 01/11/2026 | Hoàn thành DD-04 (chia kỳ + SCR-03): 7/8 task, T04-07 chờ DD-05 |
 | 01/11/2026 | Thêm hợp đồng API cổng Thuế dạng cấu hình + cổng giả ([ADR 0001](../decisions/0001-portal-api-contract.md), [api-samples](../api-samples/README.md)): gỡ chặn T04-06, T06-04; T05-06 🟡 |
 | 01/11/2026 | Đồng bộ sau khi implement DD-01 (T01-01…T01-15, T01-17): 15/17 task xong; xem [ghi chú bàn giao](../progress/2026-11-01-phase1-foundation.md) |

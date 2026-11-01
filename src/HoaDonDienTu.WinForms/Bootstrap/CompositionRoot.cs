@@ -12,7 +12,10 @@ using HoaDonDienTu.Infrastructure.Common;
 using HoaDonDienTu.Infrastructure.Logging;
 using HoaDonDienTu.Infrastructure.Portal;
 using HoaDonDienTu.Infrastructure.Portal.Config;
+using HoaDonDienTu.Application.Downloads;
+using HoaDonDienTu.Domain.Invoices;
 using HoaDonDienTu.WinForms.Common;
+using HoaDonDienTu.WinForms.Download;
 using HoaDonDienTu.WinForms.Login;
 using HoaDonDienTu.WinForms.Navigation;
 using HoaDonDienTu.WinForms.Shell;
@@ -54,6 +57,9 @@ namespace HoaDonDienTu.WinForms.Bootstrap
         public PortalApiClientProvider ApiClientProvider { get; private set; }
         public IScreenFactory ScreenFactory { get; private set; }
 
+        /// <summary>Do <c>AppApplicationContext</c> gán sau khi tạo shell; screen lấy lười để tránh phụ thuộc vòng.</summary>
+        public HoaDonDienTu.Application.Navigation.INavigationService NavigationService { get; set; }
+
         public static CompositionRoot Create()
         {
             var clock = new SystemClock();
@@ -73,7 +79,6 @@ namespace HoaDonDienTu.WinForms.Bootstrap
             root.OperationRunner = new UiOperationRunner(root.ErrorMapper, logger);
             root.ErrorPresenter = new UserErrorPresenter();
             root.Confirmation = new ConfirmationService();
-            root.ScreenFactory = Navigation.ScreenFactory.CreateDefault();
             root.ComposeEnvironment();
             return root;
         }
@@ -154,6 +159,22 @@ namespace HoaDonDienTu.WinForms.Bootstrap
                 Logger);
             ApiClientProvider = new PortalApiClientProvider(
                 SessionStore, contextManager, new PortalApiClientFactory(portalConfig, () => mockPortal));
+            var splitter = new PeriodSplitter();
+            var startPolicy = new DownloadStartPolicy(contextManager, SessionStore, entitlement);
+            var storageProbe = new FileSystemStorageProbe();
+            var capabilities = new PortalApiConfigCapabilities(portalConfig);
+            var starter = new PendingDownloadSessionStarter();
+            ScreenFactory = Navigation.ScreenFactory.CreateDefault(
+                new ScreenDescriptor(
+                    HoaDonDienTu.Application.Navigation.ScreenId.Download,
+                    "Tải hóa đơn",
+                    "SCR-03",
+                    parameter => new DownloadConfigScreen(
+                        new DownloadConfigControl(),
+                        view => new DownloadConfigPresenter(
+                            view, splitter, startPolicy, storageProbe, capabilities, SessionStore, contextManager,
+                            entitlement, starter, Confirmation, OperationRunner, ErrorPresenter, NavigationService, Clock))));
+
             PortalLoginCoordinator = new PortalLoginCoordinator(
                 contextManager,
                 entitlement,

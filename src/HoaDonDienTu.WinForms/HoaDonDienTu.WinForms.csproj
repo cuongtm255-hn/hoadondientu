@@ -46,6 +46,15 @@
     <Compile Include="Bootstrap\CompositionRoot.cs" />
     <Compile Include="Bootstrap\GlobalExceptionHandler.cs" />
     <Compile Include="Common\UserDialogs.cs" />
+    <Compile Include="Download\DownloadConfigControl.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Download\DownloadConfigControl.Designer.cs">
+      <DependentUpon>DownloadConfigControl.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Download\DownloadConfigPresenter.cs" />
+    <Compile Include="Download\DownloadConfigScreen.cs" />
+    <Compile Include="Download\IDownloadConfigView.cs" />
     <Compile Include="Login\DevelopmentPortalLoginBrowser.cs" />
     <Compile Include="Login\IPortalLoginBrowser.cs" />
     <Compile Include="Login\IPortalLoginView.cs" />

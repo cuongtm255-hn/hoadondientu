@@ -143,14 +143,14 @@ Trạng thái: ⬜ Chưa bắt đầu · 🟡 Đang làm · ✅ Hoàn thành · 
 
 | ID | Công việc | Lớp | Phụ thuộc | Trạng thái | PR/Commit | Ghi chú |
 |---|---|---|---|---|---|---|
-| T04-01 | Domain: `InvoiceDirection`, `PeriodKind`, `PeriodSpec`, `DateSegment`, `InvoiceSearchFilter`, `DownloadPlan` | Domain | T01-02 | ⬜ | | |
-| T04-02 | `PeriodSplitter` + `PeriodValidationResult` | Domain | T04-01 | ⬜ | | Không phụ thuộc UI |
-| T04-03 | Unit test chia kỳ (mục 6.1) | Tests | T04-02 | ⬜ | | AC-03 |
-| T04-04 | `DownloadConfigControl` + `DownloadConfigPresenter` (SCR-03) | WinForms | T04-02, T01-05 | ⬜ | | |
-| T04-05 | Điều kiện bật nút bắt đầu + `IStorageGuard` | Application | T01-07 | ⬜ | | FR-SEARCH-010 |
-| T04-06 | Bộ lọc theo trường API hỗ trợ | WinForms | G-02 | ⬜ | | Hết chặn: `InvoiceSearchFilter` + `search.filterParameters` trong cấu hình quyết định trường nào hỗ trợ (cấu hình nháp, chưa xác minh) |
-| T04-07 | Nối `IDownloadOrchestrator.CreateSessionAsync` → SCR-04 | WinForms | T05-03 | ⬜ | | |
-| T04-08 | UI smoke test (mục 6.2) | Tests | T04-04 | ⬜ | | |
+| T04-01 | Domain: `InvoiceDirection`, `PeriodKind`, `PeriodSpec`, `DateSegment`, `InvoiceSearchFilter`, `DownloadPlan` | Domain | T01-02 | ✅ | | `PeriodKind/PeriodSpec/DateSegment` ở Domain; `InvoiceSearchFilter` (tên trường theo API: `CounterpartyTaxCode`, `StatusCode`...) và `DownloadPlan` ở Application vì dùng chung với client cổng |
+| T04-02 | `PeriodSplitter` + `PeriodValidationResult` | Domain | T04-01 | ✅ | | Lỗi tại control, cảnh báo khoảng > 10 năm (cấu hình `MaxCustomYears`) |
+| T04-03 | Unit test chia kỳ (mục 6.1) | Tests | T04-02 | ✅ | | 41 test: tháng/quý/năm, năm nhuận 2024/2028, biên tháng, qua năm, From = To, kỳ sai, bất biến (liền kề, tăng dần, hợp = khoảng gốc), không phụ thuộc culture; AC-03 |
+| T04-04 | `DownloadConfigControl` + `DownloadConfigPresenter` (SCR-03) | WinForms | T04-02, T01-05 | ✅ | | Krypton, partial Designer, bám wireframe SCR-03; `DownloadConfigScreen` đăng ký qua `ScreenDescriptor`; 19 test presenter |
+| T04-05 | Điều kiện bật nút bắt đầu + `IStorageGuard` | Application | T01-07 | ✅ | | `DownloadStartPolicy` (doanh nghiệp → quyền → đăng nhập đúng MST → kỳ → thư mục ghi được, lý do hiển thị cạnh nút) + `IStorageProbe`/`FileSystemStorageProbe`; kiểm tra lại ngay khi bấm bắt đầu |
+| T04-06 | Bộ lọc theo trường API hỗ trợ | WinForms | G-02 | ✅ | | `IPortalCapabilities` ← `search.filterParameters` trong cấu hình: chỉ hiện trường được hỗ trợ, ẩn cả khung nếu không có; danh sách trường là cấu hình nháp chưa xác minh |
+| T04-07 | Nối `IDownloadOrchestrator.CreateSessionAsync` → SCR-04 | WinForms | T05-03 | 🟡 | | Presenter gọi `IDownloadSessionStarter` rồi điều hướng `DownloadProgress` (tham số = `DownloadPlan`); starter hiện là `PendingDownloadSessionStarter` (Debug, không làm gì) chờ DD-05 |
+| T04-08 | UI smoke test (mục 6.2) | Tests | T04-04 | ✅ | | 6 test: năm 2026 → 12 dòng (AC-02), 15/01–10/03 → 3 dòng (AC-03), kỳ sai, chưa đăng nhập, bắt đầu → SCR-04, chiều hóa đơn loại trừ |
 
 ### 7.2 Nhật ký tiến độ
 

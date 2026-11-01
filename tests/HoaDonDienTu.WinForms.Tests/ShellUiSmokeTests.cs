@@ -278,6 +278,99 @@ namespace HoaDonDienTu.WinForms.Tests
             Assert.That(_root.ContextManager.HasCurrent, Is.True);
         }
 
+        // ---- SCR-03 Tải hóa đơn (DD-04 mục 6.2) ----
+
+        private void LoginAndOpenDownload()
+        {
+            Start("Standard");
+            ClickOpeningDialog("btnPortalLogin", dialog => PressText(dialog, "Đăng nhập đúng MST"));
+            Assert.That(_root.SessionStore.HasActiveSession, Is.True);
+            Click("navDownload");
+            Assert.That(WaitFor(() => ContentTitle() == "Tải hóa đơn"), Is.True, "Không mở được SCR-03");
+        }
+
+        private int PlanRows()
+        {
+            return Control<KryptonDataGridView>("gridPlan").Rows.Count;
+        }
+
+        [Test]
+        public void Download_Year2026_Purchase_Shows12Rows_AC02()
+        {
+            LoginAndOpenDownload();
+
+            Control<KryptonNumericUpDown>("numYear").Value = 2026;
+
+            Assert.That(Control<KryptonCheckButton>("rdoPurchase").Checked, Is.True);
+            Assert.That(Control<KryptonCheckButton>("btnKindYear").Checked, Is.True);
+            Assert.That(PlanRows(), Is.EqualTo(12));
+            Assert.That(Control<KryptonDataGridView>("gridPlan").Rows[0].Cells[1].Value, Is.EqualTo("01/01/2026–31/01/2026"));
+            Assert.That(Control<KryptonButton>("btnStartDownload").Enabled, Is.True);
+        }
+
+        [Test]
+        public void Download_CustomRange_15Jan_To_10Mar_Shows3Rows_AC03()
+        {
+            LoginAndOpenDownload();
+
+            Click("btnKindCustom");
+            Control<KryptonDateTimePicker>("dtpTo").Value = new DateTime(2026, 3, 10);
+            Control<KryptonDateTimePicker>("dtpFrom").Value = new DateTime(2026, 1, 15);
+
+            Assert.That(PlanRows(), Is.EqualTo(3));
+            var grid = Control<KryptonDataGridView>("gridPlan");
+            Assert.That(grid.Rows[0].Cells[1].Value, Is.EqualTo("15/01/2026–31/01/2026"));
+            Assert.That(grid.Rows[2].Cells[1].Value, Is.EqualTo("01/03/2026–10/03/2026"));
+        }
+
+        [Test]
+        public void Download_InvalidRange_ShowsErrorInControl_AndLocksStart()
+        {
+            LoginAndOpenDownload();
+
+            Click("btnKindCustom");
+            Control<KryptonDateTimePicker>("dtpTo").Value = new DateTime(2026, 3, 1);
+            Control<KryptonDateTimePicker>("dtpFrom").Value = new DateTime(2026, 3, 10);
+
+            Assert.That(PlanRows(), Is.EqualTo(0));
+            Assert.That(Control<System.Windows.Forms.Control>("lblPeriodMessage").Text, Does.Contain("lớn hơn hoặc bằng"));
+            Assert.That(Control<KryptonButton>("btnStartDownload").Enabled, Is.False);
+        }
+
+        [Test]
+        public void Download_NotLoggedIn_StartDisabled_WithReasonNextToButton()
+        {
+            Start("Standard");
+
+            Click("navDownload");
+            Assert.That(WaitFor(() => ContentTitle() == "Tải hóa đơn"), Is.True);
+
+            Assert.That(Control<KryptonButton>("btnStartDownload").Enabled, Is.False);
+            Assert.That(Control<System.Windows.Forms.Control>("lblStartReason").Text, Does.Contain("đăng nhập"));
+            Assert.That(PlanRows(), Is.EqualTo(12), "Kế hoạch vẫn xem trước được khi chưa đăng nhập");
+        }
+
+        [Test]
+        public void Download_Start_GoesToProgressScreen()
+        {
+            LoginAndOpenDownload();
+
+            Click("btnStartDownload");
+
+            Assert.That(WaitFor(() => ContentTitle() == "Tiến độ tải"), Is.True);
+        }
+
+        [Test]
+        public void Download_DirectionToggle_IsExclusive()
+        {
+            LoginAndOpenDownload();
+
+            Click("rdoSold");
+
+            Assert.That(Control<KryptonCheckButton>("rdoSold").Checked, Is.True);
+            Assert.That(Control<KryptonCheckButton>("rdoPurchase").Checked, Is.False);
+        }
+
         // ---- helpers ----
 
         private T Control<T>(string name) where T : System.Windows.Forms.Control
@@ -291,7 +384,9 @@ namespace HoaDonDienTu.WinForms.Tests
         {
             var content = _form.Controls.Find("pnlContent", true).FirstOrDefault();
             if (content == null || content.Controls.Count == 0) return null;
-            var label = content.Controls[0].Controls.OfType<KryptonLabel>().FirstOrDefault();
+            // Screen thật đặt tên lblTitle; placeholder thì lấy nhãn đầu tiên.
+            var named = content.Controls.Find("lblTitle", true).OfType<KryptonLabel>().FirstOrDefault();
+            var label = named ?? content.Controls[0].Controls.OfType<KryptonLabel>().FirstOrDefault();
             return label == null ? null : label.Values.Text;
         }
 

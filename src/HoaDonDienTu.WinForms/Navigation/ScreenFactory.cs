@@ -74,9 +74,9 @@ namespace HoaDonDienTu.WinForms.Navigation
         }
 
         /// <summary>Danh sách mặc định: mọi screen là placeholder với tiêu đề theo menu.</summary>
-        public static ScreenFactory CreateDefault()
+        public static ScreenFactory CreateDefault(params ScreenDescriptor[] overrides)
         {
-            return new ScreenFactory(new[]
+            var descriptors = new List<ScreenDescriptor>
             {
                 Placeholder(ScreenId.Initializing, "Đang khởi tạo...", "Đang xác định chế độ làm việc"),
                 Placeholder(ScreenId.Dashboard, "Tổng quan", "SCR-02 · chưa implement"),
@@ -91,7 +91,11 @@ namespace HoaDonDienTu.WinForms.Navigation
                 Placeholder(ScreenId.CompanyEdit, "Thông tin doanh nghiệp", "SCR-11 · chưa implement"),
                 Placeholder(ScreenId.License, "Bản quyền", "SCR-12 · chưa implement"),
                 Placeholder(ScreenId.Recovery, "Cần khôi phục", "Dữ liệu được giữ nguyên; xem hướng dẫn khôi phục")
-            });
+            };
+
+            // Descriptor của feature đã implement thay thế placeholder cùng ScreenId (đăng ký sau thắng).
+            descriptors.AddRange(overrides);
+            return new ScreenFactory(descriptors);
         }
 
         public IScreen Create(ScreenId id, object parameter)

@@ -30,6 +30,7 @@ namespace HoaDonDienTu.WinForms.Bootstrap
                 compositionRoot.Entitlement,
                 compositionRoot.ContextManager,
                 compositionRoot.Logger);
+            compositionRoot.NavigationService = _navigation;
             _presenter = new MainShellPresenter(
                 _mainShell,
                 compositionRoot.PortalLoginCoordinator,
