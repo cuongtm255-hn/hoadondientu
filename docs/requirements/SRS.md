@@ -319,7 +319,7 @@ Phiên bản 1 không có phân quyền nội bộ theo vai trò. Quyền truy c
 | FR-COMP-006 | Header của SCR-02 đến SCR-09 trong ServiceMode phải hiển thị bộ chọn doanh nghiệp và MST đang hoạt động. |
 | FR-COMP-007 | Chuyển MST phải kiểm tra tác vụ hiện tại; nếu đang chạy phải cho chọn tiếp tục chờ, tạm dừng hoặc hủy trước khi chuyển. |
 | FR-COMP-008 | `CompanySwitchService` phải đóng tác vụ, xóa token, đóng SQLite cũ rồi mới tạo `CompanyContext` và mở SQLite mới. |
-| FR-COMP-009 | Khi khởi động ServiceMode, ứng dụng phải mở lại MST được sử dụng gần nhất nếu kho còn hợp lệ. |
+| FR-COMP-009 | Khi khởi động ServiceMode, ứng dụng phải mở SCR-10 để người dùng chủ động chọn MST; không tự mở MST được sử dụng gần nhất. |
 | FR-COMP-010 | Người dùng phải có thể mở thư mục, sao lưu, sửa tên hiển thị/đường dẫn và ngừng quản lý từng doanh nghiệp. |
 | FR-COMP-011 | Ngừng quản lý phải yêu cầu xác nhận và không xóa thư mục; xóa dữ liệu vật lý là quy trình riêng ngoài màn hình danh mục. |
 | FR-COMP-012 | Nếu đường dẫn kho bị mất, ứng dụng phải cho xác định lại thư mục và xác minh MST/schema trước khi liên kết. |

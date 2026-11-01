@@ -5,6 +5,7 @@ Index of where context lives. Keep files short; link rather than duplicate.
 ## Tài liệu chính
 
 - [SRS](requirements/SRS.md)
+- [Detail Design — Khung chương trình và đăng nhập](architecture/DETAIL-DESIGN-APPLICATION-SHELL-LOGIN.md)
 - [Wireframe HTML tương tác](wireframes/index.html)
 - [Danh mục wireframe PNG](wireframes/README.md)
 

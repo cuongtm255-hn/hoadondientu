@@ -40,6 +40,7 @@ Cổng Thuế giới hạn một lần tra cứu trong phạm vi một tháng. �
 ## Tài liệu
 
 - [SRS đầy đủ](docs/requirements/SRS.md)
+- [Detail Design — Khung chương trình và đăng nhập](docs/architecture/DETAIL-DESIGN-APPLICATION-SHELL-LOGIN.md)
 - [Wireframe HTML tương tác](docs/wireframes/index.html)
 - [Danh mục wireframe PNG](docs/wireframes/README.md)
 - [Chỉ mục tài liệu](docs/README.md)
