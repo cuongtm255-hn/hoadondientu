@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using HoaDonDienTu.Application.Abstractions;
 using HoaDonDienTu.Application.Authentication;
+using HoaDonDienTu.Application.Common;
 using HoaDonDienTu.Application.Companies;
 using HoaDonDienTu.Application.Licensing;
 using HoaDonDienTu.Application.Startup;
@@ -10,6 +11,7 @@ using HoaDonDienTu.Domain.Licensing;
 using HoaDonDienTu.Infrastructure.Common;
 using HoaDonDienTu.Infrastructure.Logging;
 using HoaDonDienTu.Infrastructure.Portal;
+using HoaDonDienTu.WinForms.Common;
 using HoaDonDienTu.WinForms.Login;
 using HoaDonDienTu.WinForms.Shell;
 #if DEBUG
@@ -31,6 +33,10 @@ namespace HoaDonDienTu.WinForms.Bootstrap
         public ICompanyContextManager ContextManager { get; private set; }
         public IPortalSessionStore SessionStore { get; private set; }
         public IPortalLoginCoordinator PortalLoginCoordinator { get; private set; }
+        public IUserErrorMapper ErrorMapper { get; private set; }
+        public IUiOperationRunner OperationRunner { get; private set; }
+        public IUserErrorPresenter ErrorPresenter { get; private set; }
+        public IConfirmationService Confirmation { get; private set; }
 
         public static CompositionRoot Create()
         {
@@ -47,6 +53,10 @@ namespace HoaDonDienTu.WinForms.Bootstrap
                 Logger = logger,
                 SessionStore = new InMemoryPortalSessionStore()
             };
+            root.ErrorMapper = new UserErrorMapper();
+            root.OperationRunner = new UiOperationRunner(root.ErrorMapper, logger);
+            root.ErrorPresenter = new UserErrorPresenter();
+            root.Confirmation = new ConfirmationService();
             root.ComposeEnvironment();
             return root;
         }
@@ -59,6 +69,8 @@ namespace HoaDonDienTu.WinForms.Bootstrap
         public void Dispose()
         {
             // Phiên chỉ giữ trong bộ nhớ và phải bị xóa khi đóng app.
+            var runner = OperationRunner as IDisposable;
+            if (runner != null) runner.Dispose();
             if (SessionStore != null) SessionStore.Clear();
             if (ContextManager != null) ContextManager.CloseCurrent();
         }

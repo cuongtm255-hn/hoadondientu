@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using HoaDonDienTu.Application.Authentication;
+using HoaDonDienTu.Application.Common;
 using HoaDonDienTu.Application.Companies;
 using HoaDonDienTu.Application.Navigation;
 using HoaDonDienTu.WinForms.Login;
@@ -13,7 +14,8 @@ namespace HoaDonDienTu.WinForms.Shell
         private readonly IPortalLoginCoordinator _loginCoordinator;
         private readonly ICompanyContextAccessor _context;
         private readonly IPortalSessionStore _sessionStore;
-        private readonly CancellationTokenSource _cancellation = new CancellationTokenSource();
+        private readonly IUiOperationRunner _runner;
+        private readonly IUserErrorPresenter _errors;
         private ScreenId _currentScreen = ScreenId.Initializing;
         private bool _initialized;
 
@@ -21,16 +23,22 @@ namespace HoaDonDienTu.WinForms.Shell
             IMainShellView view,
             IPortalLoginCoordinator loginCoordinator,
             ICompanyContextAccessor context,
-            IPortalSessionStore sessionStore)
+            IPortalSessionStore sessionStore,
+            IUiOperationRunner runner,
+            IUserErrorPresenter errors)
         {
             if (view == null) throw new ArgumentNullException("view");
             if (loginCoordinator == null) throw new ArgumentNullException("loginCoordinator");
             if (context == null) throw new ArgumentNullException("context");
             if (sessionStore == null) throw new ArgumentNullException("sessionStore");
+            if (runner == null) throw new ArgumentNullException("runner");
+            if (errors == null) throw new ArgumentNullException("errors");
             _view = view;
             _loginCoordinator = loginCoordinator;
             _context = context;
             _sessionStore = sessionStore;
+            _runner = runner;
+            _errors = errors;
         }
 
         public void Initialize()
@@ -47,7 +55,7 @@ namespace HoaDonDienTu.WinForms.Shell
         {
             if (!_initialized) return;
             _initialized = false;
-            _cancellation.Cancel();
+            _runner.CancelAll();
             _view.NavigationRequested -= OnNavigationRequested;
             _view.CompanySelectorRequested -= OnCompanySelectorRequested;
             _view.PortalLoginRequested -= OnPortalLoginRequested;
@@ -91,33 +99,37 @@ namespace HoaDonDienTu.WinForms.Shell
 
         private async void OnPortalLoginRequested(object sender, EventArgs e)
         {
-            try
+            if (!_context.HasCurrent)
             {
-                if (!_context.HasCurrent)
+                _view.ShowError("Đăng nhập cổng Thuế", "Hãy chọn doanh nghiệp trước khi đăng nhập.");
+                return;
+            }
+
+            var company = _context.Current;
+            var request = new PortalLoginRequest(
+                company.CompanyId, company.TaxCode, LoginReason.Manual, _currentScreen, null);
+
+            await _runner.RunAsync(
+                "Đăng nhập cổng Thuế",
+                async token =>
                 {
-                    _view.ShowError("Đăng nhập cổng Thuế", "Hãy chọn doanh nghiệp trước khi đăng nhập.");
-                    return;
-                }
-
-                var company = _context.Current;
-                var request = new PortalLoginRequest(
-                    company.CompanyId, company.TaxCode, LoginReason.Manual, _currentScreen, null);
-
-                var result = await _loginCoordinator.LoginAsync(request, _view.OwnerWindow, _cancellation.Token);
-                if (!result.Succeeded && result.Outcome != PortalLoginOutcome.Cancelled && !string.IsNullOrEmpty(result.Message))
+                    var result = await _loginCoordinator.LoginAsync(request, _view.OwnerWindow, token);
+                    if (!result.Succeeded && result.Outcome != PortalLoginOutcome.Cancelled && !string.IsNullOrEmpty(result.Message))
+                    {
+                        _view.ShowError("Đăng nhập cổng Thuế", result.Message);
+                    }
+                },
+                state =>
                 {
-                    _view.ShowError("Đăng nhập cổng Thuế", result.Message);
-                }
+                    _view.ShowOperation(new OperationViewState
+                    {
+                        Text = state.IsBusy ? state.OperationName + "..." : "Sẵn sàng",
+                        IsBusy = state.IsBusy
+                    });
+                    if (state.Error != null) _errors.Show(state.Error);
+                });
 
-                RefreshPortalSession();
-            }
-            catch (OperationCanceledException)
-            {
-            }
-            catch (Exception)
-            {
-                _view.ShowError("Đăng nhập cổng Thuế", "Không thể đăng nhập. Chi tiết đã được ghi vào log.");
-            }
+            RefreshPortalSession();
         }
 
         private static string TitleOf(ScreenId id)

@@ -44,6 +44,7 @@
     <Compile Include="Bootstrap\AppApplicationContext.cs" />
     <Compile Include="Bootstrap\CompositionRoot.cs" />
     <Compile Include="Bootstrap\GlobalExceptionHandler.cs" />
+    <Compile Include="Common\UserDialogs.cs" />
     <Compile Include="Login\DevelopmentPortalLoginBrowser.cs" />
     <Compile Include="Login\IPortalLoginBrowser.cs" />
     <Compile Include="Login\IPortalLoginView.cs" />

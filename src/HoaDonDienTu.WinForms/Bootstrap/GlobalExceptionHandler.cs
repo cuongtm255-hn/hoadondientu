@@ -3,6 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using HoaDonDienTu.Application.Abstractions;
+using HoaDonDienTu.Application.Common;
 
 namespace HoaDonDienTu.WinForms.Bootstrap
 {
@@ -44,7 +45,7 @@ namespace HoaDonDienTu.WinForms.Bootstrap
 
         private static string Log(string message, Exception exception)
         {
-            var correlationId = Guid.NewGuid().ToString("N").Substring(0, 8);
+            var correlationId = CorrelationId.New();
             if (_logger != null) _logger.Error(message + " [" + correlationId + "]", exception);
             return correlationId;
         }

@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using System.Windows.Forms;
+using HoaDonDienTu.Application.Common;
 using HoaDonDienTu.Application.Navigation;
 using HoaDonDienTu.Application.Startup;
 using HoaDonDienTu.Domain.Common;
@@ -24,7 +25,9 @@ namespace HoaDonDienTu.WinForms.Bootstrap
                 _mainShell,
                 compositionRoot.PortalLoginCoordinator,
                 compositionRoot.ContextManager,
-                compositionRoot.SessionStore);
+                compositionRoot.SessionStore,
+                compositionRoot.OperationRunner,
+                compositionRoot.ErrorPresenter);
             _presenter.Initialize();
             _presenter.ShowInitializing();
 
@@ -53,8 +56,9 @@ namespace HoaDonDienTu.WinForms.Bootstrap
             }
             catch (Exception ex)
             {
-                _compositionRoot.Logger.Error("Khởi động thất bại", ex);
-                _mainShell.ShowError("Khởi động", "Không thể khởi động ứng dụng. Chi tiết đã được ghi vào log.");
+                var correlationId = CorrelationId.New();
+                _compositionRoot.Logger.Error("Khởi động thất bại [" + correlationId + "]", ex);
+                _compositionRoot.ErrorPresenter.Show(_compositionRoot.ErrorMapper.Map(ex, "Khởi động", correlationId));
             }
         }
 

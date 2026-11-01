@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Text;
 using HoaDonDienTu.Application.Abstractions;
+using HoaDonDienTu.Application.Common;
 
 namespace HoaDonDienTu.Infrastructure.Logging
 {
@@ -33,6 +34,12 @@ namespace HoaDonDienTu.Infrastructure.Logging
             Write("ERROR", message, exception);
         }
 
+        /// <summary>Mỗi bản ghi một dòng để không thể chèn dòng log giả.</summary>
+        private static string Flatten(string text)
+        {
+            return text == null ? string.Empty : text.Replace('\r', ' ').Replace('\n', ' ');
+        }
+
         private void Write(string level, string message, Exception exception)
         {
             try
@@ -40,10 +47,10 @@ namespace HoaDonDienTu.Infrastructure.Logging
                 var now = _clock.UtcNow;
                 var line = new StringBuilder()
                     .Append(now.ToString("yyyy-MM-dd HH:mm:ss.fff")).Append("Z ")
-                    .Append(level).Append(' ').Append(message);
+                    .Append(level).Append(' ').Append(Flatten(LogSanitizer.Sanitize(message)));
                 if (exception != null)
                 {
-                    line.Append(" | ").Append(exception.GetType().FullName).Append(": ").Append(exception.Message);
+                    line.Append(" | ").Append(exception.GetType().FullName).Append(": ").Append(Flatten(LogSanitizer.Sanitize(exception.Message)));
                 }
 
                 lock (_gate)
