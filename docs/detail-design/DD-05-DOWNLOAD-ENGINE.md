@@ -155,7 +155,7 @@ Trạng thái: ⬜ Chưa bắt đầu · 🟡 Đang làm · ✅ Hoàn thành · 
 | T05-03 | `DownloadOrchestrator` (tuần tự, checkpoint, pause/resume/cancel) với client giả | Application | T05-01, T05-02 | ⬜ | | |
 | T05-04 | `IRetryPolicy`, `IRateLimiter` (cấu hình hạ tầng) | Infra | T05-03 | ⛔ | | Chờ G-05 để chọn mặc định |
 | T05-05 | Xử lý `AuthExpired` → `WaitingForLogin` → login lại → resume | Application | T01-08, T05-03 | ⬜ | | AC-06 |
-| T05-06 | `PortalInvoiceClient` thật (search, tải XML, phân loại lỗi) | Infra | G-02, T01-09 | ⛔ | | Chờ API discovery |
+| T05-06 | `PortalInvoiceClient` thật (search, tải XML, phân loại lỗi) | Infra | G-02, T01-09 | 🟡 | | `PortalHttpApiClient` theo `PortalApiConfig` + cổng giả (`MockPortalHandler`), 3 hình dạng API, phân loại lỗi, nhịp gọi; 96 test. **Chưa khớp cổng thật** (xem [api-samples](../api-samples/README.md), [ADR 0001](../decisions/0001-portal-api-contract.md)) |
 | T05-07 | Tích hợp chuyển MST/đóng ứng dụng (pause + checkpoint) | Application | T01-07, T05-03 | ⬜ | | AC-15 |
 | T05-08 | `DownloadProgressControl` + presenter (SCR-04) | WinForms | T05-03 | ⬜ | | |
 | T05-09 | Khôi phục phiên chưa hoàn tất khi khởi động | Application | T05-02 | ⬜ | | FR-JOB-010 |

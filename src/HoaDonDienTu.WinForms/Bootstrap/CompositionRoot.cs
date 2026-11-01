@@ -11,12 +11,14 @@ using HoaDonDienTu.Domain.Licensing;
 using HoaDonDienTu.Infrastructure.Common;
 using HoaDonDienTu.Infrastructure.Logging;
 using HoaDonDienTu.Infrastructure.Portal;
+using HoaDonDienTu.Infrastructure.Portal.Config;
 using HoaDonDienTu.WinForms.Common;
 using HoaDonDienTu.WinForms.Login;
 using HoaDonDienTu.WinForms.Navigation;
 using HoaDonDienTu.WinForms.Shell;
 #if DEBUG
 using HoaDonDienTu.Infrastructure.Development;
+using HoaDonDienTu.Infrastructure.Development.Mock;
 #endif
 
 namespace HoaDonDienTu.WinForms.Bootstrap
@@ -44,6 +46,12 @@ namespace HoaDonDienTu.WinForms.Bootstrap
         public IConfirmationService Confirmation { get; private set; }
         public ShutdownCoordinator ShutdownCoordinator { get; private set; }
         public IEntitlementService Entitlement { get; private set; }
+
+        /// <summary>Cấu hình API cổng Thuế (bản nháp chưa đối chiếu thật cho tới khi <c>Verified</c> = true).</summary>
+        public PortalApiConfig PortalApiConfig { get; private set; }
+
+        /// <summary>Client API của phiên hiện tại cho DD-05; dùng cổng giả ở Debug.</summary>
+        public PortalApiClientProvider ApiClientProvider { get; private set; }
         public IScreenFactory ScreenFactory { get; private set; }
 
         public static CompositionRoot Create()
@@ -78,10 +86,20 @@ namespace HoaDonDienTu.WinForms.Bootstrap
         public void Dispose()
         {
             // Phiên chỉ giữ trong bộ nhớ và phải bị xóa khi đóng app.
+            if (ApiClientProvider != null) ApiClientProvider.Dispose();
             var runner = OperationRunner as IDisposable;
             if (runner != null) runner.Dispose();
             if (SessionStore != null) SessionStore.Clear();
             if (ContextManager != null) ContextManager.CloseCurrent();
+        }
+
+        /// <summary>Đọc portal-api.json: bản của người dùng trong %LOCALAPPDATA% ưu tiên, rồi bản cạnh file chạy, rồi bản nháp mặc định.</summary>
+        private static PortalApiConfig LoadPortalApiConfig()
+        {
+            var userFile = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "HoaDonDienTu", "portal-api.json");
+            var appFile = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "portal-api.json");
+            return PortalApiConfigLoader.LoadOrDefault(File.Exists(userFile) ? userFile : appFile);
         }
 
         private void ComposeEnvironment()
@@ -120,6 +138,9 @@ namespace HoaDonDienTu.WinForms.Bootstrap
                 new DevelopmentCompanyCatalog(catalog),
                 Logger);
 
+            var portalConfig = LoadPortalApiConfig();
+            PortalApiConfig = portalConfig;
+            var mockPortal = new MockPortalHandler(portalConfig);
             var contextManager = new CompanyContextManager(new DevelopmentCompanyStorageOpener());
             var entitlement = new DevelopmentEntitlementService(mode);
             Entitlement = entitlement;
@@ -131,11 +152,13 @@ namespace HoaDonDienTu.WinForms.Bootstrap
                 SessionStore,
                 new ShutdownPrompt(),
                 Logger);
+            ApiClientProvider = new PortalApiClientProvider(
+                SessionStore, contextManager, new PortalApiClientFactory(portalConfig, () => mockPortal));
             PortalLoginCoordinator = new PortalLoginCoordinator(
                 contextManager,
                 entitlement,
                 SessionStore,
-                new FakePortalAuthenticationService(null, Clock),
+                new PortalAuthenticationService(portalConfig, Clock, () => mockPortal),
                 () => new DevelopmentPortalLoginBrowser(
                     () => contextManager.HasCurrent ? contextManager.Current.TaxCode.Value : string.Empty),
                 () => new PortalLoginForm(),

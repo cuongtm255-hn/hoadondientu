@@ -141,15 +141,15 @@ Số task lấy từ bảng theo dõi trong từng DD (cập nhật khi đổi t
 | FT-01/02 Khung + đăng nhập | [DD-01](../detail-design/DD-01-APP-SHELL-LOGIN.md) | 1–3 | 17 | 15 | 1 | 1 | T01-14 một phần; T01-16 chờ gate |
 | FT-03 Doanh nghiệp | [DD-02](../detail-design/DD-02-COMPANY-MANAGEMENT.md) | 2 | 10 | 0 | 0 | 0 | |
 | FT-04 Licence | [DD-03](../detail-design/DD-03-LICENSING.md) | 2 | 8 | 0 | 0 | 2 | Chờ G-06 |
-| FT-05 Chọn kỳ | [DD-04](../detail-design/DD-04-PERIOD-DOWNLOAD-CONFIG.md) | 3 | 8 | 0 | 0 | 1 | Bộ lọc chờ G-02 |
-| FT-06 Hàng đợi tải | [DD-05](../detail-design/DD-05-DOWNLOAD-ENGINE.md) | 3 | 11 | 0 | 0 | 3 | Chờ G-02, G-05 |
-| FT-07 Lưu trữ | [DD-06](../detail-design/DD-06-INVOICE-STORAGE.md) | 3 (T06-02 sớm ở 2) | 9 | 0 | 0 | 2 | Chờ G-02, G-08 |
+| FT-05 Chọn kỳ | [DD-04](../detail-design/DD-04-PERIOD-DOWNLOAD-CONFIG.md) | 3 | 8 | 0 | 0 | 0 | Bộ lọc dùng cấu hình nháp (G-02) |
+| FT-06 Hàng đợi tải | [DD-05](../detail-design/DD-05-DOWNLOAD-ENGINE.md) | 3 | 11 | 0 | 1 | 2 | T05-06 client + cổng giả xong; chờ G-02/G-05 để khớp thật |
+| FT-07 Lưu trữ | [DD-06](../detail-design/DD-06-INVOICE-STORAGE.md) | 3 (T06-02 sớm ở 2) | 9 | 0 | 0 | 1 | Chờ G-08 (SQLite) |
 | FT-08 Kho hóa đơn | [DD-07](../detail-design/DD-07-INVOICE-ARCHIVE.md) | 4 | 9 | 0 | 0 | 0 | |
 | FT-09 Chi tiết/viewer | [DD-08](../detail-design/DD-08-INVOICE-DETAIL-VIEWER.md) | 4 | 8 | 0 | 0 | 1 | Chờ G-03, G-09 |
 | FT-10 Xuất | [DD-09](../detail-design/DD-09-EXPORT.md) | 5 | 7 | 0 | 0 | 2 | Chờ G-04, G-09 |
 | FT-11 Tổng quan/lịch sử | [DD-10](../detail-design/DD-10-DASHBOARD-HISTORY.md) | 5 | 7 | 0 | 0 | 0 | |
 | FT-12 Cài đặt/sao lưu | [DD-11](../detail-design/DD-11-SETTINGS-BACKUP.md) | 5 | 8 | 0 | 0 | 0 | |
-| **Tổng** | | | **112** | **15** | **1** | **12** | Mới implement DD-01 (dev adapter) |
+| **Tổng** | | | **112** | **15** | **2** | **9** | DD-01 (dev adapter) + client cổng Thuế theo cấu hình/cổng giả |
 
 ## 5. Phụ thuộc quan trọng
 
@@ -178,4 +178,5 @@ G-03/G-04/G-09 chặn tương ứng T08-05, T09-02/03
 | Ngày | Thay đổi |
 |---|---|
 | 01/11/2026 | Tạo kế hoạch; hoàn thành tài liệu Phase 0 (bản nháp chờ review) |
+| 01/11/2026 | Thêm hợp đồng API cổng Thuế dạng cấu hình + cổng giả ([ADR 0001](../decisions/0001-portal-api-contract.md), [api-samples](../api-samples/README.md)): gỡ chặn T04-06, T06-04; T05-06 🟡 |
 | 01/11/2026 | Đồng bộ sau khi implement DD-01 (T01-01…T01-15, T01-17): 15/17 task xong; xem [ghi chú bàn giao](../progress/2026-11-01-phase1-foundation.md) |

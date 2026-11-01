@@ -64,7 +64,7 @@ Trạng thái: ⬜ Chưa bắt đầu · 🟡 Đang làm · ✅ Hoàn thành · 
 |---|---|---|---|---|---|---|
 | T00-01 | G-01 | Spike WebBrowser/CefSharp/lựa chọn khác trên máy đích (net45) | — | ⬜ | | Cần tài khoản cổng Thuế thật |
 | T00-02 | G-01 | Xác định cách phát hiện login và lấy token/cookie | T00-01 | ⬜ | | |
-| T00-03 | G-02 | Ghi traffic: xác minh phiên/MST, tra cứu mua vào/bán ra, phân trang, tải XML | T00-02 | ⬜ | | Làm sạch dữ liệu trước khi commit |
+| T00-03 | G-02 | Ghi traffic: xác minh phiên/MST, tra cứu mua vào/bán ra, phân trang, tải XML | T00-02 | ⬜ | | Làm sạch dữ liệu trước khi commit. Đã có hợp đồng nháp + cấu hình + cổng giả để không chặn DD-04…09: khi có traffic thật chỉ cần chỉnh `portal-api.json` theo checklist ở [api-samples](../api-samples/README.md) |
 | T00-04 | G-05 | Đo giới hạn tốc độ / hành vi 429 | T00-03 | ⬜ | | |
 | T00-05 | G-03 | Quyết định chiến lược PDF | T00-03 | ⬜ | | |
 | T00-06 | G-04 | Đối chiếu Excel với workbook mẫu `DANH SÁCH HÓA ĐƠN.xlsx` | — | ⬜ | | |

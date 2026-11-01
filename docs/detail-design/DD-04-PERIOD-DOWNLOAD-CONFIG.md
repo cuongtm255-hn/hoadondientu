@@ -148,7 +148,7 @@ Trạng thái: ⬜ Chưa bắt đầu · 🟡 Đang làm · ✅ Hoàn thành · 
 | T04-03 | Unit test chia kỳ (mục 6.1) | Tests | T04-02 | ⬜ | | AC-03 |
 | T04-04 | `DownloadConfigControl` + `DownloadConfigPresenter` (SCR-03) | WinForms | T04-02, T01-05 | ⬜ | | |
 | T04-05 | Điều kiện bật nút bắt đầu + `IStorageGuard` | Application | T01-07 | ⬜ | | FR-SEARCH-010 |
-| T04-06 | Bộ lọc theo trường API hỗ trợ | WinForms | G-02 | ⛔ | | Chờ API discovery |
+| T04-06 | Bộ lọc theo trường API hỗ trợ | WinForms | G-02 | ⬜ | | Hết chặn: `InvoiceSearchFilter` + `search.filterParameters` trong cấu hình quyết định trường nào hỗ trợ (cấu hình nháp, chưa xác minh) |
 | T04-07 | Nối `IDownloadOrchestrator.CreateSessionAsync` → SCR-04 | WinForms | T05-03 | ⬜ | | |
 | T04-08 | UI smoke test (mục 6.2) | Tests | T04-04 | ⬜ | | |
 

@@ -123,7 +123,7 @@ Trạng thái: ⬜ Chưa bắt đầu · 🟡 Đang làm · ✅ Hoàn thành · 
 | T06-01 | Domain: `NormalizedInvoice`, `BusinessKey`, trạng thái/kết quả kiểm tra, `InvoiceFileNamer` | Domain | T01-02 | ⬜ | | |
 | T06-02 | Schema + `CompanyDatabaseInitializer` + `SchemaVersionReader` + migration framework | Infra | G-08 | ⛔ | | Chờ chọn SQLite provider |
 | T06-03 | Repository `Invoice`/`InvoiceVersion`/`FileAsset` + unit-of-work factory | Infra | T06-02 | ⬜ | | |
-| T06-04 | `IInvoiceNormalizer` + mapping từ DTO cổng | Application/Infra | G-02 | ⛔ | | Chờ API discovery |
+| T06-04 | `IInvoiceNormalizer` + mapping từ DTO cổng | Application/Infra | G-02 | ⬜ | | Hết chặn: đầu vào là `PortalInvoiceDto` (19 trường SRS 9.1, giá trị nguồn giữ nguyên) — mapping trạng thái/kết quả kiểm tra là giả định cho tới khi có dữ liệu thật |
 | T06-05 | `InvoiceStorageService.UpsertAsync` (file tạm, hash, phiên bản hóa) | Application | T06-01, T06-03 | ⬜ | | |
 | T06-06 | `IFileIntegrityChecker` + quét file mồ côi | Application | T06-05 | ⬜ | | |
 | T06-07 | Tạo cấu trúc thư mục kho + kiểm tra quyền/dung lượng (`CompanyStorageValidator`) | Infra | T02-03 | ⬜ | | Dùng chung DD-02 |

@@ -10,7 +10,7 @@
 ## Cần quyết định / làm tiếp
 
 1. ~~Standard tự mở form đăng nhập khi khởi động~~ — đã làm (quyết định 01/11/2026).
-2. **T01-16 / Phase 1 spike (T00-xx):** chọn WebView (G-01), khảo sát API cổng Thuế (G-02), SQLite (G-08), thư viện Excel/PDF/ZIP (G-09) — cần Visual Studio, tài khoản cổng Thuế thật và ADR. Đây là bước chặn các DD-04…DD-09.
+2. **T01-16 / Phase 1 spike (T00-xx):** chọn WebView (G-01), SQLite (G-08), thư viện Excel/PDF/ZIP (G-09) vẫn cần Visual Studio và ADR. **G-02 (API cổng Thuế) đã có hợp đồng nháp + cấu hình + cổng giả** ([ADR 0001](../decisions/0001-portal-api-contract.md), [api-samples](../api-samples/README.md)) nên DD-04/05/06 không còn bị chặn; khi có tài khoản thật chỉ chỉnh `portal-api.json` theo checklist rồi chạy lại test.
 3. Phase 2: DD-02 (catalog + màn hình doanh nghiệp), DD-03 (licence) để thay adapter giả; viết runbook build.
 4. Review tài liệu Phase 0 (P0-07, P0-08) vẫn chờ chủ sản phẩm.
 

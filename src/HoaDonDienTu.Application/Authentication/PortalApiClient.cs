@@ -3,8 +3,8 @@ using HoaDonDienTu.Application.Companies;
 
 namespace HoaDonDienTu.Application.Authentication
 {
-    /// <summary>Client API cổng Thuế cho đúng một generation của phiên; các thao tác tra cứu/tải thêm ở DD-05.</summary>
-    public interface IPortalApiClient : IDisposable
+    /// <summary>Client API cổng Thuế cho đúng một generation của phiên (tra cứu, tải XML).</summary>
+    public interface IPortalApiClient : HoaDonDienTu.Application.Portal.IPortalInvoiceClient, IDisposable
     {
     }
 

@@ -21,6 +21,15 @@ namespace HoaDonDienTu.WinForms
             {
                 compositionRoot = CompositionRoot.Create();
             }
+            catch (HoaDonDienTu.Infrastructure.Portal.Config.PortalApiConfigException ex)
+            {
+                MessageBox.Show(
+                    ex.Message,
+                    "Cấu hình API cổng Thuế không hợp lệ",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+                return;
+            }
             catch (NotSupportedException)
             {
                 // Bản Release chưa có adapter production (DD-02, DD-03, T01-16): báo rõ thay vì để process chết không lời.

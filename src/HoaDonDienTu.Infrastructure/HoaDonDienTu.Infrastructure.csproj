@@ -8,6 +8,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <Reference Include="System.Net.Http" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\HoaDonDienTu.Application\HoaDonDienTu.Application.csproj" />
     <ProjectReference Include="..\HoaDonDienTu.Domain\HoaDonDienTu.Domain.csproj" />
   </ItemGroup>

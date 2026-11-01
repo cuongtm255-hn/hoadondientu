@@ -92,6 +92,18 @@ namespace HoaDonDienTu.Application.Tests
         {
             public bool Disposed { get; private set; }
 
+                        public System.Threading.Tasks.Task<HoaDonDienTu.Application.Portal.InvoicePage> SearchAsync(
+                HoaDonDienTu.Application.Portal.InvoiceSearchRequest request, System.Threading.CancellationToken cancellationToken)
+            {
+                throw new NotSupportedException();
+            }
+
+            public System.Threading.Tasks.Task<HoaDonDienTu.Application.Portal.InvoiceXmlPayload> DownloadXmlAsync(
+                HoaDonDienTu.Application.Portal.PortalInvoiceRef invoice, System.Threading.CancellationToken cancellationToken)
+            {
+                throw new NotSupportedException();
+            }
+
             public void Dispose()
             {
                 Disposed = true;

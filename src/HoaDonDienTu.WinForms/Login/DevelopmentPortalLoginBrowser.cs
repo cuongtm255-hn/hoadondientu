@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using ComponentFactory.Krypton.Toolkit;
 using HoaDonDienTu.Application.Authentication;
-using HoaDonDienTu.Infrastructure.Development;
+using HoaDonDienTu.Infrastructure.Development.Mock;
 
 namespace HoaDonDienTu.WinForms.Login
 {
@@ -59,9 +59,9 @@ namespace HoaDonDienTu.WinForms.Login
 
         public Task<PortalSessionMaterial> CaptureSessionAsync(CancellationToken cancellationToken)
         {
-            var headers = new Dictionary<string, string>();
-            if (_simulatedTaxCode != null) headers[FakePortalAuthenticationService.DevTaxCodeHeader] = _simulatedTaxCode;
-            return Task.FromResult(new PortalSessionMaterial(null, headers, "dev-token"));
+            // Token giả mang MST của tài khoản vừa "đăng nhập"; cổng giả đọc MST từ token để trả về qua API hồ sơ.
+            var token = _simulatedTaxCode == null ? "mock-token-expired" : MockInvoiceDataset.TokenFor(_simulatedTaxCode);
+            return Task.FromResult(new PortalSessionMaterial(null, null, token));
         }
 
         public void Dispose()

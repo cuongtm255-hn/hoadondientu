@@ -1,0 +1,110 @@
+{
+  "schemaVersion": 1,
+  "verified": false,
+  "notes": "NHÁP tự định nghĩa, chưa đối chiếu cổng Thuế thật (G-02). Sửa file này cho khớp traffic thực tế; không cần đổi code.",
+  "baseUrl": "https://hoadondientu.gdt.gov.vn",
+  "auth": {
+    "headerName": "Authorization",
+    "scheme": "Bearer",
+    "sendCookies": false,
+    "forwardHeaders": []
+  },
+  "http": {
+    "timeoutSeconds": 60,
+    "userAgent": "HoaDonDienTu/1.0",
+    "defaultHeaders": {
+      "Accept": "application/json"
+    }
+  },
+  "profile": {
+    "endpoint": {
+      "method": "GET",
+      "path": "/api/v1/profile"
+    },
+    "taxCodePath": "data.taxCode",
+    "namePath": "data.name"
+  },
+  "search": {
+    "purchase": {
+      "method": "GET",
+      "path": "/api/v1/invoices/purchase"
+    },
+    "sold": {
+      "method": "GET",
+      "path": "/api/v1/invoices/sold"
+    },
+    "parameterLocation": "Query",
+    "dateFormat": "yyyy-MM-dd",
+    "fromParam": "from",
+    "toParam": "to",
+    "fixedParameters": {
+      "sort": "issueDate:asc"
+    },
+    "pagination": {
+      "mode": "Cursor",
+      "pageSizeParam": "size",
+      "pageSize": 50,
+      "cursorParam": "cursor",
+      "startPage": 1
+    },
+    "filterParameters": {
+      "CounterpartyTaxCode": "partnerTaxCode",
+      "StatusCode": "status",
+      "CheckResultCode": "checkResult",
+      "InvoiceNumber": "invoiceNumber",
+      "FormSymbol": "formSymbol",
+      "InvoiceSymbol": "invoiceSymbol",
+      "ProxyInvoice": "proxy"
+    },
+    "response": {
+      "itemsPath": "data.items",
+      "totalPath": "data.total",
+      "nextCursorPath": "data.nextCursor",
+      "dateFormats": [
+        "yyyy-MM-dd",
+        "yyyy-MM-ddTHH:mm:ss",
+        "dd/MM/yyyy"
+      ],
+      "fields": {
+        "PortalInvoiceId": "id",
+        "FormSymbol": "formSymbol",
+        "InvoiceSymbol": "invoiceSymbol",
+        "InvoiceNumber": "number",
+        "IssueDate": "issueDate",
+        "SellerTaxCode": "seller.taxCode",
+        "SellerName": "seller.name",
+        "BuyerTaxCode": "buyer.taxCode",
+        "BuyerName": "buyer.name",
+        "BuyerAddress": "buyer.address",
+        "TotalBeforeTax": "amounts.beforeTax",
+        "TotalTax": "amounts.tax",
+        "TotalDiscount": "amounts.discount",
+        "TotalFee": "amounts.fee",
+        "TotalPayment": "amounts.payment",
+        "Currency": "currency",
+        "ExchangeRate": "exchangeRate",
+        "StatusRaw": "status",
+        "CheckResultRaw": "checkResult"
+      }
+    }
+  },
+  "download": {
+    "endpoint": {
+      "method": "GET",
+      "path": "/api/v1/invoices/{id}/xml"
+    },
+    "parameterLocation": "Path",
+    "parameters": {
+      "id": "PortalInvoiceId"
+    },
+    "responseMode": "RawXml",
+    "fileNameTemplate": "{InvoiceSymbol}-{InvoiceNumber}.xml"
+  },
+  "errors": {
+    "statusKinds": {},
+    "retryAfterHeader": "Retry-After"
+  },
+  "rateLimit": {
+    "minIntervalMs": 500
+  }
+}
