@@ -6,5 +6,6 @@ obj/
 packages/
 TestResults/
 
-# Bản ghi nguyên văn traffic cổng Thuế: chứa mật khẩu, token và cookie đăng nhập thật. Không được commit.
-docs/api-samples/sample-api-web.md
+# Bản ghi nguyên văn traffic cổng Thuế (mật khẩu, token, cookie thật): đặt tên *.raw.* hoặc trong thư mục raw/, không bao giờ commit.
+docs/api-samples/*.raw.*
+docs/api-samples/raw/

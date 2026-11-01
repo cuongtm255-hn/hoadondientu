@@ -2,7 +2,7 @@
 
 > **Nguồn:** bản ghi traffic thật của trang Tra cứu (tháng 11/2026), gồm đăng nhập, tra cứu hóa đơn **bán ra**, xem chi tiết, xuất Excel, xuất XML,
 > cùng `spec.xlsx` (giao diện tìm kiếm), `DANH SÁCH HÓA ĐƠN.xlsx` (mẫu bảng kê) và `invoice.zip` (gói XML do cổng xuất).
-> Bản ghi nguyên văn `sample-api-web.md` chứa **mật khẩu, token và cookie thật** nên **không được commit** (đã đưa vào `.gitignore`); tài liệu này là bản đã làm sạch.
+> [`sample-api-web.md`](sample-api-web.md) là bản ghi traffic **đã thay mọi giá trị nhạy cảm bằng placeholder** (`<JWT>`, `<COOKIES…>`, `<PASSWORD>`, `<CAPTCHA>`, `<CAPTCHA_KEY>`). Bản ghi nguyên văn (có mật khẩu, token, cookie thật) phải đặt tên `*.raw.*` hoặc trong `raw/` — các đường dẫn này nằm trong `.gitignore`; sau khi làm sạch mới lưu thành tệp thường và chỉ commit khi không còn bí mật.
 >
 > **Đã xác nhận bằng mẫu thật:** đăng nhập, tra cứu bán ra và toàn bộ tham số lọc, chi tiết, xuất XML (zip), xuất Excel.
 > **Chưa có mẫu thật (suy luận, đánh dấu ⚠):** tra cứu **mua vào**, trang kế tiếp qua `state`, kích thước trang tối đa, giới hạn tốc độ. Xem mục 7.

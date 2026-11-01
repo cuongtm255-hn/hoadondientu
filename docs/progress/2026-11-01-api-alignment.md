@@ -2,7 +2,7 @@
 
 ## Việc đã làm
 
-Đối chiếu code và tài liệu với traffic thật trong `docs/api-samples` (`sample-api-web.md` — chỉ giữ cục bộ, `spec.xlsx`, `DANH SÁCH HÓA ĐƠN.xlsx`, `invoice.zip`). Hợp đồng đã làm sạch: [api-samples/README.md](../api-samples/README.md).
+Đối chiếu code và tài liệu với traffic thật trong `docs/api-samples` (`sample-api-web.md` — đã làm sạch, `spec.xlsx`, `DANH SÁCH HÓA ĐƠN.xlsx`, `invoice.zip`). Hợp đồng đã làm sạch: [api-samples/README.md](../api-samples/README.md).
 
 | Nhóm | Thay đổi |
 |---|---|
@@ -25,5 +25,5 @@
 
 ## Cần lưu ý
 
-- `sample-api-web.md` chứa **mật khẩu, token và cookie thật**; đã bị commit và push nhầm ở `be254a2`. Từ commit này file được bỏ khỏi chỉ mục và thêm vào `.gitignore`, nhưng vẫn còn trong lịch sử git cho tới khi viết lại lịch sử. Đổi mật khẩu tài khoản cổng Thuế đó.
+- `sample-api-web.md` từng chứa **mật khẩu, token và cookie thật** và bị commit nhầm ở `be254a2`. Lịch sử đã được viết lại (force-push) để loại file; tệp hiện tại đã thay mọi giá trị nhạy cảm bằng placeholder. Bản nguyên văn phải đặt tên `*.raw.*` (git-ignored). Mật khẩu tài khoản cổng Thuế đó cần được đổi.
 - File `portal-api.json` cũ (schema 1) trong `%LOCALAPPDATA%` không còn hợp lệ; ứng dụng ghi log và dùng cấu hình mặc định.
