@@ -62,7 +62,10 @@ namespace HoaDonDienTu.WinForms.Bootstrap
             _mainShell.ShowOperation(new OperationViewState { Text = result.UserMessage ?? "Sẵn sàng", IsBusy = false });
 
             // Service/ReadOnly luôn mở danh sách doanh nghiệp, không tự mở MST gần nhất.
-            var target = result.Mode == AppMode.Standard ? ScreenId.Dashboard : ScreenId.CompanyList;
+            ScreenId target;
+            if (result.Route == StartupRoute.Recovery) target = ScreenId.Recovery;
+            else if (result.Mode == AppMode.Standard) target = ScreenId.Dashboard;
+            else target = ScreenId.CompanyList;
             _presenter.Show(target);
         }
 

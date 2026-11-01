@@ -8,6 +8,11 @@ namespace HoaDonDienTu.WinForms.Shell
     {
         public static ShellModeViewState ToModeState(StartupResult result)
         {
+            if (result.Route == StartupRoute.Recovery)
+            {
+                return new ShellModeViewState { LicenseLabel = "Cần khôi phục" };
+            }
+
             switch (result.Mode)
             {
                 case AppMode.Service:

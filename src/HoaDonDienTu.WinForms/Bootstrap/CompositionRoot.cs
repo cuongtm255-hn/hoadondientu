@@ -1,7 +1,12 @@
 using System;
 using System.IO;
 using HoaDonDienTu.Application.Abstractions;
+using HoaDonDienTu.Application.Companies;
 using HoaDonDienTu.Application.Startup;
+using HoaDonDienTu.Domain.Licensing;
+#if DEBUG
+using HoaDonDienTu.Infrastructure.Development;
+#endif
 using HoaDonDienTu.Infrastructure.Common;
 using HoaDonDienTu.Infrastructure.Logging;
 using HoaDonDienTu.WinForms.Shell;
@@ -27,11 +32,12 @@ namespace HoaDonDienTu.WinForms.Bootstrap
                 "HoaDonDienTu",
                 "logs");
 
+            var logger = new FileApplicationLogger(logDirectory, clock);
             return new CompositionRoot
             {
                 Clock = clock,
-                Logger = new FileApplicationLogger(logDirectory, clock),
-                StartupCoordinator = CreateStartupCoordinator()
+                Logger = logger,
+                StartupCoordinator = CreateStartupCoordinator(logger)
             };
         }
 
@@ -44,17 +50,40 @@ namespace HoaDonDienTu.WinForms.Bootstrap
         {
         }
 
-        private static IStartupCoordinator CreateStartupCoordinator()
+        private static IStartupCoordinator CreateStartupCoordinator(IApplicationLogger logger)
         {
 #if DEBUG
-            // HDDT_DEV_MODE = Standard | Service | ReadOnly để thử từng chế độ khi chưa có StartupCoordinator thật (T01-06).
-            var mode = HoaDonDienTu.Domain.Common.AppMode.Standard;
-            var text = Environment.GetEnvironmentVariable("HDDT_DEV_MODE");
-            if (string.Equals(text, "Service", StringComparison.OrdinalIgnoreCase)) mode = HoaDonDienTu.Domain.Common.AppMode.Service;
-            else if (string.Equals(text, "ReadOnly", StringComparison.OrdinalIgnoreCase)) mode = HoaDonDienTu.Domain.Common.AppMode.ReadOnlyService;
-            return new HoaDonDienTu.Infrastructure.Development.DevelopmentStartupCoordinator(mode);
+            // HDDT_DEV_MODE = Standard | StandardFirstRun | Service | ReadOnly | Recovery:
+            // dùng licence/catalog giả cho tới khi có DD-02/DD-03.
+            var text = Environment.GetEnvironmentVariable("HDDT_DEV_MODE") ?? "Standard";
+            LicenseStatus license = LicenseStatus.None;
+            CatalogSnapshot catalog = new CatalogSnapshot(CatalogLoadStatus.Loaded, DevelopmentCompanyCatalog.SampleCompanies(1), false);
+
+            if (string.Equals(text, "StandardFirstRun", StringComparison.OrdinalIgnoreCase))
+            {
+                catalog = CatalogSnapshot.Empty();
+            }
+            else if (string.Equals(text, "Service", StringComparison.OrdinalIgnoreCase))
+            {
+                license = LicenseStatus.Valid;
+                catalog = new CatalogSnapshot(CatalogLoadStatus.Loaded, DevelopmentCompanyCatalog.SampleCompanies(3), true);
+            }
+            else if (string.Equals(text, "ReadOnly", StringComparison.OrdinalIgnoreCase))
+            {
+                license = LicenseStatus.Expired;
+                catalog = new CatalogSnapshot(CatalogLoadStatus.Loaded, DevelopmentCompanyCatalog.SampleCompanies(3), true);
+            }
+            else if (string.Equals(text, "Recovery", StringComparison.OrdinalIgnoreCase))
+            {
+                catalog = new CatalogSnapshot(CatalogLoadStatus.Corrupt, null, false);
+            }
+
+            return new StartupCoordinator(
+                new DevelopmentLicenseService(license),
+                new DevelopmentCompanyCatalog(catalog),
+                logger);
 #else
-            throw new NotSupportedException("StartupCoordinator production chưa được implement (T01-06).");
+            throw new NotSupportedException("ILicenseService/ICompanyCatalog production chưa có (DD-03/DD-02).");
 #endif
         }
     }
