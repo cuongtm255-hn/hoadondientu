@@ -11,7 +11,13 @@ namespace HoaDonDienTu.Application.Authentication
         InvalidSession,
         TaxCodeMismatch,
         PortalUnavailable,
-        BrowserUnavailable
+        BrowserUnavailable,
+
+        /// <summary>Không đủ điều kiện mở đăng nhập: chưa có doanh nghiệp, MST không khớp hoặc chế độ chỉ đọc.</summary>
+        NotAllowed,
+
+        /// <summary>Đã có cửa sổ đăng nhập khác đang hoạt động.</summary>
+        AlreadyInProgress
     }
 
     public sealed class PortalLoginResult

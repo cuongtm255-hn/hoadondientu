@@ -20,7 +20,11 @@ namespace HoaDonDienTu.WinForms.Bootstrap
         {
             _compositionRoot = compositionRoot;
             _mainShell = compositionRoot.CreateMainShell();
-            _presenter = new MainShellPresenter(_mainShell);
+            _presenter = new MainShellPresenter(
+                _mainShell,
+                compositionRoot.PortalLoginCoordinator,
+                compositionRoot.ContextManager,
+                compositionRoot.SessionStore);
             _presenter.Initialize();
             _presenter.ShowInitializing();
 
@@ -42,7 +46,7 @@ namespace HoaDonDienTu.WinForms.Bootstrap
 
                 var result = await _compositionRoot.StartupCoordinator.InitializeAsync(progress, _cancellation.Token);
                 startupCompleted = true;
-                ApplyStartupResult(result);
+                await ApplyStartupResultAsync(result);
             }
             catch (OperationCanceledException)
             {
@@ -54,11 +58,17 @@ namespace HoaDonDienTu.WinForms.Bootstrap
             }
         }
 
-        private void ApplyStartupResult(StartupResult result)
+        private async System.Threading.Tasks.Task ApplyStartupResultAsync(StartupResult result)
         {
+            // Standard chỉ có một MST: mở kho ngay khi khởi động. Service/ReadOnly chờ người dùng chọn MST.
+            if (result.Route == StartupRoute.StandardPortalLogin && result.StandardCompany != null)
+            {
+                await _compositionRoot.ContextManager.OpenAsync(result.StandardCompany, _cancellation.Token);
+            }
+
             _mainShell.ApplyMode(ShellModeMapper.ToModeState(result));
             _mainShell.ShowCompany(ShellModeMapper.ToCompanyState(result));
-            _mainShell.ShowPortalSession(new PortalSessionViewState { IsLoggedIn = false, Text = "Chưa đăng nhập" });
+            _presenter.RefreshPortalSession();
             _mainShell.ShowOperation(new OperationViewState { Text = result.UserMessage ?? "Sẵn sàng", IsBusy = false });
 
             // Service/ReadOnly luôn mở danh sách doanh nghiệp, không tự mở MST gần nhất.

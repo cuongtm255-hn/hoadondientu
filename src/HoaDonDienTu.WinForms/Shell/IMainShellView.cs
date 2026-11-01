@@ -5,6 +5,8 @@ namespace HoaDonDienTu.WinForms.Shell
 {
     public interface IMainShellView
     {
+        IWin32Window OwnerWindow { get; }
+
         event EventHandler<NavigationRequestedEventArgs> NavigationRequested;
         event EventHandler CompanySelectorRequested;
         event EventHandler PortalLoginRequested;

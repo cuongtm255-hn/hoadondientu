@@ -44,6 +44,17 @@
     <Compile Include="Bootstrap\AppApplicationContext.cs" />
     <Compile Include="Bootstrap\CompositionRoot.cs" />
     <Compile Include="Bootstrap\GlobalExceptionHandler.cs" />
+    <Compile Include="Login\DevelopmentPortalLoginBrowser.cs" />
+    <Compile Include="Login\IPortalLoginBrowser.cs" />
+    <Compile Include="Login\IPortalLoginView.cs" />
+    <Compile Include="Login\PortalLoginCoordinator.cs" />
+    <Compile Include="Login\PortalLoginForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Login\PortalLoginForm.Designer.cs">
+      <DependentUpon>PortalLoginForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Login\PortalLoginPresenter.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Shell\IMainShellView.cs" />
     <Compile Include="Shell\MainShellForm.cs">

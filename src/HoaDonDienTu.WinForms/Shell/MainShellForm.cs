@@ -22,6 +22,11 @@ namespace HoaDonDienTu.WinForms.Shell
             };
         }
 
+        public IWin32Window OwnerWindow
+        {
+            get { return this; }
+        }
+
         public event EventHandler<NavigationRequestedEventArgs> NavigationRequested;
         public event EventHandler CompanySelectorRequested;
         public event EventHandler PortalLoginRequested;
