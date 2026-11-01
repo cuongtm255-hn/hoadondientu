@@ -22,6 +22,7 @@ using HoaDonDienTu.WinForms.Download;
 using HoaDonDienTu.WinForms.Licensing;
 using HoaDonDienTu.WinForms.Login;
 using HoaDonDienTu.WinForms.Navigation;
+using HoaDonDienTu.WinForms.Settings;
 using HoaDonDienTu.WinForms.Shell;
 #if DEBUG
 using HoaDonDienTu.Infrastructure.Development;
@@ -126,25 +127,33 @@ namespace HoaDonDienTu.WinForms.Bootstrap
 
         private void ComposeEnvironment()
         {
-#if DEBUG
-            // HDDT_DEV_MODE = Standard | StandardFirstRun | Service | ReadOnly | Recovery. Licence và trình duyệt đăng nhập vẫn là giả
-            // (chờ DD-03 và ADR G-01); danh mục doanh nghiệp, kho và quản lý doanh nghiệp là mã thật của DD-02 chạy trên dữ liệu mẫu
-            // trong HDDT_DATA_DIR (mặc định %LOCALAPPDATA%\HoaDonDienTu\dev-data\<chế độ>).
-            var text = Environment.GetEnvironmentVariable("HDDT_DEV_MODE") ?? "Standard";
-            var license = LicenseStatus.None;
+            // Phần riêng của môi trường: Debug chạy trên dữ liệu mẫu với cổng Thuế và licence server giả (HDDT_DEV_MODE =
+            // Standard | StandardFirstRun | Service | ReadOnly | Recovery, dữ liệu ở HDDT_DATA_DIR); Release dùng dữ liệu thật của người dùng.
+            string dataDirectory;
             var mode = AppMode.Standard;
+            ILicenseService developmentLicense = null;
+            System.Func<System.Net.Http.HttpMessageHandler> portalHandler = null;
+            System.Func<IPortalLoginBrowser> loginBrowser;
+            IActiveJobService jobs;
+            IDownloadSessionStarter starter;
+            ILicenseServer licenseServer;
+            ILicenseSignatureVerifier licenseVerifier;
+            var portalConfig = LoadPortalApiConfig();
+#if DEBUG
+            var text = Environment.GetEnvironmentVariable("HDDT_DEV_MODE") ?? "Standard";
+            var licenseStatus = LicenseStatus.None;
             if (string.Equals(text, "Service", StringComparison.OrdinalIgnoreCase))
             {
-                license = LicenseStatus.Valid;
+                licenseStatus = LicenseStatus.Valid;
                 mode = AppMode.Service;
             }
             else if (string.Equals(text, "ReadOnly", StringComparison.OrdinalIgnoreCase))
             {
-                license = LicenseStatus.Expired;
+                licenseStatus = LicenseStatus.Expired;
                 mode = AppMode.ReadOnlyService;
             }
 
-            var dataDirectory = Environment.GetEnvironmentVariable("HDDT_DATA_DIR");
+            dataDirectory = Environment.GetEnvironmentVariable("HDDT_DATA_DIR");
             if (string.IsNullOrWhiteSpace(dataDirectory))
             {
                 dataDirectory = Path.Combine(
@@ -152,37 +161,61 @@ namespace HoaDonDienTu.WinForms.Bootstrap
             }
 
             DevelopmentDataSeeder.Seed(dataDirectory, text);
+            developmentLicense = new DevelopmentLicenseService(licenseStatus);
+            starter = new PendingDownloadSessionStarter();
+            var mockPortal = new MockPortalHandler(portalConfig);
+            portalHandler = () => mockPortal;
+            jobs = new DevelopmentActiveJobService(Environment.GetEnvironmentVariable("HDDT_DEV_JOB") == "1");
+            loginBrowser = () => new DevelopmentPortalLoginBrowser(
+                () => ContextManager.HasCurrent ? ContextManager.Current.TaxCode.Value : string.Empty);
+            var developmentServer = new DevelopmentLicenseServer(
+                () => string.Equals(Environment.GetEnvironmentVariable("HDDT_DEV_LICENSE_SERVER"), "down", StringComparison.OrdinalIgnoreCase),
+                Path.Combine(dataDirectory, "dev-license-key.xml"));
+            licenseServer = developmentServer;
+            licenseVerifier = new RsaLicenseSignatureVerifier(developmentServer.PublicKeyXml);
+#else
+            dataDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "HoaDonDienTu", "data");
+            jobs = new IdleActiveJobService();
+            starter = new UnavailableDownloadSessionStarter();
+            loginBrowser = () => new UnavailablePortalLoginBrowser();
+            var licenseSettings = LicenseApiSettingsLoader.TryLoad(LocateConfigFile("license-api.json"));
+            if (licenseSettings == null)
+            {
+                Logger.Warning("Chưa có license-api.json hợp lệ: kích hoạt licence chưa dùng được, ứng dụng chạy chế độ chuẩn");
+                licenseServer = new UnconfiguredLicenseServer();
+                licenseVerifier = new RsaLicenseSignatureVerifier(string.Empty);
+            }
+            else
+            {
+                licenseServer = new LicenseApiClient(licenseSettings.ToConfig(), null);
+                licenseVerifier = new RsaLicenseSignatureVerifier(licenseSettings.PublicKeyXml);
+            }
+#endif
+
             var registry = new JsonCompanyCatalog(Path.Combine(dataDirectory, "companies.json"));
             var storage = new FileSystemCompanyStorage();
             Registry = registry;
 
-            // SCR-12 dùng LicenseService thật (store DPAPI, chữ ký RSA, mã máy) với licence server giả; khởi động dùng nó khi đã có license.dat, chưa có thì theo HDDT_DEV_MODE.
-            var licenseServer = new DevelopmentLicenseServer(
-                () => string.Equals(Environment.GetEnvironmentVariable("HDDT_DEV_LICENSE_SERVER"), "down", StringComparison.OrdinalIgnoreCase),
-                Path.Combine(dataDirectory, "dev-license-key.xml"));
+            // Licence thật (store DPAPI, chữ ký RSA, mã máy). Khởi động dùng nó khi đã có license.dat; chưa có thì Debug theo HDDT_DEV_MODE.
             var machineIdentity = new MachineIdentityProvider();
             var licenseService = new LicenseService(
                 new FileLicenseStore(Path.Combine(dataDirectory, "license.dat")), licenseServer, machineIdentity,
-                new RsaLicenseSignatureVerifier(licenseServer.PublicKeyXml), Clock, Logger, AppVersion);
-
+                licenseVerifier, Clock, Logger, AppVersion);
             LicenseService = licenseService;
 
-            var startupLicense = File.Exists(Path.Combine(dataDirectory, "license.dat"))
+            var startupLicense = developmentLicense == null || File.Exists(Path.Combine(dataDirectory, "license.dat"))
                 ? (ILicenseService)licenseService
-                : new DevelopmentLicenseService(license);
+                : developmentLicense;
             StartupCoordinator = new StartupCoordinator(startupLicense, registry, Logger);
 
-            var portalConfig = LoadPortalApiConfig();
             PortalApiConfig = portalConfig;
-            var mockPortal = new MockPortalHandler(portalConfig);
             var contextManager = new CompanyContextManager(new CompanyStorageOpener(registry, storage, Clock, Logger));
             var entitlement = new EntitlementService(mode, mode == AppMode.ReadOnlyService);
             Entitlement = entitlement;
             ContextManager = contextManager;
-            var jobs = new DevelopmentActiveJobService(Environment.GetEnvironmentVariable("HDDT_DEV_JOB") == "1");
             ShutdownCoordinator = new ShutdownCoordinator(contextManager, jobs, SessionStore, new ShutdownPrompt(), Logger);
             ApiClientProvider = new PortalApiClientProvider(
-                SessionStore, contextManager, new PortalApiClientFactory(portalConfig, () => mockPortal));
+                SessionStore, contextManager, new PortalApiClientFactory(portalConfig, portalHandler));
 
             var switchService = new CompanySwitchService(registry, contextManager, jobs, SessionStore, entitlement, Logger);
             var management = new CompanyManagementService(registry, storage, contextManager, entitlement, Logger);
@@ -191,13 +224,12 @@ namespace HoaDonDienTu.WinForms.Bootstrap
                 () => NavigationService, () => ShellActions);
             var folderPicker = new FolderPicker();
             var folderLauncher = new ExplorerFolderLauncher();
-            Func<string, string> suggestFolder = taxCode => Path.Combine(dataDirectory, "Companies", taxCode);
+            System.Func<string, string> suggestFolder = taxCode => Path.Combine(dataDirectory, "Companies", taxCode);
 
             var splitter = new PeriodSplitter();
             var startPolicy = new DownloadStartPolicy(contextManager, SessionStore, entitlement);
             var storageProbe = new FileSystemStorageProbe();
             var capabilities = new PortalApiConfigCapabilities(portalConfig);
-            var starter = new PendingDownloadSessionStarter();
             ScreenFactory = Navigation.ScreenFactory.CreateDefault(
                 new ScreenDescriptor(
                     HoaDonDienTu.Application.Navigation.ScreenId.Download, "Tải hóa đơn", "SCR-03",
@@ -206,6 +238,13 @@ namespace HoaDonDienTu.WinForms.Bootstrap
                         view => new DownloadConfigPresenter(
                             view, splitter, startPolicy, storageProbe, capabilities, SessionStore, contextManager,
                             entitlement, starter, Confirmation, OperationRunner, ErrorPresenter, NavigationService, Clock))),
+                new ScreenDescriptor(
+                    HoaDonDienTu.Application.Navigation.ScreenId.Settings, "Cài đặt", "SCR-09",
+                    parameter => new SettingsScreen(
+                        new SettingsControl(),
+                        view => new SettingsPresenter(
+                            view, licenseService, entitlement, contextManager, () => NavigationService, OperationRunner, ErrorPresenter,
+                            AppVersion + " · Schema v1"))),
                 new ScreenDescriptor(
                     HoaDonDienTu.Application.Navigation.ScreenId.License, "Bản quyền", "SCR-12",
                     parameter => new LicenseScreen(
@@ -232,14 +271,18 @@ namespace HoaDonDienTu.WinForms.Bootstrap
                 contextManager,
                 entitlement,
                 SessionStore,
-                new PortalAuthenticationService(portalConfig, Clock, () => mockPortal),
-                () => new DevelopmentPortalLoginBrowser(
-                    () => contextManager.HasCurrent ? contextManager.Current.TaxCode.Value : string.Empty),
+                new PortalAuthenticationService(portalConfig, Clock, portalHandler),
+                loginBrowser,
                 () => new PortalLoginForm(),
                 Logger);
-#else
-            throw new NotSupportedException("Licence/xác thực production chưa có (DD-03, T01-16).");
-#endif
+        }
+
+        /// <summary>Tìm file cấu hình: bản của người dùng trong %LOCALAPPDATA%\HoaDonDienTu ưu tiên, rồi bản cạnh file chạy.</summary>
+        private static string LocateConfigFile(string name)
+        {
+            var userFile = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "HoaDonDienTu", name);
+            return File.Exists(userFile) ? userFile : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, name);
         }
     }
 }

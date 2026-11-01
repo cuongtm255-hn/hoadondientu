@@ -43,6 +43,12 @@ namespace HoaDonDienTu.Application.Common
                     "Kiểm tra hoặc gia hạn bản quyền ở mục Bản quyền.", correlationId, false);
             }
 
+            if (exception is FeatureNotAvailableException)
+            {
+                return Create("NOT_AVAILABLE", ErrorCategory.Configuration, operation, exception.Message,
+                    "Chức năng này sẽ có ở phiên bản sau.", correlationId, false);
+            }
+
             var licence = exception as LicenseException;
             if (licence != null)
             {

@@ -46,6 +46,15 @@
     <Compile Include="Bootstrap\CompositionRoot.cs" />
     <Compile Include="Bootstrap\GlobalExceptionHandler.cs" />
     <Compile Include="Common\UserDialogs.cs" />
+    <Compile Include="Settings\SettingsControl.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Settings\SettingsControl.Designer.cs">
+      <DependentUpon>SettingsControl.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Settings\ISettingsView.cs" />
+    <Compile Include="Settings\SettingsPresenter.cs" />
+    <Compile Include="Settings\SettingsScreen.cs" />
     <Compile Include="Licensing\LicenseControl.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -85,6 +94,7 @@
     <Compile Include="Download\DownloadConfigScreen.cs" />
     <Compile Include="Download\IDownloadConfigView.cs" />
     <Compile Include="Login\DevelopmentPortalLoginBrowser.cs" />
+    <Compile Include="Login\UnavailablePortalLoginBrowser.cs" />
     <Compile Include="Login\IPortalLoginBrowser.cs" />
     <Compile Include="Login\IPortalLoginView.cs" />
     <Compile Include="Login\PortalLoginCoordinator.cs" />

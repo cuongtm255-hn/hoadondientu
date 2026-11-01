@@ -1,0 +1,5 @@
+{
+  "baseUrl": "https://license.example.invalid/api",
+  "timeoutSeconds": 15,
+  "publicKeyXml": "<RSAKeyValue><Modulus>THAY_BANG_PUBLIC_KEY_CUA_NHA_CUNG_CAP</Modulus><Exponent>AQAB</Exponent></RSAKeyValue>"
+}

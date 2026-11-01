@@ -84,13 +84,13 @@ Trạng thái: ⬜ Chưa bắt đầu · 🟡 Đang làm · ✅ Hoàn thành · 
 
 | ID | Công việc | Lớp | Phụ thuộc | Trạng thái | PR/Commit | Ghi chú |
 |---|---|---|---|---|---|---|
-| T11-01 | `SettingsControl` + presenter (SCR-09): thông tin kho, đổi thư mục, mở thư mục | WinForms | T02-03, T01-05 | ⬜ | | |
+| T11-01 | `SettingsControl` + presenter (SCR-09): thông tin kho, đổi thư mục, mở thư mục | WinForms | T02-03, T01-05 | 🟡 | | Khung SCR-09 (6 mục, doanh nghiệp đang mở, thông tin ứng dụng); các mục lưu trữ/sao lưu/kết nối/nhật ký mới có ghi chú, chưa có thao tác (chờ DD-06) |
 | T11-02 | `IStorageStatisticsService` (dung lượng DB/XML/PDF/Exports) | Application/Infra | T06-03 | ⬜ | | |
 | T11-03 | Kiểm tra kết nối (cổng Thuế, licence) | Application | T01-09 | ⬜ | | |
 | T11-04 | `BackupManifest` + `IBackupService.CreateAsync` | Application/Infra | T06-02 | ⬜ | | |
 | T11-05 | `RestoreAsync` + điểm sao lưu an toàn + rollback | Application/Infra | T11-04, T01-07 | ⬜ | | |
 | T11-06 | Hộp thoại sao lưu/khôi phục (tên + MST, tiến độ, hủy) | WinForms | T11-05 | ⬜ | | |
-| T11-07 | Lối vào `Bản quyền` trong SCR-09 | WinForms | T03-06 | ⬜ | | |
+| T11-07 | Lối vào `Bản quyền` trong SCR-09 | WinForms | T03-06 | ✅ | | `SettingsControl`: mục "Bản quyền ứng dụng →" mở SCR-12, hiện tóm tắt trạng thái; smoke test mở và quay lại |
 | T11-08 | Unit + integration + UI smoke (mục 6) | Tests | T11-05 | ⬜ | | AC-11 |
 
 ### 7.2 Nhật ký tiến độ

@@ -625,6 +625,21 @@ namespace HoaDonDienTu.WinForms.Tests
         }
 
         [Test]
+        public void Settings_LicenseEntry_OpensScr12_AndBackReturnsToSettings()
+        {
+            Start("Standard");
+            _root.NavigationService.NavigateAsync(HoaDonDienTu.Application.Navigation.ScreenId.Settings, null, System.Threading.CancellationToken.None);
+            Assert.That(WaitFor(() => ContentTitle() == "Cài đặt"), Is.True);
+            Assert.That(Control<KryptonButton>("btnSecLicense").Values.ExtraText, Is.EqualTo("Chưa kích hoạt"));
+
+            Click("btnSecLicense");
+            Assert.That(WaitFor(() => ContentTitle() == "Bản quyền ứng dụng"), Is.True);
+
+            Click("btnBack");
+            Assert.That(WaitFor(() => ContentTitle() == "Cài đặt"), Is.True);
+        }
+
+        [Test]
         public void ReadOnly_License_ShowsExpiredLabel_AndNoDownloadAction()
         {
             Start("ReadOnly");

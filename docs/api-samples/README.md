@@ -200,3 +200,9 @@ Xác thực: `Authorization: Bearer mock-token-<MST>` (token chứa `expired` �
 tháng nhiều trang (mua vào 2026-07: 120 hóa đơn), tháng rỗng (bán ra 2026-03), tháng một hóa đơn (bán ra 2026-02), số hóa đơn có số 0 đầu,
 ngoại tệ (USD + tỷ giá), trường tùy chọn để trống (chiết khấu/phí), MST đơn vị phụ thuộc (`...-001`), nhiều trạng thái/kết quả kiểm tra.
 Cổng giả có thể bơm lỗi: `EnqueueFailure(status, retryAfter)`, `EnqueueNetworkError()`, `Latency`, `MaxPageSize`, `OmitDtoField`, `MalformedSearchResponse`, `UnsupportedFilterFields`.
+
+## Licence server (`license-api.config.sample.json`)
+
+Hợp đồng nháp của `LicenseApiClient` (chưa xác minh với server thật, gate G-06): `POST {baseUrl}/activate|validate` nhận `{licenseKey, machineIdHash, appVersion}` và trả `{licenseType, machineIdHash, issuedAtUtc, expiresAtUtc|null, features[], signature}`; `POST {baseUrl}/deactivate` nhận `{licenseKey, machineIdHash}`. Từ chối nghiệp vụ là 4xx với `{"error": "key_invalid|bound_to_other_machine|expired|revoked"}`; 5xx, 429, timeout và mất mạng được coi là server tạm lỗi, không phải thu hồi.
+
+Đặt bản đã điền thành `license-api.json` trong `%LOCALAPPDATA%\HoaDonDienTu\` hoặc cạnh file chạy. `baseUrl` phải là HTTPS và `publicKeyXml` (RSA XML) là khóa công khai dùng xác minh chữ ký. Thiếu hoặc sai file thì bản Release vẫn chạy chế độ chuẩn và kích hoạt báo chưa kết nối được máy chủ licence.

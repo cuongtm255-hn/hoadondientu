@@ -154,6 +154,10 @@ namespace HoaDonDienTu.Application.Tests
             Assert.That(mapper.Map(new CompanyStorageException(CompanySwitchBlocker.DatabaseInvalid, "d"), "x", "c").Category,
                 Is.EqualTo(ErrorCategory.Database));
             Assert.That(mapper.Map(new OperationCanceledException(), "x", "c").Category, Is.EqualTo(ErrorCategory.Cancelled));
+
+            var unavailable = mapper.Map(new FeatureNotAvailableException("Chưa có chức năng này."), "x", "c");
+            Assert.That(unavailable.Code, Is.EqualTo("NOT_AVAILABLE"));
+            Assert.That(unavailable.Message, Is.EqualTo("Chưa có chức năng này."));
         }
 
         private sealed class RecordingLogger : IApplicationLogger
