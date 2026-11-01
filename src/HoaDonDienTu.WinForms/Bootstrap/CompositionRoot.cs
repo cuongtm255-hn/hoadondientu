@@ -4,18 +4,22 @@ using HoaDonDienTu.Application.Abstractions;
 using HoaDonDienTu.Application.Authentication;
 using HoaDonDienTu.Application.Common;
 using HoaDonDienTu.Application.Companies;
+using HoaDonDienTu.Application.Downloads;
 using HoaDonDienTu.Application.Licensing;
 using HoaDonDienTu.Application.Startup;
 using HoaDonDienTu.Domain.Common;
+using HoaDonDienTu.Domain.Invoices;
 using HoaDonDienTu.Domain.Licensing;
 using HoaDonDienTu.Infrastructure.Common;
+using HoaDonDienTu.Infrastructure.Companies;
+using HoaDonDienTu.Infrastructure.Licensing;
 using HoaDonDienTu.Infrastructure.Logging;
 using HoaDonDienTu.Infrastructure.Portal;
 using HoaDonDienTu.Infrastructure.Portal.Config;
-using HoaDonDienTu.Application.Downloads;
-using HoaDonDienTu.Domain.Invoices;
 using HoaDonDienTu.WinForms.Common;
+using HoaDonDienTu.WinForms.Companies;
 using HoaDonDienTu.WinForms.Download;
+using HoaDonDienTu.WinForms.Licensing;
 using HoaDonDienTu.WinForms.Login;
 using HoaDonDienTu.WinForms.Navigation;
 using HoaDonDienTu.WinForms.Shell;
@@ -57,8 +61,14 @@ namespace HoaDonDienTu.WinForms.Bootstrap
         public PortalApiClientProvider ApiClientProvider { get; private set; }
         public IScreenFactory ScreenFactory { get; private set; }
 
+        /// <summary>Danh mục doanh nghiệp (companies.json).</summary>
+        public ICompanyRegistry Registry { get; private set; }
+
         /// <summary>Do <c>AppApplicationContext</c> gán sau khi tạo shell; screen lấy lười để tránh phụ thuộc vòng.</summary>
         public HoaDonDienTu.Application.Navigation.INavigationService NavigationService { get; set; }
+
+        /// <summary>Do <c>AppApplicationContext</c> gán; workflow dùng để mở đăng nhập sau khi chọn doanh nghiệp.</summary>
+        public IShellActions ShellActions { get; set; }
 
         public static CompositionRoot Create()
         {
@@ -107,58 +117,78 @@ namespace HoaDonDienTu.WinForms.Bootstrap
             return PortalApiConfigLoader.LoadOrDefault(File.Exists(userFile) ? userFile : appFile);
         }
 
+        private static string AppVersion
+        {
+            get { return typeof(CompositionRoot).Assembly.GetName().Version.ToString(3); }
+        }
+
+        public ILicenseService LicenseService { get; private set; }
+
         private void ComposeEnvironment()
         {
 #if DEBUG
-            // HDDT_DEV_MODE = Standard | StandardFirstRun | Service | ReadOnly | Recovery:
-            // dùng licence/catalog/kho/xác thực giả cho tới khi có DD-02, DD-03 và ADR G-01/G-02.
+            // HDDT_DEV_MODE = Standard | StandardFirstRun | Service | ReadOnly | Recovery. Licence và trình duyệt đăng nhập vẫn là giả
+            // (chờ DD-03 và ADR G-01); danh mục doanh nghiệp, kho và quản lý doanh nghiệp là mã thật của DD-02 chạy trên dữ liệu mẫu
+            // trong HDDT_DATA_DIR (mặc định %LOCALAPPDATA%\HoaDonDienTu\dev-data\<chế độ>).
             var text = Environment.GetEnvironmentVariable("HDDT_DEV_MODE") ?? "Standard";
             var license = LicenseStatus.None;
             var mode = AppMode.Standard;
-            var catalog = new CatalogSnapshot(CatalogLoadStatus.Loaded, DevelopmentCompanyCatalog.SampleCompanies(1), false);
-
-            if (string.Equals(text, "StandardFirstRun", StringComparison.OrdinalIgnoreCase))
-            {
-                catalog = CatalogSnapshot.Empty();
-            }
-            else if (string.Equals(text, "Service", StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(text, "Service", StringComparison.OrdinalIgnoreCase))
             {
                 license = LicenseStatus.Valid;
                 mode = AppMode.Service;
-                catalog = new CatalogSnapshot(CatalogLoadStatus.Loaded, DevelopmentCompanyCatalog.SampleCompanies(3), true);
             }
             else if (string.Equals(text, "ReadOnly", StringComparison.OrdinalIgnoreCase))
             {
                 license = LicenseStatus.Expired;
                 mode = AppMode.ReadOnlyService;
-                catalog = new CatalogSnapshot(CatalogLoadStatus.Loaded, DevelopmentCompanyCatalog.SampleCompanies(3), true);
-            }
-            else if (string.Equals(text, "Recovery", StringComparison.OrdinalIgnoreCase))
-            {
-                catalog = new CatalogSnapshot(CatalogLoadStatus.Corrupt, null, false);
             }
 
-            StartupCoordinator = new StartupCoordinator(
-                new DevelopmentLicenseService(license),
-                new DevelopmentCompanyCatalog(catalog),
-                Logger);
+            var dataDirectory = Environment.GetEnvironmentVariable("HDDT_DATA_DIR");
+            if (string.IsNullOrWhiteSpace(dataDirectory))
+            {
+                dataDirectory = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "HoaDonDienTu", "dev-data", text);
+            }
+
+            DevelopmentDataSeeder.Seed(dataDirectory, text);
+            var registry = new JsonCompanyCatalog(Path.Combine(dataDirectory, "companies.json"));
+            var storage = new FileSystemCompanyStorage();
+            Registry = registry;
+
+            StartupCoordinator = new StartupCoordinator(new DevelopmentLicenseService(license), registry, Logger);
 
             var portalConfig = LoadPortalApiConfig();
             PortalApiConfig = portalConfig;
             var mockPortal = new MockPortalHandler(portalConfig);
-            var contextManager = new CompanyContextManager(new DevelopmentCompanyStorageOpener());
-            var entitlement = new DevelopmentEntitlementService(mode);
+            var contextManager = new CompanyContextManager(new CompanyStorageOpener(registry, storage, Clock, Logger));
+            var entitlement = new EntitlementService(mode, mode == AppMode.ReadOnlyService);
             Entitlement = entitlement;
             ContextManager = contextManager;
-            var jobsRunning = Environment.GetEnvironmentVariable("HDDT_DEV_JOB") == "1";
-            ShutdownCoordinator = new ShutdownCoordinator(
-                contextManager,
-                new DevelopmentActiveJobService(jobsRunning),
-                SessionStore,
-                new ShutdownPrompt(),
-                Logger);
+            var jobs = new DevelopmentActiveJobService(Environment.GetEnvironmentVariable("HDDT_DEV_JOB") == "1");
+            ShutdownCoordinator = new ShutdownCoordinator(contextManager, jobs, SessionStore, new ShutdownPrompt(), Logger);
             ApiClientProvider = new PortalApiClientProvider(
                 SessionStore, contextManager, new PortalApiClientFactory(portalConfig, () => mockPortal));
+
+            var switchService = new CompanySwitchService(registry, contextManager, jobs, SessionStore, entitlement, Logger);
+            var management = new CompanyManagementService(registry, storage, contextManager, entitlement, Logger);
+            var workflow = new CompanyWorkflow(
+                switchService, contextManager, SessionStore, entitlement, Confirmation, ErrorPresenter,
+                () => NavigationService, () => ShellActions);
+            var folderPicker = new FolderPicker();
+            var folderLauncher = new ExplorerFolderLauncher();
+            Func<string, string> suggestFolder = taxCode => Path.Combine(dataDirectory, "Companies", taxCode);
+
+            // SCR-12 dùng LicenseService thật (store DPAPI, chữ ký RSA, mã máy) với licence server giả; khởi động vẫn theo HDDT_DEV_MODE.
+            var licenseServer = new DevelopmentLicenseServer(
+                () => string.Equals(Environment.GetEnvironmentVariable("HDDT_DEV_LICENSE_SERVER"), "down", StringComparison.OrdinalIgnoreCase));
+            var machineIdentity = new MachineIdentityProvider();
+            var licenseService = new LicenseService(
+                new FileLicenseStore(Path.Combine(dataDirectory, "license.dat")), licenseServer, machineIdentity,
+                new RsaLicenseSignatureVerifier(licenseServer.PublicKeyXml), Clock, Logger, AppVersion);
+
+            LicenseService = licenseService;
+
             var splitter = new PeriodSplitter();
             var startPolicy = new DownloadStartPolicy(contextManager, SessionStore, entitlement);
             var storageProbe = new FileSystemStorageProbe();
@@ -166,14 +196,33 @@ namespace HoaDonDienTu.WinForms.Bootstrap
             var starter = new PendingDownloadSessionStarter();
             ScreenFactory = Navigation.ScreenFactory.CreateDefault(
                 new ScreenDescriptor(
-                    HoaDonDienTu.Application.Navigation.ScreenId.Download,
-                    "Tải hóa đơn",
-                    "SCR-03",
+                    HoaDonDienTu.Application.Navigation.ScreenId.Download, "Tải hóa đơn", "SCR-03",
                     parameter => new DownloadConfigScreen(
                         new DownloadConfigControl(),
                         view => new DownloadConfigPresenter(
                             view, splitter, startPolicy, storageProbe, capabilities, SessionStore, contextManager,
-                            entitlement, starter, Confirmation, OperationRunner, ErrorPresenter, NavigationService, Clock))));
+                            entitlement, starter, Confirmation, OperationRunner, ErrorPresenter, NavigationService, Clock))),
+                new ScreenDescriptor(
+                    HoaDonDienTu.Application.Navigation.ScreenId.License, "Bản quyền", "SCR-12",
+                    parameter => new LicenseScreen(
+                        new LicenseControl(),
+                        view => new LicensePresenter(
+                            view, licenseService, entitlement, entitlement, registry, machineIdentity, () => NavigationService,
+                            Confirmation, OperationRunner, ErrorPresenter, Environment.MachineName, AppVersion + " · Schema v1"))),
+                new ScreenDescriptor(
+                    HoaDonDienTu.Application.Navigation.ScreenId.CompanyList, "Doanh nghiệp", "SCR-10",
+                    parameter => new CompanyListScreen(
+                        new CompanyListControl(),
+                        view => new CompanyListPresenter(
+                            view, registry, contextManager, entitlement, workflow, management, () => NavigationService,
+                            Confirmation, folderLauncher, OperationRunner, ErrorPresenter))),
+                new ScreenDescriptor(
+                    HoaDonDienTu.Application.Navigation.ScreenId.CompanyEdit, "Thông tin doanh nghiệp", "SCR-11",
+                    parameter => new CompanyEditScreen(
+                        new CompanyEditControl(),
+                        view => new CompanyEditPresenter(
+                            view, parameter as CompanyEditRequest ?? CompanyEditRequest.Add(), registry, management, workflow,
+                            () => NavigationService, folderPicker, suggestFolder, OperationRunner, ErrorPresenter))));
 
             PortalLoginCoordinator = new PortalLoginCoordinator(
                 contextManager,
@@ -185,7 +234,7 @@ namespace HoaDonDienTu.WinForms.Bootstrap
                 () => new PortalLoginForm(),
                 Logger);
 #else
-            throw new NotSupportedException("Licence/catalog/kho/xác thực production chưa có (DD-02, DD-03, T01-16).");
+            throw new NotSupportedException("Licence/xác thực production chưa có (DD-03, T01-16).");
 #endif
         }
     }

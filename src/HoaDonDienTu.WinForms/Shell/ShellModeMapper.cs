@@ -13,7 +13,13 @@ namespace HoaDonDienTu.WinForms.Shell
                 return new ShellModeViewState { LicenseLabel = "Cần khôi phục" };
             }
 
-            switch (result.Mode)
+            return ToModeState(result.Mode);
+        }
+
+        /// <summary>Dùng khi chế độ đổi giữa chừng (kích hoạt, hết hạn, hủy licence).</summary>
+        public static ShellModeViewState ToModeState(AppMode mode)
+        {
+            switch (mode)
             {
                 case AppMode.Service:
                     return new ShellModeViewState
@@ -21,6 +27,9 @@ namespace HoaDonDienTu.WinForms.Shell
                         ShowCompanySelector = true,
                         ShowCompanyMenu = true,
                         CanAddCompany = true,
+                        // Khả năng theo chế độ; MainShellPresenter chỉ bật khi đã mở một doanh nghiệp.
+                        CanPortalLogin = true,
+                        CanDownload = true,
                         LicenseLabel = "Bản dịch vụ"
                     };
                 case AppMode.ReadOnlyService:

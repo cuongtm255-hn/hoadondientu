@@ -29,6 +29,27 @@ namespace HoaDonDienTu.Infrastructure.Development
         {
             return Task.FromResult(_status);
         }
+
+        public Task<LicenseStatus> ActivateAsync(string licenseKey, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(_status);
+        }
+
+        public Task<LicenseStatus> DeactivateAsync(CancellationToken cancellationToken)
+        {
+            return Task.FromResult(LicenseStatus.None);
+        }
+
+        public LicenseInfo CurrentInfo
+        {
+            get { return new LicenseInfo(_status, LicenseIssue.None, "Development", string.Empty, null, null, null); }
+        }
+
+        public event EventHandler InfoChanged
+        {
+            add { }
+            remove { }
+        }
     }
 
     /// <summary>Catalog giả cho môi trường phát triển (cho tới khi có DD-02). Chỉ có ở Debug.</summary>

@@ -29,7 +29,7 @@ Ký hiệu: ⬜ Chưa bắt đầu · 🟡 Đang làm · ✅ Hoàn thành · ⛔
 |---|---|---|---|---|
 | 0 | Yêu cầu và thiết kế | SRS, wireframe, feature list, detail design, kế hoạch | Tất cả (tài liệu) | 🟡 Đang review |
 | 1 | Nền tảng và technical spike | Solution chạy build được; ADR chặn kiến trúc | FT-00 | 🟡 Solution xong; chưa làm spike/ADR (G-01, G-02, G-08, G-09) |
-| 2 | Khung chương trình, doanh nghiệp, licence và đăng nhập | Chạy 3 chế độ bằng development adapter | FT-01, FT-02, FT-03, FT-04 | 🟡 DD-01 xong phần dev adapter; DD-02/DD-03 chưa bắt đầu |
+| 2 | Khung chương trình, doanh nghiệp, licence và đăng nhập | Chạy 3 chế độ bằng development adapter | FT-01, FT-02, FT-03, FT-04 | 🟡 DD-01 xong phần dev adapter; DD-02 xong phần lõi + UI; DD-03 chưa bắt đầu |
 | 3 | Tải hóa đơn end-to-end | Chọn kỳ → tải → lưu XML trên cổng thật | FT-05, FT-06, FT-07, FT-02 (production) | ⬜ |
 | 4 | Kho hóa đơn, chi tiết và trình xem | Tra cứu, xem XML/PDF | FT-08, FT-09 | ⬜ |
 | 5 | Xuất dữ liệu, tổng quan, lịch sử, cài đặt và sao lưu | Hoàn thiện tính năng còn lại | FT-10, FT-11, FT-12 | ⬜ |
@@ -81,8 +81,8 @@ Mỗi phase kết thúc khi đạt đủ **tiêu chí thoát**; không bắt đ�
 | Nhóm task | Mô tả | DD | Trạng thái |
 |---|---|---|---|
 | T01-02…T01-15 | Domain/Application nền, composition root, shell, startup, context/switch, login form, session, logging, test | [DD-01](../detail-design/DD-01-APP-SHELL-LOGIN.md#21-theo-dõi-tiến-độ-implement) | ✅ (T01-14 một phần, chờ DD-02/03/06) |
-| T02-01…T02-10 | Catalog, first-run, SCR-10/11, relink, nâng cấp Standard → Service | [DD-02](../detail-design/DD-02-COMPANY-MANAGEMENT.md#9-theo-dõi-tiến-độ-implement) | ⬜ |
-| T03-01…T03-08 | Entitlement, licence dev + production, SCR-12 | [DD-03](../detail-design/DD-03-LICENSING.md#9-theo-dõi-tiến-độ-implement) | ⬜ (T03-04/05 phụ thuộc G-06) |
+| T02-01…T02-10 | Catalog, first-run, SCR-10/11, relink, nâng cấp Standard → Service | [DD-02](../detail-design/DD-02-COMPANY-MANAGEMENT.md#9-theo-dõi-tiến-độ-implement) | 🟡 (T02-08 chờ DD-03; T02-03/07/09 một phần) |
+| T03-01…T03-08 | Entitlement, licence dev + production, SCR-12 | [DD-03](../detail-design/DD-03-LICENSING.md#9-theo-dõi-tiến-độ-implement) | 🟡 (T03-01..03, 06, 08 xong; T03-04/05/07 một phần, chờ G-06) |
 | T06-02 (phần khởi tạo) | Khung `CompanyDatabaseInitializer` tối thiểu để DD-01/DD-02 mở kho | [DD-06](../detail-design/DD-06-INVOICE-STORAGE.md#91-công-việc) | ⬜ |
 | T00-08 | Spike an toàn chuyển MST / crash recovery | DD-00 | ⬜ |
 
@@ -139,8 +139,8 @@ Số task lấy từ bảng theo dõi trong từng DD (cập nhật khi đổi t
 |---|---|---|---:|---:|---:|---:|---|
 | FT-00 Cổng kỹ thuật | [DD-00](../detail-design/DD-00-TECHNICAL-GATES.md) | 1 | 10 | 0 | 0 | 0 | |
 | FT-01/02 Khung + đăng nhập | [DD-01](../detail-design/DD-01-APP-SHELL-LOGIN.md) | 1–3 | 17 | 15 | 1 | 1 | T01-14 một phần; T01-16 chờ gate |
-| FT-03 Doanh nghiệp | [DD-02](../detail-design/DD-02-COMPANY-MANAGEMENT.md) | 2 | 10 | 0 | 0 | 0 | |
-| FT-04 Licence | [DD-03](../detail-design/DD-03-LICENSING.md) | 2 | 8 | 0 | 0 | 2 | Chờ G-06 |
+| FT-03 Doanh nghiệp | [DD-02](../detail-design/DD-02-COMPANY-MANAGEMENT.md) | 2 | 10 | 6 | 3 | 0 | T02-08 chờ DD-03; 486 test pass |
+| FT-04 Licence | [DD-03](../detail-design/DD-03-LICENSING.md) | 2 | 8 | 5 | 3 | 0 | Lõi + SCR-12 + server giả xong; còn HTTP client, khóa thật (G-06), nối production |
 | FT-05 Chọn kỳ | [DD-04](../detail-design/DD-04-PERIOD-DOWNLOAD-CONFIG.md) | 3 | 8 | 7 | 1 | 0 | T04-07 chờ DD-05; bộ lọc theo cấu hình nháp (G-02) |
 | FT-06 Hàng đợi tải | [DD-05](../detail-design/DD-05-DOWNLOAD-ENGINE.md) | 3 | 11 | 0 | 1 | 2 | T05-06 client + cổng giả xong; chờ G-02/G-05 để khớp thật |
 | FT-07 Lưu trữ | [DD-06](../detail-design/DD-06-INVOICE-STORAGE.md) | 3 (T06-02 sớm ở 2) | 9 | 0 | 0 | 1 | Chờ G-08 (SQLite) |

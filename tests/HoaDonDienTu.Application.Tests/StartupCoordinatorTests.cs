@@ -212,6 +212,27 @@ namespace HoaDonDienTu.Application.Tests
                 if (OnlineException != null) throw OnlineException;
                 return Task.FromResult(Online);
             }
+
+            public Task<LicenseStatus> ActivateAsync(string licenseKey, CancellationToken cancellationToken)
+            {
+                throw new NotSupportedException();
+            }
+
+            public Task<LicenseStatus> DeactivateAsync(CancellationToken cancellationToken)
+            {
+                throw new NotSupportedException();
+            }
+
+            public LicenseInfo CurrentInfo
+            {
+                get { return LicenseInfo.NotActivated; }
+            }
+
+            public event EventHandler InfoChanged
+            {
+                add { }
+                remove { }
+            }
         }
 
         private sealed class FakeCatalog : ICompanyCatalog

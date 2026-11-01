@@ -28,12 +28,18 @@ namespace HoaDonDienTu.WinForms.Tests
         private MainShellForm _form;
         private string _oldMode;
         private string _oldJob;
+        private string _oldDataDir;
+        private string _dataDir;
 
         [SetUp]
         public void SetUp()
         {
             _oldMode = Environment.GetEnvironmentVariable("HDDT_DEV_MODE");
             _oldJob = Environment.GetEnvironmentVariable("HDDT_DEV_JOB");
+            // Mỗi test có thư mục dữ liệu riêng (danh mục + kho thật trên đĩa) để không ảnh hưởng nhau hay dữ liệu dev.
+            _oldDataDir = Environment.GetEnvironmentVariable("HDDT_DATA_DIR");
+            _dataDir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "hddt-ui-" + Guid.NewGuid().ToString("N"));
+            Environment.SetEnvironmentVariable("HDDT_DATA_DIR", _dataDir);
         }
 
         [TearDown]
@@ -49,6 +55,14 @@ namespace HoaDonDienTu.WinForms.Tests
             if (_root != null) _root.Dispose();
             Environment.SetEnvironmentVariable("HDDT_DEV_MODE", _oldMode);
             Environment.SetEnvironmentVariable("HDDT_DEV_JOB", _oldJob);
+            Environment.SetEnvironmentVariable("HDDT_DATA_DIR", _oldDataDir);
+            try
+            {
+                if (System.IO.Directory.Exists(_dataDir)) System.IO.Directory.Delete(_dataDir, true);
+            }
+            catch (System.IO.IOException)
+            {
+            }
         }
 
         private void Start(string mode, string job = null)
@@ -141,7 +155,7 @@ namespace HoaDonDienTu.WinForms.Tests
         {
             Start("Service");
 
-            Assert.That(ContentTitle(), Is.EqualTo("Doanh nghiệp"));
+            Assert.That(ContentTitle(), Is.EqualTo("Quản lý doanh nghiệp"));
             Assert.That(Control<KryptonCheckButton>("navCompanies").Visible, Is.True);
             Assert.That(Control<KryptonButton>("btnPortalLogin").Enabled, Is.False, "Chưa chọn doanh nghiệp thì chưa đăng nhập được");
             Assert.That(Control<KryptonButton>("btnCompanyContext").Values.Text, Is.EqualTo("Chưa chọn doanh nghiệp"));
@@ -152,7 +166,7 @@ namespace HoaDonDienTu.WinForms.Tests
         {
             Start("ReadOnly");
 
-            Assert.That(ContentTitle(), Is.EqualTo("Doanh nghiệp"));
+            Assert.That(ContentTitle(), Is.EqualTo("Quản lý doanh nghiệp"));
             Assert.That(Control<KryptonCheckButton>("navDownload").Enabled, Is.False);
             Assert.That(Control<KryptonButton>("btnPortalLogin").Enabled, Is.False);
         }
@@ -171,7 +185,7 @@ namespace HoaDonDienTu.WinForms.Tests
         {
             Start("StandardFirstRun");
 
-            Assert.That(ContentTitle(), Is.EqualTo("Thông tin doanh nghiệp"));
+            Assert.That(ContentTitle(), Is.EqualTo("Khai báo doanh nghiệp"));
         }
 
         [Test]
@@ -369,6 +383,237 @@ namespace HoaDonDienTu.WinForms.Tests
 
             Assert.That(Control<KryptonCheckButton>("rdoSold").Checked, Is.True);
             Assert.That(Control<KryptonCheckButton>("rdoPurchase").Checked, Is.False);
+        }
+
+        // ---- SCR-10 / SCR-11 (DD-02 mục 8.3) ----
+
+        private System.Windows.Forms.Control CurrentScreenControl()
+        {
+            return _form.Controls.Find("pnlContent", true).First().Controls[0];
+        }
+
+        private int CompanyRows()
+        {
+            return Control<KryptonDataGridView>("gridCompanies").Rows.Count;
+        }
+
+        /// <summary>Bấm nút "Thao tác" của dòng trong danh sách doanh nghiệp (cell button của DataGridView).</summary>
+        private void ClickRowAction(int rowIndex)
+        {
+            var list = CurrentScreenControl();
+            var grid = Control<KryptonDataGridView>("gridCompanies");
+            var method = list.GetType().GetMethod("OnGridCellContentClick", BindingFlags.NonPublic | BindingFlags.Instance);
+            Assert.That(method, Is.Not.Null);
+            method.Invoke(list, new object[] { grid, new DataGridViewCellEventArgs(grid.Columns["colAction"].Index, rowIndex) });
+        }
+
+        private static string AllLabelText(Form dialog)
+        {
+            return string.Join("|", Descendants(dialog).OfType<KryptonLabel>().Select(l => l.Values.Text));
+        }
+
+        [Test]
+        public void Service_StartsAtCompanyList_WithBannerAndThreeCompanies()
+        {
+            Start("Service");
+
+            Assert.That(CompanyRows(), Is.EqualTo(3));
+            Assert.That(Control<KryptonButton>("btnAddCompany").Enabled, Is.True);
+            Assert.That(Control<KryptonLabel>("lblBanner").Values.Text, Does.Contain("Licence dịch vụ"));
+            Assert.That(Control<KryptonLabel>("lblStat1Value").Values.Text, Is.EqualTo("3"));
+            Assert.That(Control<KryptonButton>("btnPortalLogin").Enabled, Is.False, "Chưa mở doanh nghiệp nào");
+        }
+
+        [Test]
+        public void Service_Work_OpensLoginForThatCompanyNameAndTaxCode_ThenHeaderFollows()
+        {
+            Start("Service");
+            string seen = null;
+
+            RunDialogScript(() => ClickRowAction(1), dialog =>
+            {
+                seen = AllLabelText(dialog);
+                return PressText(dialog, "Đăng nhập đúng MST");
+            });
+
+            Assert.That(seen, Does.Contain("CÔNG TY MẪU 2").And.Contain("0101234561"));
+            Assert.That(WaitFor(() => ContentTitle() == "Tổng quan"), Is.True);
+            Assert.That(Control<KryptonButton>("btnCompanyContext").Values.Text, Is.EqualTo("CÔNG TY MẪU 2"));
+            Assert.That(Control<KryptonLabel>("lblTaxCode").Values.Text, Does.Contain("0101234561"));
+            Assert.That(_root.SessionStore.GetSnapshot().TaxCode.Value, Is.EqualTo("0101234561"));
+        }
+
+        [Test]
+        public void Service_SwitchingCompany_ClearsPreviousSession_BeforeLoginOfTheNewOne()
+        {
+            Start("Service");
+            RunDialogScript(() => ClickRowAction(0), dialog => PressText(dialog, "Đăng nhập đúng MST"));
+            Assert.That(_root.SessionStore.GetSnapshot().TaxCode.Value, Is.EqualTo("0101234560"));
+
+            Click("navCompanies");
+            Assert.That(WaitFor(() => ContentTitle() == "Quản lý doanh nghiệp"), Is.True);
+            var sessionWhileLoggingIn = true;
+            string seen = null;
+            RunDialogScript(() => ClickRowAction(2), dialog =>
+            {
+                sessionWhileLoggingIn = _root.SessionStore.HasActiveSession;
+                seen = AllLabelText(dialog);
+                return PressText(dialog, "Đăng nhập đúng MST");
+            });
+
+            Assert.That(sessionWhileLoggingIn, Is.False, "Token của MST cũ phải bị xóa trước khi mở đăng nhập MST mới (FR-AUTH-012)");
+            Assert.That(seen, Does.Contain("0101234562"));
+            Assert.That(_root.SessionStore.GetSnapshot().TaxCode.Value, Is.EqualTo("0101234562"));
+            Assert.That(_root.ContextManager.Current.TaxCode.Value, Is.EqualTo("0101234562"));
+        }
+
+        [Test]
+        public void Service_AddCompany_CreatesStorage_SwitchesAndOpensLogin()
+        {
+            Start("Service");
+            Click("btnAddCompany");
+            Assert.That(WaitFor(() => ContentTitle() == "Thêm doanh nghiệp"), Is.True);
+
+            var path = System.IO.Path.Combine(_dataDir, "Companies", "0309999999");
+            Control<KryptonTextBox>("txtTaxCode").Text = "0309999999";
+            Control<KryptonTextBox>("txtDisplayName").Text = "Công ty Mới";
+            Assert.That(Control<KryptonTextBox>("txtStoragePath").Text, Is.EqualTo(path), "Thư mục gợi ý theo MST");
+            Assert.That(WaitFor(() => Control<KryptonButton>("btnPrimary").Enabled), Is.True);
+
+            ClickOpeningDialog("btnPrimary", dialog => PressText(dialog, "Đăng nhập đúng MST"));
+
+            Assert.That(System.IO.File.Exists(System.IO.Path.Combine(path, "company.identity.json")), Is.True);
+            Assert.That(_root.ContextManager.Current.TaxCode.Value, Is.EqualTo("0309999999"));
+            Assert.That(WaitFor(() => ContentTitle() == "Tổng quan"), Is.True);
+            Assert.That(Control<KryptonButton>("btnCompanyContext").Values.Text, Is.EqualTo("Công ty Mới"));
+        }
+
+        [Test]
+        public void Service_AddCompany_DuplicateTaxCode_IsRejectedLive()
+        {
+            Start("Service");
+            Click("btnAddCompany");
+            Assert.That(WaitFor(() => ContentTitle() == "Thêm doanh nghiệp"), Is.True);
+
+            Control<KryptonTextBox>("txtTaxCode").Text = "0101234560";
+            Control<KryptonTextBox>("txtDisplayName").Text = "Trùng";
+
+            Assert.That(Control<KryptonButton>("btnPrimary").Enabled, Is.False);
+            Assert.That(Control<KryptonLabel>("lblCheck2").Values.Text, Does.Contain("CÔNG TY MẪU 1"));
+        }
+
+        [Test]
+        public void Service_CancelOnAddScreen_ReturnsToList()
+        {
+            Start("Service");
+            Click("btnAddCompany");
+            Assert.That(WaitFor(() => ContentTitle() == "Thêm doanh nghiệp"), Is.True);
+
+            Click("btnCancel");
+
+            Assert.That(WaitFor(() => ContentTitle() == "Quản lý doanh nghiệp"), Is.True);
+        }
+
+        [Test]
+        public void Standard_FirstRun_DeclaresTheOnlyCompany_ThenLogsIn()
+        {
+            Start("StandardFirstRun");
+            Assert.That(ContentTitle(), Is.EqualTo("Khai báo doanh nghiệp"));
+            Assert.That(Control<KryptonButton>("btnCancel").Visible, Is.False);
+            Assert.That(Control<KryptonButton>("btnPortalLogin").Enabled, Is.False, "Chưa có doanh nghiệp");
+
+            Control<KryptonTextBox>("txtTaxCode").Text = "0101234567";
+            Control<KryptonTextBox>("txtDisplayName").Text = "Công ty Của Tôi";
+            Assert.That(WaitFor(() => Control<KryptonButton>("btnPrimary").Enabled), Is.True);
+
+            ClickOpeningDialog("btnPrimary", dialog => PressText(dialog, "Đăng nhập đúng MST"));
+
+            Assert.That(WaitFor(() => ContentTitle() == "Tổng quan"), Is.True);
+            Assert.That(Control<KryptonButton>("btnCompanyContext").Values.Text, Is.EqualTo("Công ty Của Tôi"));
+            Assert.That(_root.SessionStore.GetSnapshot().TaxCode.Value, Is.EqualTo("0101234567"));
+            Assert.That(Control<KryptonCheckButton>("navCompanies").Visible, Is.False, "Standard không có lối vào quản lý nhiều MST");
+        }
+
+        [Test]
+        public void Standard_FirstRun_InvalidTaxCode_KeepsPrimaryDisabled()
+        {
+            Start("StandardFirstRun");
+
+            Control<KryptonTextBox>("txtTaxCode").Text = "12345";
+            Control<KryptonTextBox>("txtDisplayName").Text = "X";
+
+            Assert.That(Control<KryptonButton>("btnPrimary").Enabled, Is.False);
+            Assert.That(Control<KryptonLabel>("lblCheck1").Values.Text, Does.StartWith("✕"));
+        }
+
+        [Test]
+        public void ReadOnly_List_ShowsWarning_LocksAdd_AndWorkOpensStoreWithoutLogin()
+        {
+            Start("ReadOnly");
+
+            Assert.That(Control<KryptonLabel>("lblBanner").Values.Text, Does.Contain("Chỉ đọc"));
+            Assert.That(Control<KryptonButton>("btnAddCompany").Enabled, Is.False);
+
+            ClickRowAction(0);
+
+            Assert.That(WaitFor(() => ContentTitle() == "Tổng quan"), Is.True);
+            Assert.That(_root.ContextManager.HasCurrent, Is.True);
+            Assert.That(_root.SessionStore.HasActiveSession, Is.False);
+            Assert.That(Control<KryptonButton>("btnPortalLogin").Enabled, Is.False, "ReadOnly khóa đăng nhập");
+            Assert.That(Control<KryptonCheckButton>("navDownload").Enabled, Is.False);
+        }
+
+        // ---- SCR-12 (DD-03 mục 8.3) ----
+
+        private void OpenLicenseScreen()
+        {
+            _root.NavigationService.NavigateAsync(HoaDonDienTu.Application.Navigation.ScreenId.License, null, System.Threading.CancellationToken.None);
+            Assert.That(WaitFor(() => ContentTitle() == "Bản quyền ứng dụng"), Is.True);
+        }
+
+        [Test]
+        public void Standard_License_ShowsStandardState_AndActivateNeedsAKey()
+        {
+            Start("Standard");
+
+            OpenLicenseScreen();
+
+            Assert.That(Control<KryptonLabel>("lblModeTitle").Values.Text, Is.EqualTo("Chế độ chuẩn"));
+            Assert.That(Control<KryptonLabel>("lblLast").Values.Text, Is.EqualTo("Chưa kích hoạt"));
+            Assert.That(Control<KryptonLabel>("lblMachine").Values.Text, Does.Contain("••••"));
+            Assert.That(Control<KryptonButton>("btnActivate").Enabled, Is.False);
+            Assert.That(Control<KryptonButton>("btnDeactivate").Enabled, Is.False);
+
+            Control<KryptonTextBox>("txtLicenseKey").Text = "HDDT-SVC-0001";
+            Assert.That(Control<KryptonButton>("btnActivate").Enabled, Is.True);
+        }
+
+        [Test]
+        public void Standard_License_Activate_UnlocksCompanyMenuWithoutRestart()
+        {
+            Start("Standard");
+            Assert.That(Control<KryptonCheckButton>("navCompanies").Visible, Is.False);
+            OpenLicenseScreen();
+
+            Control<KryptonTextBox>("txtLicenseKey").Text = "HDDT-SVC-0001";
+            Click("btnActivate");
+
+            Assert.That(WaitFor(() => ContentTitle() == "Quản lý doanh nghiệp"), Is.True, "Sau kích hoạt phải vào SCR-10 (AC-13)");
+            Assert.That(WaitFor(() => Control<KryptonCheckButton>("navCompanies").Visible), Is.True);
+            Assert.That(_root.Entitlement.CurrentMode, Is.EqualTo(HoaDonDienTu.Domain.Common.AppMode.Service));
+            Assert.That(System.IO.File.Exists(System.IO.Path.Combine(_dataDir, "license.dat")), Is.True);
+        }
+
+        [Test]
+        public void ReadOnly_License_ShowsExpiredLabel_AndNoDownloadAction()
+        {
+            Start("ReadOnly");
+
+            OpenLicenseScreen();
+
+            Assert.That(Control<KryptonLabel>("lblModeTitle").Values.Text, Does.StartWith("Chỉ đọc"));
+            Assert.That(Control<KryptonCheckButton>("navDownload").Enabled, Is.False);
+            Assert.That(Control<KryptonButton>("btnActivate").Enabled, Is.False, "Chưa nhập key");
         }
 
         // ---- helpers ----

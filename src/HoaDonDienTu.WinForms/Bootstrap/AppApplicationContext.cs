@@ -6,6 +6,7 @@ using HoaDonDienTu.Application.Common;
 using HoaDonDienTu.Application.Navigation;
 using HoaDonDienTu.Application.Startup;
 using HoaDonDienTu.Domain.Common;
+using HoaDonDienTu.WinForms.Companies;
 using HoaDonDienTu.WinForms.Navigation;
 using HoaDonDienTu.WinForms.Shell;
 
@@ -41,6 +42,8 @@ namespace HoaDonDienTu.WinForms.Bootstrap
                 compositionRoot.ShutdownCoordinator,
                 _navigation);
             _presenter.Initialize();
+            compositionRoot.ShellActions = _presenter;
+            compositionRoot.Entitlement.ModeChanged += OnModeChanged;
 
             _mainShell.Shown += OnMainShellShown;
             _mainShell.FormClosed += OnMainShellClosed;
@@ -80,7 +83,7 @@ namespace HoaDonDienTu.WinForms.Bootstrap
         {
             try
             {
-                _mainShell.ApplyMode(new ShellModeViewState { LicenseLabel = "Cần khôi phục" });
+                _presenter.SetMode(new ShellModeViewState { LicenseLabel = "Cần khôi phục" });
                 _mainShell.ShowOperation(new OperationViewState { Text = "Khởi động thất bại", IsBusy = false });
                 await _presenter.ShowAsync(ScreenId.Recovery);
             }
@@ -98,8 +101,7 @@ namespace HoaDonDienTu.WinForms.Bootstrap
                 await _compositionRoot.ContextManager.OpenAsync(result.StandardCompany, _cancellation.Token);
             }
 
-            _mainShell.ApplyMode(ShellModeMapper.ToModeState(result));
-            _mainShell.ShowCompany(ShellModeMapper.ToCompanyState(result));
+            _presenter.SetMode(ShellModeMapper.ToModeState(result));
             _presenter.RefreshPortalSession();
             _mainShell.ShowOperation(new OperationViewState { Text = result.UserMessage ?? "Sẵn sàng", IsBusy = false });
 
@@ -109,7 +111,7 @@ namespace HoaDonDienTu.WinForms.Bootstrap
             else if (result.Route == StartupRoute.StandardFirstRun) target = ScreenId.CompanyEdit;
             else if (result.Mode == AppMode.Standard) target = ScreenId.Dashboard;
             else target = ScreenId.CompanyList;
-            await _presenter.ShowAsync(target);
+            await _presenter.ShowAsync(target, target == ScreenId.CompanyEdit ? CompanyEditRequest.FirstRun() : null);
 
             // Standard: mở đăng nhập ngay; hủy thì ở lại Dashboard (chưa đăng nhập) và đăng nhập sau bằng nút Đăng nhập.
             if (result.Route == StartupRoute.StandardPortalLogin && _compositionRoot.AutoLoginOnStartup)
@@ -118,9 +120,15 @@ namespace HoaDonDienTu.WinForms.Bootstrap
             }
         }
 
+        private void OnModeChanged(object sender, EventArgs e)
+        {
+            _presenter.SetMode(ShellModeMapper.ToModeState(_compositionRoot.Entitlement.CurrentMode));
+        }
+
         private void OnMainShellClosed(object sender, FormClosedEventArgs e)
         {
             _cancellation.Cancel();
+            _compositionRoot.Entitlement.ModeChanged -= OnModeChanged;
             _presenter.Dispose();
             ExitThread();
         }

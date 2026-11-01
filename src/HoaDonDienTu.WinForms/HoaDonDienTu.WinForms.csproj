@@ -46,6 +46,35 @@
     <Compile Include="Bootstrap\CompositionRoot.cs" />
     <Compile Include="Bootstrap\GlobalExceptionHandler.cs" />
     <Compile Include="Common\UserDialogs.cs" />
+    <Compile Include="Licensing\LicenseControl.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Licensing\LicenseControl.Designer.cs">
+      <DependentUpon>LicenseControl.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Licensing\ILicenseView.cs" />
+    <Compile Include="Licensing\LicensePresenter.cs" />
+    <Compile Include="Licensing\LicenseScreen.cs" />
+    <Compile Include="Companies\CompanyEditControl.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Companies\CompanyEditControl.Designer.cs">
+      <DependentUpon>CompanyEditControl.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Companies\CompanyEditPresenter.cs" />
+    <Compile Include="Companies\CompanyEditRequest.cs" />
+    <Compile Include="Companies\CompanyListControl.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Companies\CompanyListControl.Designer.cs">
+      <DependentUpon>CompanyListControl.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Companies\CompanyListPresenter.cs" />
+    <Compile Include="Companies\CompanyScreens.cs" />
+    <Compile Include="Companies\CompanyWorkflow.cs" />
+    <Compile Include="Companies\ICompanyViews.cs" />
+    <Compile Include="Shell\IShellActions.cs" />
+    <Compile Include="Common\SystemServices.cs" />
     <Compile Include="Download\DownloadConfigControl.cs">
       <SubType>Component</SubType>
     </Compile>

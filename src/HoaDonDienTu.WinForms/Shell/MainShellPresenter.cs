@@ -10,11 +10,12 @@ using HoaDonDienTu.WinForms.Login;
 
 namespace HoaDonDienTu.WinForms.Shell
 {
-    public sealed class MainShellPresenter : IDisposable
+    public sealed class MainShellPresenter : IDisposable, IShellActions
     {
         private readonly IMainShellView _view;
         private readonly IPortalLoginCoordinator _loginCoordinator;
-        private readonly ICompanyContextAccessor _context;
+        private readonly ICompanyContextManager _context;
+        private ShellModeViewState _baseMode = new ShellModeViewState();
         private readonly IPortalSessionStore _sessionStore;
         private readonly IUiOperationRunner _runner;
         private readonly IUserErrorPresenter _errors;
@@ -25,7 +26,7 @@ namespace HoaDonDienTu.WinForms.Shell
         public MainShellPresenter(
             IMainShellView view,
             IPortalLoginCoordinator loginCoordinator,
-            ICompanyContextAccessor context,
+            ICompanyContextManager context,
             IPortalSessionStore sessionStore,
             IUiOperationRunner runner,
             IUserErrorPresenter errors,
@@ -59,6 +60,7 @@ namespace HoaDonDienTu.WinForms.Shell
             _view.PortalLoginRequested += OnPortalLoginRequested;
             _view.ShellClosingRequested += OnShellClosingRequested;
             _sessionStore.SessionChanged += OnSessionChanged;
+            _context.ContextChanged += OnContextChanged;
         }
 
         public void Dispose()
@@ -71,12 +73,65 @@ namespace HoaDonDienTu.WinForms.Shell
             _view.PortalLoginRequested -= OnPortalLoginRequested;
             _view.ShellClosingRequested -= OnShellClosingRequested;
             _sessionStore.SessionChanged -= OnSessionChanged;
+            _context.ContextChanged -= OnContextChanged;
         }
 
         /// <summary>Điều hướng không qua event của view (dùng khi khởi động).</summary>
         public Task<NavigationResult> ShowAsync(ScreenId target)
         {
-            return _navigation.NavigateAsync(target, null, CancellationToken.None);
+            return ShowAsync(target, null);
+        }
+
+        public Task<NavigationResult> ShowAsync(ScreenId target, object parameter)
+        {
+            return _navigation.NavigateAsync(target, parameter, CancellationToken.None);
+        }
+
+        /// <summary>
+        /// Đặt khả năng theo chế độ (Standard/Service/ReadOnly). Việc đăng nhập và tải còn cần đã mở doanh nghiệp nên
+        /// presenter tự khóa chúng khi chưa có doanh nghiệp và mở lại khi context thay đổi.
+        /// </summary>
+        public void SetMode(ShellModeViewState mode)
+        {
+            _baseMode = mode;
+            ApplyModeWithContext();
+            RefreshCompany();
+        }
+
+        public void RefreshCompany()
+        {
+            if (_context.HasCurrent)
+            {
+                _view.ShowCompany(new CompanyHeaderViewState
+                {
+                    CompanyName = _context.Current.DisplayName,
+                    TaxCode = _context.Current.TaxCode.Value
+                });
+            }
+            else
+            {
+                _view.ShowCompany(new CompanyHeaderViewState { CompanyName = "Chưa chọn doanh nghiệp", TaxCode = string.Empty });
+            }
+        }
+
+        private void ApplyModeWithContext()
+        {
+            var has = _context.HasCurrent;
+            _view.ApplyMode(new ShellModeViewState
+            {
+                ShowCompanySelector = _baseMode.ShowCompanySelector,
+                ShowCompanyMenu = _baseMode.ShowCompanyMenu,
+                CanAddCompany = _baseMode.CanAddCompany,
+                LicenseLabel = _baseMode.LicenseLabel,
+                CanPortalLogin = _baseMode.CanPortalLogin && has,
+                CanDownload = _baseMode.CanDownload && has
+            });
+        }
+
+        private void OnContextChanged(object sender, EventArgs e)
+        {
+            ApplyModeWithContext();
+            RefreshCompany();
         }
 
         public void RefreshPortalSession()

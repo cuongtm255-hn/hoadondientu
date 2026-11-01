@@ -201,16 +201,16 @@ Trạng thái: ⬜ Chưa bắt đầu · 🟡 Đang làm · ✅ Hoàn thành · 
 
 | ID | Công việc | Lớp | Phụ thuộc | Trạng thái | PR/Commit | Ghi chú |
 |---|---|---|---|---|---|---|
-| T02-01 | `CompanyCatalogItem`, `CompanyCatalogStatus`, `ICompanyCatalog` | Application | T01-03 | ⬜ | | |
-| T02-02 | `JsonCompanyCatalog` + `AtomicJsonWriter` tích hợp, `.bak` recovery | Infra | T01-11 | ⬜ | | |
-| T02-03 | `CompanyStorageValidator` (quyền ghi, dung lượng, MST, schema) | Infra | T02-01 | ⬜ | | Cần schema từ DD-06 |
-| T02-04 | `CompanySetupControl` + presenter (StandardMode first-run) | WinForms | T01-05, T02-03 | ⬜ | | FR-SET-001..003 |
-| T02-05 | `CompanyListControl` + presenter (SCR-10) + cache tổng quan | WinForms | T02-02, T01-07 | ⬜ | | |
-| T02-06 | `CompanyEditControl` + presenter (SCR-11), ghi hai pha | WinForms | T02-03 | ⬜ | | |
-| T02-07 | Ngừng quản lý, relink, quét kho (recovery) | App/WinForms | T02-03 | ⬜ | | AC-17 |
-| T02-08 | Nâng cấp Standard → Service đăng ký kho đầu tiên | Application | T03-05 | ⬜ | | AC-13 |
-| T02-09 | Unit + integration test (mục 8.1–8.2) | Tests | T02-02..T02-08 | ⬜ | | |
-| T02-10 | UI smoke test (mục 8.3) | Tests | T02-05 | ⬜ | | |
+| T02-01 | `CompanyCatalogItem`, `CompanyCatalogStatus`, `ICompanyCatalog` | Application | T01-03 | ✅ | | Application/Companies/CompanyCatalogItem.cs |
+| T02-02 | `JsonCompanyCatalog` + `AtomicJsonWriter` tích hợp, `.bak` recovery | Infra | T01-11 | ✅ | | JsonCompanyCatalog, AtomicJsonWriter, recovery .bak/.corrupt |
+| T02-03 | `CompanyStorageValidator` (quyền ghi, dung lượng, MST, schema) | Infra | T02-01 | 🟡 | | FileSystemCompanyStorage + CompanyManagementService.ValidateAsync; chưa có schema DB (chờ DD-06) |
+| T02-04 | `CompanySetupControl` + presenter (StandardMode first-run) | WinForms | T01-05, T02-03 | ✅ | | First-run dùng lại CompanyEditControl (mode FirstRun), không tách CompanySetupControl |
+| T02-05 | `CompanyListControl` + presenter (SCR-10) + cache tổng quan | WinForms | T02-02, T01-07 | ✅ | | CompanyListControl/Presenter; cache tổng quan hiển thị từ catalog |
+| T02-06 | `CompanyEditControl` + presenter (SCR-11), ghi hai pha | WinForms | T02-03 | ✅ | | CompanyEditControl/Presenter, tạo hai pha + rollback |
+| T02-07 | Ngừng quản lý, relink, quét kho (recovery) | App/WinForms | T02-03 | 🟡 | | Unlink/relink xong; chưa có quét thư mục để recovery |
+| T02-08 | Nâng cấp Standard → Service đăng ký kho đầu tiên | Application | T03-05 | ⬜ | | Chờ DD-03 |
+| T02-09 | Unit + integration test (mục 8.1–8.2) | Tests | T02-02..T02-08 | 🟡 | | Unit/integration/presenter test xong; thiếu phần nâng cấp Standard→Service và quét kho |
+| T02-10 | UI smoke test (mục 8.3) | Tests | T02-05 | ✅ | | 8 UI smoke test trong ShellUiSmokeTests |
 
 ### 9.2 Nhật ký tiến độ
 

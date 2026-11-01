@@ -43,6 +43,12 @@ namespace HoaDonDienTu.Application.Common
                     "Kiểm tra hoặc gia hạn bản quyền ở mục Bản quyền.", correlationId, false);
             }
 
+            var licence = exception as LicenseException;
+            if (licence != null)
+            {
+                return MapLicence(licence.Failure, operation, correlationId);
+            }
+
             var storage = exception as CompanyStorageException;
             if (storage != null)
             {
@@ -52,6 +58,28 @@ namespace HoaDonDienTu.Application.Common
                 return Create("COMPANY_STORAGE", category, operation,
                     "Không mở được kho dữ liệu của doanh nghiệp. Dữ liệu hiện có được giữ nguyên.",
                     "Kiểm tra thư mục dữ liệu của doanh nghiệp rồi thử lại.", correlationId, true);
+            }
+
+            // Các lỗi nghiệp vụ dưới đây do chính ứng dụng tạo ra với thông điệp an toàn cho người dùng (không chứa dữ liệu nhạy cảm).
+            if (exception is CompanyInUseException)
+            {
+                return Create("COMPANY_IN_USE", ErrorCategory.Validation, operation, exception.Message,
+                    "Chuyển sang doanh nghiệp khác rồi thử lại.", correlationId, false);
+            }
+
+            if (exception is CompanyValidationException)
+            {
+                return Create("COMPANY_INVALID", ErrorCategory.Validation, operation, exception.Message,
+                    "Sửa thông tin được đánh dấu rồi thử lại.", correlationId, false);
+            }
+
+            var catalog = exception as CompanyCatalogException;
+            if (catalog != null)
+            {
+                return Create("COMPANY_CATALOG", catalog.Kind == CompanyCatalogErrorKind.CatalogCorrupt ? ErrorCategory.Storage : ErrorCategory.Validation,
+                    operation, catalog.Message,
+                    catalog.Kind == CompanyCatalogErrorKind.CatalogCorrupt ? "Dữ liệu được giữ nguyên; vào màn hình khôi phục để liên kết lại các kho." : "Kiểm tra lại thông tin rồi thử lại.",
+                    correlationId, false);
             }
 
             if (exception is StorageGuardException)
@@ -85,6 +113,36 @@ namespace HoaDonDienTu.Application.Common
             return Create("UNEXPECTED", ErrorCategory.Unexpected, operation,
                 "Đã xảy ra lỗi không mong muốn.",
                 "Thử lại; nếu lỗi lặp lại hãy cung cấp mã tham chiếu cho bộ phận hỗ trợ.", correlationId, true);
+        }
+
+        private static UserFacingError MapLicence(LicenseFailure failure, string operation, string correlationId)
+        {
+            switch (failure)
+            {
+                case LicenseFailure.KeyInvalid:
+                    return Create("LICENCE_KEY_INVALID", ErrorCategory.Licence, operation,
+                        "Licence key không hợp lệ.", "Kiểm tra lại key do nhà cung cấp gửi rồi nhập lại.", correlationId, false);
+                case LicenseFailure.KeyBoundToOtherMachine:
+                    return Create("LICENCE_OTHER_MACHINE", ErrorCategory.Licence, operation,
+                        "Licence này đang gắn với máy khác.",
+                        "Hủy kích hoạt trên máy cũ hoặc liên hệ nhà cung cấp để đặt lại.", correlationId, false);
+                case LicenseFailure.Expired:
+                    return Create("LICENCE_EXPIRED", ErrorCategory.Licence, operation,
+                        "Licence đã hết hạn.", "Gia hạn licence với nhà cung cấp. Dữ liệu cũ vẫn xem và xuất được.", correlationId, false);
+                case LicenseFailure.Revoked:
+                    return Create("LICENCE_REVOKED", ErrorCategory.Licence, operation,
+                        "Licence đã bị thu hồi.", "Liên hệ nhà cung cấp. Dữ liệu cũ vẫn xem và xuất được.", correlationId, false);
+                case LicenseFailure.ResponseRejected:
+                    return Create("LICENCE_RESPONSE", ErrorCategory.Licence, operation,
+                        "Phản hồi từ máy chủ licence không hợp lệ.", "Thử lại; nếu lặp lại hãy cung cấp mã tham chiếu cho nhà cung cấp.", correlationId, true);
+                case LicenseFailure.ServerUnavailable:
+                    return Create("LICENCE_SERVER", ErrorCategory.Network, operation,
+                        "Chưa kết nối được máy chủ licence.",
+                        "Kiểm tra Internet rồi thử lại. Licence đã kích hoạt vẫn dùng được tối đa 30 ngày ngoại tuyến.", correlationId, true);
+                default:
+                    return Create("LICENCE_STORAGE", ErrorCategory.Storage, operation,
+                        "Không lưu được thông tin licence trên máy này.", "Kiểm tra quyền ghi thư mục dữ liệu ứng dụng rồi thử lại.", correlationId, true);
+            }
         }
 
         private static bool IsNamed(Exception exception, string typeName)

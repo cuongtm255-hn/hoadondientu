@@ -23,7 +23,7 @@ namespace HoaDonDienTu.WinForms.Tests
         public const string Token = "SECRET-TOKEN-123";
     }
 
-    internal sealed class RecordingLogger : IApplicationLogger
+    public sealed class RecordingLogger : IApplicationLogger
     {
         public List<string> Lines = new List<string>();
 
@@ -51,7 +51,7 @@ namespace HoaDonDienTu.WinForms.Tests
         }
     }
 
-    internal sealed class FakeContextManager : ICompanyContextManager
+    public sealed class FakeContextManager : ICompanyContextManager
     {
         public FakeContextManager(CompanyContext current)
         {

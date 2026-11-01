@@ -28,15 +28,15 @@ namespace HoaDonDienTu.WinForms.Tests
         }
 
         [Test]
-        public void Service_ShowsCompanySelectorAndMenu_LoginWaitsForCompany()
+        public void Service_ShowsCompanySelectorAndMenu_CapableOfLoginAndDownload_OncePresenterSeesACompany()
         {
             var state = ShellModeMapper.ToModeState(Result(AppMode.Service, StartupRoute.ServiceCompanySelection));
 
             Assert.That(state.ShowCompanySelector, Is.True);
             Assert.That(state.ShowCompanyMenu, Is.True);
             Assert.That(state.CanAddCompany, Is.True);
-            Assert.That(state.CanPortalLogin, Is.False);
-            Assert.That(state.CanDownload, Is.False);
+            Assert.That(state.CanPortalLogin, Is.True, "Khả năng theo chế độ; MainShellPresenter khóa khi chưa mở doanh nghiệp");
+            Assert.That(state.CanDownload, Is.True);
         }
 
         [Test]

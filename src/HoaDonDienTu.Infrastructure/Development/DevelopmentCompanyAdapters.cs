@@ -44,15 +44,7 @@ namespace HoaDonDienTu.Infrastructure.Development
 
         public bool IsAllowed(AppFeature feature)
         {
-            switch (_mode)
-            {
-                case AppMode.Standard:
-                    return feature != AppFeature.MultiCompany;
-                case AppMode.Service:
-                    return true;
-                default:
-                    return feature == AppFeature.ReadExport;
-            }
+            return FeatureMatrix.IsAllowed(_mode, feature);
         }
 
         public void Demand(AppFeature feature)

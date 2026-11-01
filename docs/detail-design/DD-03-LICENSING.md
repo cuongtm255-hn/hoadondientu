@@ -217,14 +217,14 @@ Trạng thái: ⬜ Chưa bắt đầu · 🟡 Đang làm · ✅ Hoàn thành · 
 
 | ID | Công việc | Lớp | Phụ thuộc | Trạng thái | PR/Commit | Ghi chú |
 |---|---|---|---|---|---|---|
-| T03-01 | Domain: `Entitlement`, `LicenseState`, `AppFeature`, `AppMode` rules | Domain | T01-02 | ⬜ | | |
-| T03-02 | `IEntitlementService` + `EntitlementService`, `Demand` trong service nghiệp vụ | Application | T03-01 | ⬜ | | FR-LIC-012 |
-| T03-03 | `DevelopmentLicenseService` (Debug) | Infra | T03-02 | ⬜ | | Không đăng ký ở Release |
-| T03-04 | `MachineIdentityProvider`, `LicenseSignatureVerifier`, lưu `license.dat` (DPAPI) | Infra | T01-11, G-06 | ⛔ | | Chờ chốt thuật toán (G-06) |
-| T03-05 | `LicenseService` + `LicenseApiClient` (activate/validate/deactivate, offline grace, clock check) | Infra | T03-04 | ⛔ | | Chờ contract server |
-| T03-06 | `LicenseControl` + presenter (SCR-12), mục Bản quyền trong SCR-09 | WinForms | T03-02 | ⬜ | | |
-| T03-07 | Unit + integration test (mục 8.1–8.2) với server giả lập | Tests | T03-05 | ⬜ | | |
-| T03-08 | UI smoke test (mục 8.3) | Tests | T03-06 | ⬜ | | |
+| T03-01 | Domain: `Entitlement`, `LicenseState`, `AppFeature`, `AppMode` rules | Domain | T01-02 | ✅ | | `FeatureMatrix` (Domain), `LicenseGrant`/`StoredLicense`/`LicenseInfo`/`LicenseIssue` (Application); `LicenseEvaluator` thuần logic |
+| T03-02 | `IEntitlementService` + `EntitlementService`, `Demand` trong service nghiệp vụ | Application | T03-01 | ✅ | | `EntitlementService.ApplyLicense` + `ModeChanged`; `Demand` đã dùng ở các service |
+| T03-03 | `DevelopmentLicenseService` (Debug) | Infra | T03-02 | ✅ | | `DevelopmentLicenseService`/`DevelopmentEntitlementService` (Debug) theo interface mới |
+| T03-04 | `MachineIdentityProvider`, `LicenseSignatureVerifier`, lưu `license.dat` (DPAPI) | Infra | T01-11, G-06 | 🟡 | | `FileLicenseStore` (DPAPI + atomic + .bak), `MachineIdentityProvider`, `RsaLicenseSignatureVerifier` (RSA-SHA256 tạm); **chờ G-06** để chốt thuật toán/khóa |
+| T03-05 | `LicenseService` + `LicenseApiClient` (activate/validate/deactivate, offline grace, clock check) | Infra | T03-04 | 🟡 | | `LicenseService` (activate/validate/deactivate, ngoại tuyến 30 ngày, lệch đồng hồ) qua `ILicenseServer`; chưa có `LicenseApiClient` HTTP (chờ contract G-06) |
+| T03-06 | `LicenseControl` + presenter (SCR-12), mục Bản quyền trong SCR-09 | WinForms | T03-02 | ✅ | | SCR-12 `LicenseControl`/`LicensePresenter`/`LicenseScreen`, lỗi licence map sang thông báo người dùng; shell cập nhật menu khi `ModeChanged`. **Chưa có** mục Bản quyền trong SCR-09 (SCR-09 chưa tồn tại) |
+| T03-07 | Unit + integration test (mục 8.1–8.2) với server giả lập | Tests | T03-05 | 🟡 | | 39 test Application + 12 Infrastructure + 14 presenter SCR-12 với server giả; chưa có HTTP/timeout/5xx thật |
+| T03-08 | UI smoke test (mục 8.3) | Tests | T03-06 | ✅ | | 3 UI smoke test: Standard hiển thị trạng thái, kích hoạt mở menu doanh nghiệp không cần cài lại (AC-13), ReadOnly khóa tải |
 
 ### 9.2 Nhật ký tiến độ
 
