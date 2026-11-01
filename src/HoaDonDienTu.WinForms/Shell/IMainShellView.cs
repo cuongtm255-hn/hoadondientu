@@ -15,6 +15,7 @@ namespace HoaDonDienTu.WinForms.Shell
         void ShowPortalSession(PortalSessionViewState state);
         void ShowOperation(OperationViewState state);
         void ShowScreen(Control screen);
+        void SelectNavigation(HoaDonDienTu.Application.Navigation.ScreenId screen);
         void ShowError(string title, string message);
     }
 }

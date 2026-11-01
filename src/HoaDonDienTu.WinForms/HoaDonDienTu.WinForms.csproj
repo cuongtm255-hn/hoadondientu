@@ -41,6 +41,9 @@
     <PackageReference Include="Krypton.Ribbon" Version="5.500.2008" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Bootstrap\AppApplicationContext.cs" />
+    <Compile Include="Bootstrap\CompositionRoot.cs" />
+    <Compile Include="Bootstrap\GlobalExceptionHandler.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Shell\IMainShellView.cs" />
     <Compile Include="Shell\MainShellForm.cs">
@@ -55,6 +58,7 @@
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="Shell\ScreenHost.cs" />
+    <Compile Include="Shell\ShellModeMapper.cs" />
     <Compile Include="Shell\ShellViewStates.cs" />
   </ItemGroup>
   <ItemGroup>

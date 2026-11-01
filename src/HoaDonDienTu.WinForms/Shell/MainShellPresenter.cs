@@ -31,9 +31,20 @@ namespace HoaDonDienTu.WinForms.Shell
             _view.PortalLoginRequested -= OnPortalLoginRequested;
         }
 
+        public void ShowInitializing()
+        {
+            _view.ShowScreen(new PlaceholderScreenControl("Đang khởi tạo...", "Đang xác định chế độ làm việc"));
+        }
+
+        public void Show(ScreenId target)
+        {
+            _view.SelectNavigation(target);
+            _view.ShowScreen(new PlaceholderScreenControl(TitleOf(target), "SCR · chưa implement"));
+        }
+
         private void OnNavigationRequested(object sender, NavigationRequestedEventArgs e)
         {
-            _view.ShowScreen(new PlaceholderScreenControl(TitleOf(e.Target), "SCR · chưa implement"));
+            Show(e.Target);
         }
 
         private void OnCompanySelectorRequested(object sender, EventArgs e)

@@ -42,7 +42,7 @@ namespace HoaDonDienTu.WinForms.Shell
         public void ShowCompany(CompanyHeaderViewState state)
         {
             btnCompanyContext.Values.Text = state.CompanyName;
-            lblTaxCode.Values.Text = "MST " + state.TaxCode;
+            lblTaxCode.Values.Text = string.IsNullOrEmpty(state.TaxCode) ? string.Empty : "MST " + state.TaxCode;
         }
 
         public void ShowPortalSession(PortalSessionViewState state)
