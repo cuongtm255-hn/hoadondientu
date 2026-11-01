@@ -61,7 +61,7 @@ Mỗi phase kết thúc khi đạt đủ **tiêu chí thoát**; không bắt đ�
 
 | Task | Mô tả | DD | Trạng thái |
 |---|---|---|---|
-| T01-01 | Tạo solution/project/test project | [DD-01](../detail-design/DD-01-APP-SHELL-LOGIN.md#21-theo-dõi-tiến-độ-implement) | ⬜ |
+| T01-01 | Tạo solution/project/test project | [DD-01](../detail-design/DD-01-APP-SHELL-LOGIN.md#21-theo-dõi-tiến-độ-implement) | ✅ |
 | T01-17 | Cập nhật lệnh build/test thật vào `CLAUDE.md`/`README.md` + runbook | DD-01 | ⬜ |
 | T00-01 | Spike WebView trên net45 | [DD-00](../detail-design/DD-00-TECHNICAL-GATES.md#6-theo-dõi-tiến-độ) | ⬜ |
 | T00-02 | Cách phát hiện login và lấy token/cookie | DD-00 | ⬜ |

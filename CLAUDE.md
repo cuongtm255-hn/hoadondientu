@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project status
 
-Greenfield: the repo currently holds only a README and the harness scaffolding below. No solution, project files, or build/test setup exist yet. When you create them, update the **Commands** section with the real commands.
+Phase 1 in progress: solution under `src/` (Domain, Application, Infrastructure, WinForms) + `tests/`; Krypton shell (`MainShellForm`) runs with sample data. See `docs/plans/PROJECT-PLAN.md` for status.
 
 ## Purpose
 
@@ -37,12 +37,16 @@ Planned layering (not yet created): UI (WinForms) → services (period splitting
 
 ## Commands
 
-To be filled in once the solution exists. Expected shape:
+MSBuild/vstest are not on PATH; use the VS 2022 copies (Git Bash paths):
 
 ```bash
-msbuild HoaDonDienTu.sln /p:Configuration=Debug /restore   # build
-vstest.console.exe path\to\Tests.dll /TestCaseFilter:"Name~Foo"   # single test (MSTest/NUnit adapter dependent)
+MSB="/c/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/MSBuild.exe"
+VT="/c/Program Files/Microsoft Visual Studio/2022/Community/Common7/IDE/CommonExtensions/Microsoft/TestWindow/vstest.console.exe"
+"$MSB" src/HoaDonDienTu.sln -restore -nologo -v:m   # build
+"$VT" tests/HoaDonDienTu.Domain.Tests/bin/Debug/net45/HoaDonDienTu.Domain.Tests.dll /TestCaseFilter:"Name~TryParse"   # tests (NUnit 3.13 + adapter 3.17)
 ```
+
+UI: Krypton Toolkit/Ribbon **5.500.2008** (last line with a net45 build; 60+ needs net462). The WinForms project is an old-style csproj (designer-friendly); forms follow `X.cs` + `X.Designer.cs` partial pairs. In `HoaDonDienTu.WinForms`, `Application` resolves to the `HoaDonDienTu.Application` namespace, so write `System.Windows.Forms.Application`.
 
 ## Repository layout (harness scaffolding)
 

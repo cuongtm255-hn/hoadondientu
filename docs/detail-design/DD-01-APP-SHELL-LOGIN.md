@@ -1192,11 +1192,11 @@ Trạng thái: ⬜ Chưa bắt đầu · 🟡 Đang làm · ✅ Hoàn thành · 
 
 | ID | Công việc | Lớp | Phụ thuộc | Trạng thái | PR/Commit | Ghi chú |
 |---|---|---|---|---|---|---|
-| T01-01 | Tạo solution, 4 project nền tảng và 3 test project (mục 5) | All | — | ⬜ | | Cần net45 targeting pack |
-| T01-02 | Domain value object/enums tối thiểu (`CompanyId`, `TaxCode`, `AppMode`, …) | Domain | T01-01 | ⬜ | | |
+| T01-01 | Tạo solution, 4 project nền tảng và 3 test project (mục 5) | All | — | ✅ | | Build OK bằng MSBuild VS2022; Krypton 5.500.2008 (có bản net45) |
+| T01-02 | Domain value object/enums tối thiểu (`CompanyId`, `TaxCode`, `AppMode`, …) | Domain | T01-01 | 🟡 | | Đã có `AppMode`, `StartupRoute`, `TaxCode` + test; còn `CompanyId`… |
 | T01-03 | Application interface/result/state (`IStartupCoordinator`, `INavigationService`, `UserFacingError`, …) | Application | T01-02 | ⬜ | | |
 | T01-04 | `CompositionRoot`, `Program.Main`, `AppApplicationContext`, `GlobalExceptionHandler` | WinForms | T01-03 | ⬜ | | TLS 1.2 bật trước kết nối |
-| T01-05 | `MainShellForm`, `MainShellPresenter`, `ScreenHost`, `NavigationService`, `ScreenFactory` | WinForms | T01-04 | ⬜ | | |
+| T01-05 | `MainShellForm`, `MainShellPresenter`, `ScreenHost`, `NavigationService`, `ScreenFactory` | WinForms | T01-04 | 🟡 | | Form (Krypton Ribbon + sidebar, partial Designer), presenter, ScreenHost xong; còn NavigationService/ScreenFactory, màn hình thật |
 | T01-06 | `StartupCoordinator` + fake licence/catalog + bảng quyết định route | Application | T01-03 | ⬜ | | Phụ thuộc interface DD-03/DD-02 |
 | T01-07 | `CompanyContext`, `ICompanyContextManager`, `CompanySwitchService`, `StorageGuard` | Application | T01-03 | ⬜ | | Cần repository stub từ DD-02/DD-06 |
 | T01-08 | `PortalLoginForm`, `PortalLoginPresenter`, `PortalLoginCoordinator` + `DevelopmentPortalLoginBrowser` | WinForms/Infra | T01-05, T01-07 | ⬜ | | |
@@ -1229,6 +1229,7 @@ Trạng thái: ⬜ Chưa bắt đầu · 🟡 Đang làm · ✅ Hoàn thành · 
 | Ngày | Nội dung | Người thực hiện |
 |---|---|---|
 | 01/11/2026 | Chuẩn hóa tài liệu, tách DD-02/DD-03/DD-00; chưa có code | Claude Code |
+| 01/11/2026 | T01-01 xong; shell Krypton chạy được với dữ liệu mẫu; 10 unit test pass | Claude Code |
 
 ## 22. Lịch sử thay đổi tài liệu
 

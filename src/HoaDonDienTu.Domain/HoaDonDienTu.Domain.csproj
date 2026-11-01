@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net45</TargetFramework>
+    <LangVersion>7.3</LangVersion>
+    <RootNamespace>HoaDonDienTu.Domain</RootNamespace>
+    <AssemblyName>HoaDonDienTu.Domain</AssemblyName>
+  </PropertyGroup>
+
+</Project>

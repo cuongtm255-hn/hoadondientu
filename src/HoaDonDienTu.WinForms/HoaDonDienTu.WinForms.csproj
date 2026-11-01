@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{6C1A2B64-3F6D-4E1B-9D55-0A8B7F3C2D11}</ProjectGuid>
+    <OutputType>WinExe</OutputType>
+    <RootNamespace>HoaDonDienTu.WinForms</RootNamespace>
+    <AssemblyName>HoaDonDienTu</AssemblyName>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <LangVersion>7.3</LangVersion>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Windows.Forms" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Krypton.Toolkit" Version="5.500.2008" />
+    <PackageReference Include="Krypton.Ribbon" Version="5.500.2008" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="Shell\IMainShellView.cs" />
+    <Compile Include="Shell\MainShellForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Shell\MainShellForm.Designer.cs">
+      <DependentUpon>MainShellForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Shell\MainShellPresenter.cs" />
+    <Compile Include="Shell\NavigationRequestedEventArgs.cs" />
+    <Compile Include="Shell\PlaceholderScreenControl.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Shell\ScreenHost.cs" />
+    <Compile Include="Shell\ShellViewStates.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\HoaDonDienTu.Application\HoaDonDienTu.Application.csproj" />
+    <ProjectReference Include="..\HoaDonDienTu.Domain\HoaDonDienTu.Domain.csproj" />
+    <ProjectReference Include="..\HoaDonDienTu.Infrastructure\HoaDonDienTu.Infrastructure.csproj" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>
