@@ -22,6 +22,24 @@ namespace HoaDonDienTu.Infrastructure.Tests.Portal
         }
 
         [Test]
+        public void RealPurchaseResponse_HasTheSameShapeAsSold_WithSellerAsCounterpartyAndOwnTaxCodeAsBuyer()
+        {
+            var page = PortalResponseParser.ParseSearch(_config, RealSamples.PurchaseSearchResponse);
+
+            Assert.That(page.TotalCount, Is.EqualTo(3), "total là số bản ghi khớp, trang mẫu chỉ rút gọn 2");
+            Assert.That(page.NextCursor, Is.Null);
+            var first = page.Items[0];
+            Assert.That(first.SellerTaxCode, Is.EqualTo("0310404115"));
+            Assert.That(first.BuyerTaxCode, Is.EqualTo("0109213133"));
+            Assert.That(first.InvoiceNumber, Is.EqualTo("22229"));
+            Assert.That(first.InvoiceSymbol, Is.EqualTo("C26TMM"));
+            Assert.That(first.CheckResultRaw, Is.EqualTo("5"));
+            Assert.That(first.IssueDate, Is.EqualTo(new DateTime(2026, 10, 31)), "tdlap 2026-10-30T17:00:00Z là 0 giờ ngày 31/10 giờ Việt Nam");
+            Assert.That(page.Items[1].IssueDate, Is.EqualTo(new DateTime(2026, 10, 30)));
+            Assert.That(first.TotalPayment, Is.EqualTo(2953181m));
+        }
+
+        [Test]
         public void RealSoldResponse_MapsEveryField()
         {
             var page = PortalResponseParser.ParseSearch(_config, RealSamples.SoldSearchResponse);

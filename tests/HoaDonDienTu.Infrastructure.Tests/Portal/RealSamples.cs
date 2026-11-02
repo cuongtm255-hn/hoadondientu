@@ -19,5 +19,20 @@ namespace HoaDonDienTu.Infrastructure.Tests.Portal
             + "\"tdlap\":\"2026-10-29T17:00:00Z\",\"tgia\":1.0,\"tgtcthue\":11451006.0,\"tgtthue\":916080.0,\"tgtttbso\":12367086.0,"
             + "\"tthai\":1,\"ttxly\":5,\"unhiem\":1}"
             + "],\"total\":2,\"state\":null,\"time\":133}";
+
+        /// <summary>Phản hồi tra cứu <b>mua vào</b> rút gọn từ sample-api-web.md mục 4 (ttxly=5): người mua là MST đang đăng nhập 0109213133.</summary>
+        public const string PurchaseSearchResponse =
+            "{\"datas\":["
+            + "{\"nbmst\":\"0310404115\",\"khmshdon\":1,\"khhdon\":\"C26TMM\",\"shdon\":22229,\"cqt\":\"7909\",\"dvtte\":\"VND\",\"hdon\":\"01\","
+            + "\"id\":\"314660bf-9d7f-4e83-8bc6-839a9ed021ce\",\"nbten\":\"CÔNG TY CỔ PHẦN DỊCH VỤ THƯƠNG MẠI DU LỊCH LIÊN LỤC ĐỊA\","
+            + "\"nmmst\":\"0109213133\",\"nmten\":\"CÔNG TY TNHH BAY NGAY\",\"nmdchi\":\"Thôn Long Châu San, Phường Chương Mỹ, Thành Phố Hà Nội\","
+            + "\"nmcmnd\":null,\"tdlap\":\"2026-10-30T17:00:00Z\",\"tgia\":1.0,\"tgtcthue\":2734427.0,\"tgtthue\":218754.0,\"tgtttbso\":2953181.0,"
+            + "\"ttcktmai\":0.0,\"tthai\":1,\"ttxly\":5,\"unhiem\":null},"
+            + "{\"nbmst\":\"0310404115\",\"khmshdon\":1,\"khhdon\":\"C26TMM\",\"shdon\":22125,\"dvtte\":\"VND\","
+            + "\"id\":\"0b1d6e0e-0000-4000-8000-00000000a001\",\"nbten\":\"CÔNG TY CỔ PHẦN DỊCH VỤ THƯƠNG MẠI DU LỊCH LIÊN LỤC ĐỊA\","
+            + "\"nmmst\":\"0109213133\",\"nmten\":\"CÔNG TY TNHH BAY NGAY\",\"nmcmnd\":null,"
+            + "\"tdlap\":\"2026-10-29T17:00:00Z\",\"tgia\":1.0,\"tgtcthue\":10617672.0,\"tgtthue\":849414.0,\"tgtttbso\":11467086.0,"
+            + "\"tthai\":1,\"ttxly\":5}"
+            + "],\"total\":3,\"state\":null,\"time\":593}";
     }
 }

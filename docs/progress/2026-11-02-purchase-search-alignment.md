@@ -7,7 +7,7 @@ Mục tiêu: sửa tài liệu và tính năng cho đúng hai loại tra cứu. 
 
 | | Bán ra (`/api/query/invoices/sold`) | Mua vào (`/api/query/invoices/purchase`) |
 |---|---|---|
-| Đối tác | MST người mua `nmmst` | MST **người bán** `nbmst` (URL mẫu + nhãn form; bản ghi tay 4.2 ghi nhầm "người mua/nmmst") |
+| Đối tác | MST người mua `nmmst` | MST **người bán** `nbmst` (URL mẫu + nhãn form) |
 | CCCD người mua `nmcmnd` | có | **có** (trước đây giả định không có) |
 | Trạng thái `tthai` | Tất cả, 1…6 | Tất cả, 1…6 (mặc định form: Hóa đơn mới) |
 | Kết quả kiểm tra `ttxly` | Tất cả, 0…8 | **chỉ 5, 6, 8; không có Tất cả; bắt buộc (\*)** |

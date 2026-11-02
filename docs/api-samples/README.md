@@ -73,13 +73,13 @@ tdlap=ge=02/10/2026T00:00:00;tdlap=le=01/11/2026T23:59:59;nmmst==1112232234;ttha
 |---|---|:---:|---|
 | Ngày lập hóa đơn – Từ ngày / Đến ngày | `tdlap=ge=` / `tdlap=le=` | ✓ | `dd/MM/yyyy'T'HH:mm:ss`; từ 00:00:00, đến 23:59:59. Cổng giới hạn khoảng tìm kiếm (UI nói "theo từng tháng"; mẫu thật 02/10–01/11 = 30 ngày vẫn được chấp nhận) |
 | MST người mua *(bán ra)* | `nmmst==` | | 10 hoặc 13 số |
-| MST người bán *(mua vào)* | `nbmst==` | | 10 hoặc 13 số. Mẫu thật mua vào dùng `nbmst`; bản ghi tay mục 4.2 ghi nhầm "MST người mua / `nmmst`" nhưng URL mẫu và form đều là **MST người bán** |
+| MST người bán *(mua vào)* | `nbmst==` | | 10 hoặc 13 số. URL mẫu và form mua vào đều là **MST người bán** (`nbmst`) |
 | CCCD người mua *(cả bán ra và mua vào)* | `nmcmnd==` | | 12 số (9 số với CMND cũ). Form mua vào có ô "CCCD người mua" và URL mẫu mua vào gửi `nmcmnd` |
 | Trạng thái hóa đơn (\*) | `tthai==` | | "Tất cả" = không gửi; **1** Hóa đơn mới · **2** thay thế · **3** điều chỉnh · **4** đã bị thay thế · **5** đã bị điều chỉnh · **6** đã bị hủy |
 | Kết quả kiểm tra (\*) | `ttxly==` | | "Tất cả" = không gửi; **0** Cục Thuế đã nhận · **1** Đang tiến hành kiểm tra điều kiện cấp mã · **2** CQT từ chối hóa đơn theo từng lần phát sinh · **3** Hóa đơn đủ điều kiện cấp mã · **4** không đủ điều kiện cấp mã · **5** Đã cấp mã hóa đơn · **6** Cục Thuế đã nhận không mã · **7** Đã kiểm tra định kỳ HĐĐT không có mã · **8** Cục Thuế đã nhận hóa đơn có mã khởi tạo từ máy tính tiền |
 | Ký hiệu mẫu số hóa đơn | `khmshdon==` | | dropdown 1…9 |
 | Ký hiệu hóa đơn | `khhdon==` | | chuỗi, ví dụ `C26TBN`, `121` |
-| Số hóa đơn | `shdon==` | | số nguyên, ví dụ `323` (bản ghi tay ghi nhầm `hdon==`; mẫu URL và trường phản hồi đều là `shdon`) |
+| Số hóa đơn | `shdon==` | | số nguyên, ví dụ `323` (`shdon`, trùng trường phản hồi) |
 | Hóa đơn ủy nhiệm | `unhiem==1` | | checkbox: **chỉ gửi khi tích**, bỏ tích thì không gửi gì |
 
 **Khác biệt của tra cứu mua vào** (mẫu thật + ảnh `spec.xlsx`, 02/11/2026):
@@ -96,7 +96,7 @@ tdlap=ge=02/10/2026T00:00:00;tdlap=le=01/11/2026T23:59:59;nbmst==1234567890;ttha
 Chuỗi ghép từng ký tự giống URL mẫu (`=`, `;`, `:`, `/` giữ nguyên); thứ tự điều kiện như form. Giá trị chứa ký tự đặc biệt của RSQL được đặt trong dấu nháy kép để không chèn thêm điều kiện.
 Mã trạng thái/kết quả kiểm tra và nhãn nằm ở `PortalOptions` (dùng chung cho dropdown, cột bảng kê và dữ liệu giả).
 
-**Phản hồi** — `{"datas":[…], "total":3, "state":null, "time":133}`. `total` là tổng số bản ghi khớp; `state` là con trỏ trang kế (null = hết) ⚠ (mẫu thật chỉ có `state:null`, tên tham số gửi lại `state` là suy luận).
+**Phản hồi** — `{"datas":[…], "total":3, "state":null, "time":133}`. Mua vào có đúng cùng hình dạng và cùng bộ trường (mẫu thật 02/11/2026: `total:3`, `state:null`, `ttxly:5`, `nbmst` là người bán, `nmmst` là MST đang đăng nhập, `nmcmnd:null`, `tdlap` là 0 giờ ngày lập theo UTC); test `RealPurchaseResponse_…`. `total` là tổng số bản ghi khớp; `state` là con trỏ trang kế (null = hết) ⚠ (mẫu thật chỉ có `state:null`, tên tham số gửi lại `state` là suy luận).
 Trường của mỗi hóa đơn (rút gọn; bản thật có hơn 100 trường, đa số null):
 
 | JSON | Kiểu | `PortalInvoiceDto` | Cột bảng kê |
@@ -135,7 +135,7 @@ Một sheet; `A3:S3` gộp ô "DANH SÁCH HÓA ĐƠN"; `A4:S4` gộp ô "Từ ng
 
 ## 6. Giao diện tìm kiếm (`spec.xlsx`)
 
-Menu **Tra cứu** có hai tab: *Tra cứu hóa đơn điện tử bán ra* và *…mua vào*; mỗi tab còn hai nhóm kết quả (*Hóa đơn điện tử*, *Hóa đơn có mã khởi tạo từ máy tính tiền*). Form: MST người mua, CCCD người mua, Trạng thái hóa đơn (\*), Ngày lập hóa đơn (\*) từ–đến, Kết quả kiểm tra (\*), Ký hiệu mẫu số hóa đơn, Số hóa đơn, Ký hiệu hóa đơn, Hóa đơn ủy nhiệm; nút *Tìm kiếm*, *Bỏ tìm kiếm*; kết quả phân trang (mặc định 15/trang) với các nút xuất Excel, in, xuất XML.
+Menu **Tra cứu** có hai tab: *Tra cứu hóa đơn điện tử bán ra* và *…mua vào*; mỗi tab còn hai nhóm kết quả (*Hóa đơn điện tử*, *Hóa đơn có mã khởi tạo từ máy tính tiền*). Form bán ra: MST người mua, CCCD người mua, Trạng thái hóa đơn (\*), Ngày lập hóa đơn (\*) từ–đến, Kết quả kiểm tra (\*), Ký hiệu mẫu số hóa đơn, Số hóa đơn, Ký hiệu hóa đơn, Hóa đơn ủy nhiệm; form mua vào giống nhưng ô đầu là MST người bán, Kết quả kiểm tra chỉ có 3 giá trị; nút *Tìm kiếm*, *Bỏ tìm kiếm*; kết quả phân trang (mặc định 15/trang) với các nút xuất Excel, in, xuất XML.
 Yêu cầu của PM (sheet *Requirement*): đăng nhập tích hợp WebView gọi thẳng trang login của cổng; tìm theo tháng, **quý, năm hoặc khoảng ngày tự nhập**; xuất bảng kê theo mẫu; in ra PDF; xuất XML thành file zip. Ứng dụng làm đúng form này ở SCR-03 (chiều mua/bán, bộ lọc theo bảng mục 3).
 
 ## 7. Còn phải xác nhận khi có tài khoản/hóa đơn mua vào (T00-02)
