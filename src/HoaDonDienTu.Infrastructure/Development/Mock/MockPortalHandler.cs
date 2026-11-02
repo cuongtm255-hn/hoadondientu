@@ -57,6 +57,9 @@ namespace HoaDonDienTu.Infrastructure.Development.Mock
         /// <summary>Trả về thân phản hồi tra cứu không phải JSON.</summary>
         public bool MalformedSearchResponse { get; set; }
 
+        /// <summary>Hóa đơn có số này được xuất ra zip mà <c>invoice.xml</c> bên trong bị hỏng (XML không đọc được).</summary>
+        public string CorruptXmlForInvoiceNumber { get; set; }
+
         /// <summary>Trả về thân phản hồi xuất XML không phải file zip.</summary>
         public bool MalformedExportResponse { get; set; }
 
@@ -240,7 +243,9 @@ namespace HoaDonDienTu.Infrastructure.Development.Mock
             var record = FindByKey(query, _config.Download.Parameters, taxCode);
             if (record == null) return Error(HttpStatusCode.NotFound, "invoice not found");
 
-            var bytes = MalformedExportResponse ? Encoding.UTF8.GetBytes("not a zip") : MockInvoiceDataset.BuildExportZip(record);
+            var bytes = MalformedExportResponse ? Encoding.UTF8.GetBytes("not a zip")
+                : record.Dto.InvoiceNumber == CorruptXmlForInvoiceNumber ? MockInvoiceDataset.BuildExportZip(record, Encoding.UTF8.GetBytes("<HDon><broken>"))
+                : MockInvoiceDataset.BuildExportZip(record);
             var response = new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(bytes) };
             response.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/zip");
             return response;

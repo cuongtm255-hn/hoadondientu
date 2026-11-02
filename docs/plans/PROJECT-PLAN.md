@@ -97,7 +97,7 @@ Mỗi phase kết thúc khi đạt đủ **tiêu chí thoát**; không bắt đ�
 | T01-16 | Thay development adapter bằng production login adapter | [DD-01](../detail-design/DD-01-APP-SHELL-LOGIN.md#21-theo-dõi-tiến-độ-implement) | 🟡 (Release chạy được; đăng nhập cổng Thuế chờ G-01, G-02) |
 | T04-01…T04-09 | Chia kỳ, SCR-03, bộ lọc theo tham số thật của cổng | [DD-04](../detail-design/DD-04-PERIOD-DOWNLOAD-CONFIG.md#7-theo-dõi-tiến-độ-implement) | ✅ (T04-07 🟡 chờ DD-05) |
 | T05-01…T05-11 | Orchestrator, checkpoint, SCR-04, API client | [DD-05](../detail-design/DD-05-DOWNLOAD-ENGINE.md#8-theo-dõi-tiến-độ-implement) | 🟡 (engine + test xong; SCR-04, SQLite, nối vào ứng dụng còn lại) |
-| T06-01…T06-09 | Chuẩn hóa, lưu XML, phiên bản hóa, toàn vẹn | [DD-06](../detail-design/DD-06-INVOICE-STORAGE.md#9-theo-dõi-tiến-độ-implement) | ⬜ |
+| T06-01…T06-09 | Chuẩn hóa, lưu XML, phiên bản hóa, toàn vẹn | [DD-06](../detail-design/DD-06-INVOICE-STORAGE.md#9-theo-dõi-tiến-độ-implement) | 🟡 (T06-01, 04 xong; T06-05/08/09 một phần; SQLite chờ G-08) |
 
 ### Phase 4 — Kho hóa đơn, chi tiết và trình xem
 
@@ -144,7 +144,7 @@ Số task lấy từ bảng theo dõi trong từng DD (cập nhật khi đổi t
 | FT-04 Licence | [DD-03](../detail-design/DD-03-LICENSING.md) | 2 | 8 | 5 | 3 | 0 | Lõi + SCR-12 + HTTP client + nạp cấu hình xong; khóa/hợp đồng thật chờ G-06 |
 | FT-05 Chọn kỳ | [DD-04](../detail-design/DD-04-PERIOD-DOWNLOAD-CONFIG.md) | 3 | 9 | 8 | 1 | 0 | T04-07 chờ DD-05; bộ lọc bán ra khớp tham số thật, mua vào ⚠ |
 | FT-06 Hàng đợi tải | [DD-05](../detail-design/DD-05-DOWNLOAD-ENGINE.md) | 3 | 11 | 4 | 5 | 1 | Engine + client thật (bán ra) xong; thiếu SCR-04, SQLite (G-08), nối vào ứng dụng; T05-04 chờ G-05 |
-| FT-07 Lưu trữ | [DD-06](../detail-design/DD-06-INVOICE-STORAGE.md) | 3 (T06-02 sớm ở 2) | 9 | 0 | 0 | 1 | Chờ G-08 (SQLite) |
+| FT-07 Lưu trữ | [DD-06](../detail-design/DD-06-INVOICE-STORAGE.md) | 3 (T06-02 sớm ở 2) | 9 | 2 | 3 | 1 | Lõi lưu trữ + kho file thật xong; metadata trong bộ nhớ, chờ G-08 (SQLite) |
 | FT-08 Kho hóa đơn | [DD-07](../detail-design/DD-07-INVOICE-ARCHIVE.md) | 4 | 9 | 0 | 0 | 0 | |
 | FT-09 Chi tiết/viewer | [DD-08](../detail-design/DD-08-INVOICE-DETAIL-VIEWER.md) | 4 | 8 | 0 | 0 | 1 | Chờ G-03, G-09 |
 | FT-10 Xuất | [DD-09](../detail-design/DD-09-EXPORT.md) | 5 | 7 | 1 | 0 | 1 | Mẫu Excel đã đối chiếu (T09-02); T09-03 chờ G-09 |
@@ -183,3 +183,4 @@ G-03/G-04/G-09 chặn tương ứng T08-05, T09-02/03
 | 01/11/2026 | Thêm hợp đồng API cổng Thuế dạng cấu hình + cổng giả ([ADR 0001](../decisions/0001-portal-api-contract.md), [api-samples](../api-samples/README.md)): gỡ chặn T04-06, T06-04; T05-06 🟡 |
 | 01/11/2026 | Đồng bộ sau khi implement DD-01 (T01-01…T01-15, T01-17): 15/17 task xong; xem [ghi chú bàn giao](../progress/2026-11-01-phase1-foundation.md) |
 | 01/11/2026 | **Đối chiếu API cổng Thuế thật** (đăng nhập, tra cứu bán ra, chi tiết, xuất XML zip, xuất Excel; `spec.xlsx`, mẫu bảng kê, `invoice.zip`): sửa cấu hình/client/cổng giả theo hình dạng thật (RSQL `search`, `datas/total/state`, khóa tổng hợp, zip, JWT), bỏ các biến thể giả định, thêm `PortalToken`/`PortalAuthCapture`, bộ lọc SCR-03 theo đúng tham số (thêm CCCD, dropdown mã thật, validator). G-02/G-04 đóng một phần; còn mua vào, `state`, 401/429 thật. Cập nhật DD-00/01/04/05/06/07/08/09, [ADR 0001](../decisions/0001-portal-api-contract.md), [api-samples](../api-samples/README.md) |
+| 02/11/2026 | DD-06: lõi lưu trữ (domain, normalizer, `InvoiceStorageService`, kho file atomic) + tích hợp engine tải trên cổng giả; metadata còn trong bộ nhớ chờ SQLite |

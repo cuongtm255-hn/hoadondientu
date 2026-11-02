@@ -129,15 +129,15 @@ Trạng thái: ⬜ Chưa bắt đầu · 🟡 Đang làm · ✅ Hoàn thành · 
 
 | ID | Công việc | Lớp | Phụ thuộc | Trạng thái | PR/Commit | Ghi chú |
 |---|---|---|---|---|---|---|
-| T06-01 | Domain: `NormalizedInvoice`, `BusinessKey`, trạng thái/kết quả kiểm tra, `InvoiceFileNamer` | Domain | T01-02 | ⬜ | | |
+| T06-01 | Domain: `NormalizedInvoice`, `BusinessKey`, trạng thái/kết quả kiểm tra, `InvoiceFileNamer` | Domain | T01-02 | ✅ | | `NormalizedInvoice`, `InvoiceStatus`/`InvoiceCheckResult` (+ `InvoiceCodes`), `BusinessKey` (khóa bốn trường + chiều, bỏ số 0 đầu), `InvoiceFileNamer` (tên + thư mục + hậu tố + giới hạn đường dẫn) ở Domain; 31 test |
 | T06-02 | Schema + `CompanyDatabaseInitializer` + `SchemaVersionReader` + migration framework | Infra | G-08 | ⛔ | | Chờ chọn SQLite provider |
 | T06-03 | Repository `Invoice`/`InvoiceVersion`/`FileAsset` + unit-of-work factory | Infra | T06-02 | ⬜ | | |
-| T06-04 | `IInvoiceNormalizer` + mapping từ DTO cổng | Application/Infra | G-02 | ⬜ | | Hết chặn: đầu vào là `PortalInvoiceDto` (19 trường + `BuyerIdNumber`) đã khớp mẫu thật; xem mục 5.1 về khóa nghiệp vụ, múi giờ và người mua cá nhân |
-| T06-05 | `InvoiceStorageService.UpsertAsync` (file tạm, hash, phiên bản hóa) | Application | T06-01, T06-03 | ⬜ | | |
+| T06-04 | `IInvoiceNormalizer` + mapping từ DTO cổng | Application/Infra | G-02 | ✅ | | `IInvoiceNormalizer`/`InvoiceNormalizer` từ `PortalInvoiceDto` (đã khớp mẫu thật): làm sạch text, giữ giá trị nguồn của mã |
+| T06-05 | `InvoiceStorageService.UpsertAsync` (file tạm, hash, phiên bản hóa) | Application | T06-01, T06-03 | 🟡 | | `InvoiceStorageService : IInvoiceStore` đủ quy trình mục 6 (chuẩn hóa → kiểm XML `DtdProcessing.Prohibit` → SHA-256 → khóa chống trùng → file tạm → đổi tên atomic → metadata; trùng hash chỉ cập nhật LastSeen, khác hash tạo phiên bản mới giữ bản cũ; lỗi thì dọn file). `FileSystemInvoiceFileStore` ghi thật ra đĩa. Metadata mới ở `InMemoryInvoiceRepository` — chờ SQLite (T06-02/03, G-08) |
 | T06-06 | `IFileIntegrityChecker` + quét file mồ côi | Application | T06-05 | ⬜ | | |
 | T06-07 | Tạo cấu trúc thư mục kho + kiểm tra quyền/dung lượng (`CompanyStorageValidator`) | Infra | T02-03 | ⬜ | | Dùng chung DD-02 |
-| T06-08 | Unit test (mục 8.1) | Tests | T06-01..T06-05 | ⬜ | | |
-| T06-09 | Integration test (mục 8.2) | Tests | T06-05..T06-07 | ⬜ | | |
+| T06-08 | Unit test (mục 8.1) | Tests | T06-01..T06-05 | 🟡 | | 40 test: Domain (31) + `InvoiceStorageServiceTests` (23: mới/trùng/phiên bản, XML hỏng/DTD, đường dẫn dài, lỗi ghi, guard MST/kho). Bổ sung khi có repository SQLite |
+| T06-09 | Integration test (mục 8.2) | Tests | T06-05..T06-07 | 🟡 | | 12 integration test (`InvoiceStorageTests`): kho file thật (atomic, không ghi đè, dọn tạm), XML thật của cổng lưu nguyên byte + SHA-256, engine tải trên cổng giả ghi file vào thư mục MST (một tháng, 120 hóa đơn nhiều trang, tải lại không trùng, đổi nội dung → v2, zip hỏng, một hóa đơn bị từ chối). Chưa có SQLite/hết dung lượng thật |
 
 ### 9.2 Nhật ký tiến độ
 

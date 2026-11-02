@@ -289,6 +289,13 @@ namespace HoaDonDienTu.Application.Downloads
                             segment.LastError = Describe(ex);
                             await EventAsync(session, segment, DownloadEventLevel.Error, "INVOICE_FAILED", segment.LastError).ConfigureAwait(false);
                         }
+                        catch (HoaDonDienTu.Application.Invoices.InvoiceStorageException ex)
+                        {
+                            // XML hỏng hoặc đường dẫn quá dài: chỉ hóa đơn này bị từ chối; đoạn sẽ ở trạng thái lỗi để xem lại (FR-STORE-010).
+                            segment.ErrorCount++;
+                            segment.LastError = ex.Message;
+                            await EventAsync(session, segment, DownloadEventLevel.Error, "INVOICE_REJECTED", ex.Message).ConfigureAwait(false);
+                        }
                         catch (IOException ex)
                         {
                             segment.LastError = "Không ghi được vào kho";

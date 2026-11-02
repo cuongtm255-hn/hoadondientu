@@ -239,13 +239,13 @@ namespace HoaDonDienTu.Infrastructure.Development.Mock
         /// File zip giống phản hồi xuất XML của cổng: <c>invoice.xml</c> kèm trang xem <c>invoice.html</c> và <c>details.js</c>.
         /// Engine tải chỉ được lấy đúng <c>invoice.xml</c>.
         /// </summary>
-        public static byte[] BuildExportZip(MockInvoiceRecord record)
+        public static byte[] BuildExportZip(MockInvoiceRecord record, byte[] xmlOverride = null)
         {
             using (var stream = new System.IO.MemoryStream())
             {
                 using (var zip = new System.IO.Compression.ZipArchive(stream, System.IO.Compression.ZipArchiveMode.Create, true))
                 {
-                    Add(zip, "invoice.xml", BuildXml(record));
+                    Add(zip, "invoice.xml", xmlOverride ?? BuildXml(record));
                     Add(zip, "invoice.html", Encoding.UTF8.GetBytes("<html><body>MOCK VIEWER</body></html>"));
                     Add(zip, "details.js", Encoding.UTF8.GetBytes("// mock"));
                 }
