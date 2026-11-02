@@ -308,7 +308,7 @@ namespace HoaDonDienTu.WinForms.Download
             return new SegmentRowViewModel
             {
                 Id = s.Id,
-                Month = s.Range.Month.ToString("00", CultureInfo.InvariantCulture) + "/" + s.Range.Year,
+                Month = s.Range.Month.ToString("00", CultureInfo.InvariantCulture) + "/" + s.Range.Year + (string.IsNullOrEmpty(s.CheckResultCode) ? string.Empty : " · ttxly " + s.CheckResultCode),
                 Range = s.Range.Start.ToString("dd/MM", CultureInfo.InvariantCulture) + "–" + s.Range.End.ToString("dd/MM", CultureInfo.InvariantCulture),
                 StateText = SegmentStateText(s),
                 Pages = started ? (s.PageIndex + (s.State == DownloadSegmentState.Completed || s.State == DownloadSegmentState.Failed ? 0 : 1)).ToString(CultureInfo.InvariantCulture) : "—",

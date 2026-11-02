@@ -38,18 +38,7 @@ namespace HoaDonDienTu.Application.Downloads
         private static InvoiceSearchFilter Copy(InvoiceSearchFilter source)
         {
             // Sao chép để thay đổi bộ lọc trên UI sau đó không làm đổi kế hoạch đã tạo.
-            var f = source ?? new InvoiceSearchFilter();
-            return new InvoiceSearchFilter
-            {
-                CounterpartyTaxCode = f.CounterpartyTaxCode,
-                BuyerIdNumber = f.BuyerIdNumber,
-                StatusCode = f.StatusCode,
-                CheckResultCode = f.CheckResultCode,
-                InvoiceNumber = f.InvoiceNumber,
-                FormSymbol = f.FormSymbol,
-                InvoiceSymbol = f.InvoiceSymbol,
-                ProxyInvoice = f.ProxyInvoice
-            };
+            return (source ?? new InvoiceSearchFilter()).Clone();
         }
     }
 

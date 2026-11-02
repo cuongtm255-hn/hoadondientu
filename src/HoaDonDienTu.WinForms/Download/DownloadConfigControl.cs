@@ -186,6 +186,7 @@ namespace HoaDonDienTu.WinForms.Download
 
         private static void Fill(KryptonComboBox combo, IList<PortalOption> options)
         {
+            combo.Items.Clear();
             foreach (var option in options) combo.Items.Add(option);
             combo.SelectedIndex = 0;
         }
@@ -200,6 +201,17 @@ namespace HoaDonDienTu.WinForms.Download
         public void ShowDirectionLabels(InvoiceDirection direction)
         {
             lblCounterparty.Values.Text = direction == InvoiceDirection.Purchase ? "MST người bán" : "MST người mua";
+
+            // Mua vào chỉ có kết quả kiểm tra 5/6/8 (không có Tất cả); đổi chiều thì nạp lại danh sách và về mục đầu.
+            _suppress = true;
+            try
+            {
+                Fill(cboCheckResult, PortalOptions.CheckResultsFor(direction));
+            }
+            finally
+            {
+                _suppress = false;
+            }
         }
 
         public void ShowFilterMessage(string message)

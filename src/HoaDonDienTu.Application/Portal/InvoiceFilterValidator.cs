@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
+using HoaDonDienTu.Domain.Invoices;
 
 namespace HoaDonDienTu.Application.Portal
 {
@@ -15,7 +16,14 @@ namespace HoaDonDienTu.Application.Portal
         private static readonly Regex Number = new Regex(@"^\d{1,8}$", RegexOptions.Compiled);
         private static readonly Regex Symbol = new Regex(@"^[A-Za-z0-9]{1,8}$", RegexOptions.Compiled);
 
+        /// <summary>Kiểm tra theo bộ giá trị đầy đủ của form bán ra (kết quả kiểm tra 0 đến 8).</summary>
         public static IList<string> Validate(InvoiceSearchFilter filter)
+        {
+            return Validate(filter, InvoiceDirection.Sold);
+        }
+
+        /// <param name="direction">Chiều tra cứu: mua vào chỉ nhận kết quả kiểm tra 5, 6, 8.</param>
+        public static IList<string> Validate(InvoiceSearchFilter filter, InvoiceDirection direction)
         {
             var errors = new List<string>();
             if (filter == null) return errors;
@@ -45,7 +53,7 @@ namespace HoaDonDienTu.Application.Portal
                 errors.Add("Trạng thái hóa đơn không hợp lệ.");
             }
 
-            if (Has(filter.CheckResultCode) && !PortalOptions.CheckResults.Any(o => o.Code == filter.CheckResultCode.Trim()))
+            if (Has(filter.CheckResultCode) && !PortalOptions.CheckResultsFor(direction).Any(o => o.Code == filter.CheckResultCode.Trim()))
             {
                 errors.Add("Kết quả kiểm tra không hợp lệ.");
             }

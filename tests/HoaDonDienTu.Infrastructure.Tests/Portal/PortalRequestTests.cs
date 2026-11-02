@@ -79,7 +79,7 @@ namespace HoaDonDienTu.Infrastructure.Tests.Portal
         }
 
         [Test]
-        public void Rsql_Purchase_UsesSellerTaxCodeField_AndHasNoIdNumber()
+        public void Rsql_Purchase_UsesSellerTaxCodeField_AndSendsBuyerIdNumber()
         {
             var filter = new InvoiceSearchFilter { CounterpartyTaxCode = "0100100001", BuyerIdNumber = "036402421225" };
 
@@ -87,7 +87,22 @@ namespace HoaDonDienTu.Infrastructure.Tests.Portal
 
             Assert.That(rsql, Does.Contain("nbmst==0100100001"));
             Assert.That(rsql, Does.Not.Contain("nmmst"));
-            Assert.That(rsql, Does.Not.Contain("nmcmnd"), "CCCD người mua chỉ có ở tra cứu bán ra");
+            Assert.That(rsql, Does.EndWith("nmcmnd==036402421225"), "CCCD người mua có ở cả mua vào");
+        }
+
+        [Test]
+        public void Rsql_Purchase_MatchesTheRealSampleOfSection4()
+        {
+            var filter = new InvoiceSearchFilter
+            {
+                CounterpartyTaxCode = "1234567890", StatusCode = "1", CheckResultCode = "6", FormSymbol = "8", InvoiceNumber = "123",
+                InvoiceSymbol = "321", ProxyInvoice = true, BuyerIdNumber = "999999999999"
+            };
+
+            var rsql = PortalRequestBuilder.BuildRsql(_config, new InvoiceSearchRequest(InvoiceDirection.Purchase, new DateTime(2026, 10, 2), new DateTime(2026, 11, 1)) { Filter = filter });
+
+            Assert.That(rsql, Is.EqualTo(
+                "tdlap=ge=02/10/2026T00:00:00;tdlap=le=01/11/2026T23:59:59;nbmst==1234567890;tthai==1;ttxly==6;khmshdon==8;shdon==123;khhdon==321;unhiem==1;nmcmnd==999999999999"));
         }
 
         [Test]

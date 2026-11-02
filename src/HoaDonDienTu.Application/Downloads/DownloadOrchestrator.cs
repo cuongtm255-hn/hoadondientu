@@ -133,10 +133,45 @@ namespace HoaDonDienTu.Application.Downloads
             var session = new DownloadSession(
                 Guid.NewGuid(), company.CompanyId, company.TaxCode, company.StorageRoot, plan.Direction, plan.Period, plan.Filter,
                 _clock.UtcNow, Environment.UserName);
-            var segments = plan.Segments.Select((range, index) => new DownloadSegment(Guid.NewGuid(), session.Id, index, range)).ToList();
+            var segments = ExpandSegments(session, plan);
             await _repository.CreateAsync(session, segments, cancellationToken).ConfigureAwait(false);
             await EventAsync(session, null, DownloadEventLevel.Info, "SESSION_CREATED", "Tạo phiên tải gồm " + segments.Count + " đoạn.").ConfigureAwait(false);
             return session.Id;
+        }
+
+        /// <summary>
+        /// Mỗi tháng một đoạn; riêng mua vào không chọn kết quả kiểm tra thì mỗi tháng ba đoạn (<c>ttxly</c> 5, 6, 8) vì cổng không có "Tất cả" (T05-12).
+        /// </summary>
+        private static List<DownloadSegment> ExpandSegments(DownloadSession session, DownloadPlan plan)
+        {
+            var passes = string.IsNullOrWhiteSpace(plan.Filter.CheckResultCode)
+                ? PortalOptions.CheckResultPasses(plan.Direction)
+                : new List<string>();
+            var segments = new List<DownloadSegment>();
+            foreach (var range in plan.Segments)
+            {
+                if (passes.Count == 0)
+                {
+                    segments.Add(new DownloadSegment(Guid.NewGuid(), session.Id, segments.Count, range));
+                    continue;
+                }
+
+                foreach (var code in passes)
+                {
+                    segments.Add(new DownloadSegment(Guid.NewGuid(), session.Id, segments.Count, range) { CheckResultCode = code });
+                }
+            }
+
+            return segments;
+        }
+
+        /// <summary>Bộ lọc của phiên, thay mã kết quả kiểm tra bằng mã riêng của đoạn khi có.</summary>
+        private static InvoiceSearchFilter FilterFor(DownloadSession session, DownloadSegment segment)
+        {
+            if (string.IsNullOrEmpty(segment.CheckResultCode)) return session.Filter;
+            var filter = session.Filter.Clone();
+            filter.CheckResultCode = segment.CheckResultCode;
+            return filter;
         }
 
         // ---- Chạy / tiếp tục ----
@@ -262,7 +297,7 @@ namespace HoaDonDienTu.Application.Downloads
                     await _rateLimiter.WaitAsync(ct).ConfigureAwait(false);
                     var request = new InvoiceSearchRequest(session.Direction, segment.Range.Start, segment.Range.End)
                     {
-                        Filter = session.Filter,
+                        Filter = FilterFor(session, segment),
                         Cursor = segment.Cursor
                     };
                     var page = await CallAsync(client => client.SearchAsync(request, ct), state, segment, ct).ConfigureAwait(false);
@@ -644,7 +679,7 @@ namespace HoaDonDienTu.Application.Downloads
                 state.Session.State,
                 segmentIndex,
                 segments.Count,
-                current == null ? string.Empty : current.Range.ToString(),
+                current == null ? string.Empty : current.Range + (string.IsNullOrEmpty(current.CheckResultCode) ? string.Empty : " · " + PortalOptions.CheckResultLabel(current.CheckResultCode)),
                 segments.Sum(s => s.ReceivedCount),
                 segments.Sum(s => s.XmlSavedCount),
                 segments.Sum(s => s.ErrorCount)));

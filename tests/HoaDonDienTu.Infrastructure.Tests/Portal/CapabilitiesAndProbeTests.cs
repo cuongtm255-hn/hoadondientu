@@ -26,12 +26,12 @@ namespace HoaDonDienTu.Infrastructure.Tests.Portal
         }
 
         [Test]
-        public void Capabilities_BuyerIdNumber_OnlyForSold()
+        public void Capabilities_BuyerIdNumber_ForBothDirections()
         {
             var caps = new PortalApiConfigCapabilities(PortalApiConfigDefaults.Create());
 
             Assert.That(caps.SupportsFilter(InvoiceDirection.Sold, "BuyerIdNumber"), Is.True);
-            Assert.That(caps.SupportsFilter(InvoiceDirection.Purchase, "BuyerIdNumber"), Is.False);
+            Assert.That(caps.SupportsFilter(InvoiceDirection.Purchase, "BuyerIdNumber"), Is.True, "Form mua vào cũng có CCCD người mua (mẫu thật 02/11/2026)");
         }
 
         [Test]

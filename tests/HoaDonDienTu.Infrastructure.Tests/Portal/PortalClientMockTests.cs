@@ -55,10 +55,47 @@ namespace HoaDonDienTu.Infrastructure.Tests.Portal
         [Test]
         public void Search_Purchase_ReturnsBuyerIsOwnTaxCode()
         {
-            var items = _portal.SearchAll(InvoiceDirection.Purchase, D(2026, 1, 1), D(2026, 1, 31));
+            var items = _portal.SearchAll(InvoiceDirection.Purchase, D(2026, 1, 1), D(2026, 1, 31), Granted);
 
             Assert.That(items, Is.Not.Empty);
             Assert.That(items.All(i => i.BuyerTaxCode == TestPortal.TaxCode), Is.True);
+        }
+
+        private static InvoiceSearchFilter Granted
+        {
+            get { return new InvoiceSearchFilter { CheckResultCode = "5" }; }
+        }
+
+        [Test]
+        public void Search_PurchaseWithoutCheckResult_IsRejected_LikeTheRequiredFormField()
+        {
+            var ex = Assert.Throws<PortalApiException>(() => _portal.SearchAll(InvoiceDirection.Purchase, D(2026, 1, 1), D(2026, 1, 31)));
+
+            Assert.That(ex.Kind, Is.EqualTo(PortalErrorKind.FilterRejected));
+        }
+
+        [Test]
+        public void Search_PurchaseByEachOfThePortalCheckResults_CoversTheWholeMonthExactlyOnce()
+        {
+            var from = D(2026, 7, 1);
+            var to = D(2026, 7, 31);
+            var all = new List<PortalInvoiceDto>();
+            foreach (var code in PortalOptions.CheckResultPasses(InvoiceDirection.Purchase))
+            {
+                all.AddRange(_portal.SearchAll(InvoiceDirection.Purchase, from, to, new InvoiceSearchFilter { CheckResultCode = code }));
+            }
+
+            Assert.That(all.Count, Is.EqualTo(120));
+            Assert.That(all.Select(i => i.PortalInvoiceId).Distinct().Count(), Is.EqualTo(120));
+            Assert.That(all.Select(i => i.CheckResultRaw).Distinct().OrderBy(x => x), Is.EqualTo(new[] { "5", "6", "8" }));
+        }
+
+        [Test]
+        public void Search_PurchaseAcceptsTheBuyerIdNumberFilter()
+        {
+            var items = _portal.SearchAll(InvoiceDirection.Purchase, D(2026, 1, 1), D(2026, 1, 31), new InvoiceSearchFilter { CheckResultCode = "5", BuyerIdNumber = "036402421225" });
+
+            Assert.That(items, Is.Empty, "mua vào của doanh nghiệp không có người mua cá nhân; quan trọng là cổng giả không báo lỗi bộ lọc");
         }
 
         [Test]
@@ -76,14 +113,14 @@ namespace HoaDonDienTu.Infrastructure.Tests.Portal
         [Test]
         public void Search_MultiPageMonth_FollowsStateToTheEnd_WithoutLossOrDuplicates()
         {
-            var expected = _portal.Dataset.Query(InvoiceDirection.Purchase, D(2026, 7, 1), D(2026, 7, 31));
-            Assert.That(expected.Count, Is.EqualTo(120));
+            var expected = _portal.Dataset.Query(InvoiceDirection.Purchase, D(2026, 7, 1), D(2026, 7, 31)).Where(r => r.Dto.CheckResultRaw == "5").ToList();
+            Assert.That(expected.Count, Is.GreaterThan(50), "tháng nhiều trang");
 
-            var items = _portal.SearchAll(InvoiceDirection.Purchase, D(2026, 7, 1), D(2026, 7, 31), null, 50);
+            var items = _portal.SearchAll(InvoiceDirection.Purchase, D(2026, 7, 1), D(2026, 7, 31), Granted, 50);
 
-            Assert.That(items.Count, Is.EqualTo(120));
-            Assert.That(_portal.Pages, Is.EqualTo(3));
-            Assert.That(items.Select(i => i.PortalInvoiceId).Distinct().Count(), Is.EqualTo(120));
+            Assert.That(items.Count, Is.EqualTo(expected.Count));
+            Assert.That(_portal.Pages, Is.EqualTo((expected.Count + 49) / 50));
+            Assert.That(items.Select(i => i.PortalInvoiceId).Distinct().Count(), Is.EqualTo(expected.Count));
         }
 
         [Test]
@@ -91,10 +128,12 @@ namespace HoaDonDienTu.Infrastructure.Tests.Portal
         {
             _portal.Handler.MaxPageSize = 10;
 
-            var items = _portal.SearchAll(InvoiceDirection.Purchase, D(2026, 7, 1), D(2026, 7, 31), null, 1000);
+            var expected = _portal.Dataset.Query(InvoiceDirection.Purchase, D(2026, 7, 1), D(2026, 7, 31)).Count(r => r.Dto.CheckResultRaw == "5");
 
-            Assert.That(items.Count, Is.EqualTo(120));
-            Assert.That(_portal.Pages, Is.EqualTo(12));
+            var items = _portal.SearchAll(InvoiceDirection.Purchase, D(2026, 7, 1), D(2026, 7, 31), Granted, 1000);
+
+            Assert.That(items.Count, Is.EqualTo(expected));
+            Assert.That(_portal.Pages, Is.EqualTo((expected + 9) / 10));
         }
 
         [Test]
@@ -108,7 +147,7 @@ namespace HoaDonDienTu.Infrastructure.Tests.Portal
         [Test]
         public void Search_StatusAndCheckResultFilters_UseThePortalCodes()
         {
-            var cancelled = _portal.SearchAll(InvoiceDirection.Purchase, D(2026, 7, 1), D(2026, 7, 31), new InvoiceSearchFilter { StatusCode = "6" });
+            var cancelled = _portal.SearchAll(InvoiceDirection.Purchase, D(2026, 7, 1), D(2026, 7, 31), new InvoiceSearchFilter { StatusCode = "6", CheckResultCode = "5" });
             var granted = _portal.SearchAll(InvoiceDirection.Purchase, D(2026, 7, 1), D(2026, 7, 31), new InvoiceSearchFilter { CheckResultCode = "5" });
 
             Assert.That(cancelled, Is.Not.Empty);
@@ -146,7 +185,7 @@ namespace HoaDonDienTu.Infrastructure.Tests.Portal
         [Test]
         public void Search_ProxyCheckbox_OnlyReturnsProxyInvoices()
         {
-            var items = _portal.SearchAll(InvoiceDirection.Purchase, D(2026, 7, 1), D(2026, 7, 31), new InvoiceSearchFilter { ProxyInvoice = true });
+            var items = _portal.SearchAll(InvoiceDirection.Purchase, D(2026, 7, 1), D(2026, 7, 31), new InvoiceSearchFilter { ProxyInvoice = true, CheckResultCode = "5" });
             var proxyIds = _portal.Dataset.All.Where(r => r.Proxy).Select(r => r.Dto.PortalInvoiceId).ToList();
 
             Assert.That(items, Is.Not.Empty);

@@ -127,7 +127,8 @@ namespace HoaDonDienTu.Application.Tests
 
         private async Task<Guid> CreateAsync(PeriodSpec period)
         {
-            var plan = DownloadPlan.Create(InvoiceDirection.Purchase, period, new InvoiceSearchFilter(), new PeriodSplitter());
+            // Mua vào bắt buộc một kết quả kiểm tra; chọn sẵn "5" để mỗi tháng là một đoạn (nhiều lượt có test riêng).
+            var plan = DownloadPlan.Create(InvoiceDirection.Purchase, period, new InvoiceSearchFilter { CheckResultCode = "5" }, new PeriodSplitter());
             return await _orchestrator.CreateSessionAsync(plan, CancellationToken.None);
         }
 
@@ -237,6 +238,72 @@ namespace HoaDonDienTu.Application.Tests
             Assert.That(_client.SearchRanges, Is.EqualTo(new[] { "10-01..10-31", "11-01..11-30", "12-01..12-31" }));
             Assert.That(_client.MaxConcurrentCalls, Is.EqualTo(1));
             Assert.That((await SessionAsync(id)).State, Is.EqualTo(DownloadSessionState.Completed));
+        }
+
+        [Test]
+        public async Task Create_PurchaseWithoutCheckResult_GetsThreePassesPerMonth_InOrder()
+        {
+            var plan = DownloadPlan.Create(InvoiceDirection.Purchase, PeriodSpec.ForQuarter(2026, 4), new InvoiceSearchFilter(), new PeriodSplitter());
+
+            var id = await _orchestrator.CreateSessionAsync(plan, CancellationToken.None);
+
+            var segments = await SegmentsAsync(id);
+            Assert.That(segments.Count, Is.EqualTo(9));
+            Assert.That(segments.Select(s => s.Index), Is.EqualTo(Enumerable.Range(0, 9)));
+            Assert.That(segments.Select(s => s.CheckResultCode), Is.EqualTo(new[] { "5", "6", "8", "5", "6", "8", "5", "6", "8" }));
+            Assert.That(segments.Take(3).Select(s => s.Range.Month).Distinct().Single(), Is.EqualTo(10));
+            Assert.That((await SessionAsync(id)).Filter.CheckResultCode, Is.Null.Or.Empty, "bộ lọc của phiên giữ nguyên ý người dùng");
+        }
+
+        [Test]
+        public async Task Create_PurchaseWithChosenCheckResult_StaysOneSegmentPerMonth()
+        {
+            var plan = DownloadPlan.Create(InvoiceDirection.Purchase, PeriodSpec.ForQuarter(2026, 4), new InvoiceSearchFilter { CheckResultCode = "8" }, new PeriodSplitter());
+
+            var segments = await SegmentsAsync(await _orchestrator.CreateSessionAsync(plan, CancellationToken.None));
+
+            Assert.That(segments.Count, Is.EqualTo(3));
+            Assert.That(segments.All(s => s.CheckResultCode == null), Is.True);
+        }
+
+        [Test]
+        public async Task Create_SoldWithoutCheckResult_StaysOneSegmentPerMonth_BecausePortalHasAll()
+        {
+            var plan = DownloadPlan.Create(InvoiceDirection.Sold, PeriodSpec.ForQuarter(2026, 4), new InvoiceSearchFilter(), new PeriodSplitter());
+
+            var segments = await SegmentsAsync(await _orchestrator.CreateSessionAsync(plan, CancellationToken.None));
+
+            Assert.That(segments.Count, Is.EqualTo(3));
+            Assert.That(segments.All(s => s.CheckResultCode == null), Is.True);
+        }
+
+        [Test]
+        public async Task Run_PurchaseThreePasses_SearchesEachCheckResultAndSavesEveryInvoiceOnce()
+        {
+            _client.AddPage("2026-10-01", null, Invoices("A-", 2), null);
+            var plan = DownloadPlan.Create(InvoiceDirection.Purchase, PeriodSpec.ForMonth(2026, 10), new InvoiceSearchFilter(), new PeriodSplitter());
+            var id = await _orchestrator.CreateSessionAsync(plan, CancellationToken.None);
+
+            await _orchestrator.RunAsync(id, null, CancellationToken.None);
+
+            Assert.That(_client.SearchCheckResults, Is.EqualTo(new[] { "5", "6", "8" }));
+            Assert.That((await SessionAsync(id)).State, Is.EqualTo(DownloadSessionState.Completed));
+            var segments = await SegmentsAsync(id);
+            Assert.That(segments.All(s => s.State == DownloadSegmentState.Completed), Is.True);
+        }
+
+        [Test]
+        public async Task Run_Purchase_LabelsTheProgressWithTheCheckResult()
+        {
+            var plan = DownloadPlan.Create(InvoiceDirection.Purchase, PeriodSpec.ForMonth(2026, 10), new InvoiceSearchFilter(), new PeriodSplitter());
+            var id = await _orchestrator.CreateSessionAsync(plan, CancellationToken.None);
+
+            await _orchestrator.RunAsync(id, _progress, CancellationToken.None);
+
+            var labels = _progress.Items.Select(p => p.CurrentSegment).ToList();
+
+            Assert.That(labels.Any(l => l.Contains("Đã cấp mã hóa đơn")), Is.True);
+            Assert.That(labels.Any(l => l.Contains("máy tính tiền")), Is.True);
         }
 
         [Test]
@@ -757,6 +824,7 @@ namespace HoaDonDienTu.Application.Tests
 
             public List<string> SearchCursors = new List<string>();
             public List<string> SearchRanges = new List<string>();
+            public List<string> SearchCheckResults = new List<string>();
             public List<string> XmlRequests = new List<string>();
             public int MaxConcurrentCalls;
             public Task SearchGate;
@@ -796,6 +864,7 @@ namespace HoaDonDienTu.Application.Tests
                 {
                     if (SearchGate != null) await SearchGate;
                     SearchCursors.Add(request.Cursor);
+                    SearchCheckResults.Add(request.Filter == null ? null : request.Filter.CheckResultCode);
                     SearchRanges.Add(request.From.ToString("MM-dd") + ".." + request.To.ToString("MM-dd"));
                     var key = request.From.ToString("yyyy-MM-dd");
                     Queue<PortalApiException> failures;

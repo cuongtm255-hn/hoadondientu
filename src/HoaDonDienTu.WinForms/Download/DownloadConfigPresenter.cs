@@ -128,7 +128,7 @@ namespace HoaDonDienTu.WinForms.Download
             _view.ShowPeriodMessages(validation.Errors, validation.Warnings);
             _view.ShowPlan(validation.IsValid ? _splitter.Split(spec) : new List<DateSegment>());
 
-            var filterErrors = InvoiceFilterValidator.Validate(ToFilter(input));
+            var filterErrors = InvoiceFilterValidator.Validate(ToFilter(input), input.Direction);
             _view.ShowFilterMessage(string.Join(" ", filterErrors));
 
             var decision = _policy.Evaluate(validation, _storage);
@@ -193,7 +193,7 @@ namespace HoaDonDienTu.WinForms.Download
                 return;
             }
 
-            if (InvoiceFilterValidator.Validate(ToFilter(input)).Count > 0)
+            if (InvoiceFilterValidator.Validate(ToFilter(input), input.Direction).Count > 0)
             {
                 Refresh();
                 return;
@@ -238,7 +238,7 @@ namespace HoaDonDienTu.WinForms.Download
                 CounterpartyTaxCode = Clean(input.CounterpartyTaxCode),
 
                 // CCCD người mua chỉ có ở tra cứu bán ra; ô bị ẩn ở chiều mua vào nên không để giá trị cũ lọt vào kế hoạch.
-                BuyerIdNumber = input.Direction == InvoiceDirection.Sold ? Clean(input.BuyerIdNumber) : null,
+                BuyerIdNumber = Clean(input.BuyerIdNumber),
                 InvoiceNumber = Clean(input.InvoiceNumber),
                 StatusCode = Clean(input.StatusCode),
                 CheckResultCode = Clean(input.CheckResultCode),

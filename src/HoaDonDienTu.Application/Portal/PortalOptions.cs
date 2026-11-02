@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using HoaDonDienTu.Domain.Invoices;
 
 namespace HoaDonDienTu.Application.Portal
 {
@@ -55,6 +56,35 @@ namespace HoaDonDienTu.Application.Portal
             new PortalOption("7", "Đã kiểm tra định kỳ HĐĐT không có mã"),
             new PortalOption("8", "Cục Thuế đã nhận hóa đơn có mã khởi tạo từ máy tính tiền")
         }.ToList().AsReadOnly();
+
+        /// <summary>
+        /// Kết quả kiểm tra của form tra cứu <b>mua vào</b> (sample-api-web.md mục 4.5): chỉ 5, 6, 8 và bắt buộc chọn một, không có "Tất cả".
+        /// Mục đầu (mã rỗng) là lựa chọn của ứng dụng: tải lần lượt cả ba mã rồi gộp, vì cổng không có "Tất cả" cho chiều này.
+        /// </summary>
+        public static readonly IList<PortalOption> PurchaseCheckResults = new List<PortalOption>
+        {
+            new PortalOption(string.Empty, "Cả 3 loại (tải lần lượt)"),
+            new PortalOption("5", "Đã cấp mã hóa đơn"),
+            new PortalOption("6", "Cục Thuế đã nhận không mã"),
+            new PortalOption("8", "Cục Thuế đã nhận hóa đơn có mã khởi tạo từ máy tính tiền")
+        }.ToList().AsReadOnly();
+
+        /// <summary>Danh sách Kết quả kiểm tra của dropdown tra cứu theo chiều.</summary>
+        public static IList<PortalOption> CheckResultsFor(InvoiceDirection direction)
+        {
+            return direction == InvoiceDirection.Purchase ? PurchaseCheckResults : CheckResults;
+        }
+
+        /// <summary>
+        /// Các mã <c>ttxly</c> phải gọi lần lượt khi người dùng không chọn kết quả kiểm tra. Rỗng nghĩa là cổng nhận "Tất cả"
+        /// (bán ra) nên chỉ cần một lượt không có điều kiện này.
+        /// </summary>
+        public static IList<string> CheckResultPasses(InvoiceDirection direction)
+        {
+            return direction == InvoiceDirection.Purchase
+                ? PurchaseCheckResults.Where(o => o.Code.Length > 0).Select(o => o.Code).ToList().AsReadOnly()
+                : new List<string>().AsReadOnly();
+        }
 
         /// <summary>Ký hiệu mẫu số hóa đơn, tham số <c>khmshdon</c> (giá trị 1 đến 9).</summary>
         public static readonly IList<PortalOption> FormSymbols = new[] { new PortalOption(string.Empty, All) }

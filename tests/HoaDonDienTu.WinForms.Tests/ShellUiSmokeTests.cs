@@ -435,7 +435,7 @@ namespace HoaDonDienTu.WinForms.Tests
             Assert.That(WaitFor(() => ProgressMessage().Contains("Đã tải xong toàn bộ"), 90000), Is.True, ProgressMessage());
 
             var grid = Control<KryptonDataGridView>("gridSegments");
-            Assert.That(grid.Rows.Count, Is.EqualTo(12), "Năm 2026 → 12 tháng");
+            Assert.That(grid.Rows.Count, Is.EqualTo(36), "Năm 2026 mua vào → 12 tháng × 3 kết quả kiểm tra (5, 6, 8)");
             Assert.That(Control<KryptonLabel>("lblStat1Value").Values.Text, Is.EqualTo("100%"));
             Assert.That(Control<KryptonButton>("btnPause").Enabled, Is.False);
             Assert.That(Control<KryptonButton>("btnCancel").Enabled, Is.False, "Phiên đã kết thúc");

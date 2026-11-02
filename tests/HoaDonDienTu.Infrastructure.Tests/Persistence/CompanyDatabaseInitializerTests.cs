@@ -222,7 +222,7 @@ namespace HoaDonDienTu.Infrastructure.Tests.Persistence
             using (var c = database.Open())
             {
                 SqliteDatabase.Execute(c, "INSERT INTO download_session VALUES ('s1','c1','0101234567','D:\\Kho',1,'{}','{}',1,'2026-01-01T00:00:00Z',NULL,NULL,'u')");
-                SqliteDatabase.Execute(c, "INSERT INTO download_segment VALUES ('g1','s1',0,'2026-01-01','2026-01-31',0,NULL,0,0,0,0,0,0,NULL)");
+                SqliteDatabase.Execute(c, "INSERT INTO download_segment VALUES ('g1','s1',0,'2026-01-01','2026-01-31',0,NULL,0,0,0,0,0,0,NULL,'5')");
                 SqliteDatabase.Execute(c, "INSERT INTO download_event VALUES ('e1','s1','g1','2026-01-01T00:00:00Z',0,'X','m')");
 
                 SqliteDatabase.Execute(c, "DELETE FROM download_session WHERE id='s1'");

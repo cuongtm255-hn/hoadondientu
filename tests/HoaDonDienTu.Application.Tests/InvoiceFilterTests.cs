@@ -60,6 +60,29 @@ namespace HoaDonDienTu.Application.Tests
             Assert.That(InvoiceFilterValidator.Validate(new InvoiceSearchFilter { InvoiceSymbol = value }).Count == 0, Is.EqualTo(valid));
         }
 
+        [TestCase("5", true)]
+        [TestCase("6", true)]
+        [TestCase("8", true)]
+        [TestCase("0", false)]
+        [TestCase("1", false)]
+        [TestCase("7", false)]
+        [TestCase("", true)]
+        public void PurchaseCheckResult_OnlyAccepts5_6_8(string code, bool valid)
+        {
+            var errors = InvoiceFilterValidator.Validate(new InvoiceSearchFilter { CheckResultCode = code }, InvoiceDirection.Purchase);
+
+            Assert.That(errors.Count == 0, Is.EqualTo(valid));
+        }
+
+        [Test]
+        public void CheckResultOptions_PurchaseHasNoAllChoice_SoldHasAllNine()
+        {
+            Assert.That(PortalOptions.CheckResultsFor(InvoiceDirection.Purchase).Select(o => o.Code).Where(c => c.Length > 0), Is.EqualTo(new[] { "5", "6", "8" }));
+            Assert.That(PortalOptions.CheckResultsFor(InvoiceDirection.Sold), Has.Count.EqualTo(10));
+            Assert.That(PortalOptions.CheckResultPasses(InvoiceDirection.Purchase), Is.EqualTo(new[] { "5", "6", "8" }));
+            Assert.That(PortalOptions.CheckResultPasses(InvoiceDirection.Sold), Is.Empty);
+        }
+
         [Test]
         public void Codes_MustBeThePortalCodes()
         {

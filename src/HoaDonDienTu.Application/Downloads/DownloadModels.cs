@@ -104,6 +104,11 @@ namespace HoaDonDienTu.Application.Downloads
         public DateSegment Range { get; private set; }
         public DownloadSegmentState State { get; private set; }
 
+        /// <summary>
+        /// Mã kết quả kiểm tra <c>ttxly</c> riêng của đoạn khi phiên phải tải lần lượt nhiều mã (mua vào, T05-12); null dùng bộ lọc của phiên.
+        /// </summary>
+        public string CheckResultCode { get; set; }
+
         /// <summary>Cursor của trang sẽ lấy tiếp; null là trang đầu.</summary>
         public string Cursor { get; set; }
 
@@ -133,6 +138,7 @@ namespace HoaDonDienTu.Application.Downloads
         {
             var copy = new DownloadSegment(Id, SessionId, Index, Range);
             copy.State = State;
+            copy.CheckResultCode = CheckResultCode;
             copy.Cursor = Cursor;
             copy.ItemOffset = ItemOffset;
             copy.PageIndex = PageIndex;

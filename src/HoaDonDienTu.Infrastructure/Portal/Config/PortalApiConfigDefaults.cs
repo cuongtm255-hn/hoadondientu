@@ -13,9 +13,9 @@ namespace HoaDonDienTu.Infrastructure.Portal.Config
             {
                 SchemaVersion = 2,
                 Verified = false,
-                Notes = "Đối chiếu thật: đăng nhập, tra cứu bán ra (tdlap/tthai/ttxly/khmshdon/shdon/khhdon/unhiem/nmmst/nmcmnd), xem chi tiết, "
-                    + "xuất XML (zip), xuất Excel. CHƯA có mẫu thật: tra cứu mua vào (đường dẫn /purchase và tên trường nbmst là suy luận), "
-                    + "trang kế tiếp qua tham số state khi tổng > size, kích thước trang tối đa, chữ ký action của mua vào.",
+                Notes = "Đối chiếu thật: đăng nhập, tra cứu bán ra (tdlap/tthai/ttxly/khmshdon/shdon/khhdon/unhiem/nmmst/nmcmnd) và mua vào (nbmst/nmcmnd, ttxly chỉ 5/6/8 và bắt buộc), xem chi tiết, "
+                    + "xuất XML (zip), xuất Excel. CHƯA có mẫu thật: tra cứu mua vào khi bỏ ttxly, "
+                    + "trang kế tiếp qua tham số state khi tổng > size, kích thước trang tối đa.",
                 BaseUrl = "https://hoadondientu.gdt.gov.vn",
                 Auth = new AuthConfig
                 {
@@ -68,6 +68,7 @@ namespace HoaDonDienTu.Infrastructure.Portal.Config
                     PurchaseFilterFields = new Dictionary<string, string>
                     {
                         { "CounterpartyTaxCode", "nbmst" },
+                        { "BuyerIdNumber", "nmcmnd" },
                         { "StatusCode", "tthai" },
                         { "CheckResultCode", "ttxly" },
                         { "InvoiceNumber", "shdon" },

@@ -52,12 +52,12 @@ namespace HoaDonDienTu.Infrastructure.Tests.Portal
         }
 
         [Test]
-        public void PurchaseFilterFields_UseSellerTaxCode_AndNoIdNumber()
+        public void PurchaseFilterFields_UseSellerTaxCode_AndBuyerIdNumber()
         {
             var map = PortalApiConfigDefaults.Create().Search.PurchaseFilterFields;
 
             Assert.That(map["CounterpartyTaxCode"], Is.EqualTo("nbmst"));
-            Assert.That(map.ContainsKey("BuyerIdNumber"), Is.False);
+            Assert.That(map["BuyerIdNumber"], Is.EqualTo("nmcmnd"));
         }
 
         [Test]

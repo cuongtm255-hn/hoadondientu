@@ -152,7 +152,7 @@ namespace HoaDonDienTu.WinForms.Tests
         }
 
         [Test]
-        public void PurchaseDirection_DropsAStaleBuyerIdNumber_FromThePlan()
+        public void PurchaseDirection_KeepsTheBuyerIdNumber_InThePlan()
         {
             _view.Input.Direction = InvoiceDirection.Purchase;
             _view.Input.BuyerIdNumber = "036402421225";
@@ -160,7 +160,20 @@ namespace HoaDonDienTu.WinForms.Tests
 
             _view.RaiseStart();
 
-            Assert.That(_starter.Plans.Single().Filter.BuyerIdNumber, Is.Null);
+            Assert.That(_starter.Plans.Single().Filter.BuyerIdNumber, Is.EqualTo("036402421225"));
+        }
+
+        [Test]
+        public void PurchaseDirection_RejectsASoldOnlyCheckResult_ButAcceptsThePortalOnes()
+        {
+            _view.Input.Direction = InvoiceDirection.Purchase;
+            _view.Input.CheckResultCode = "0";
+            _view.RaiseInputChanged();
+            Assert.That(_view.FilterMessage, Is.Not.Empty, "mua vào chỉ nhận 5, 6, 8");
+
+            _view.Input.CheckResultCode = "6";
+            _view.RaiseInputChanged();
+            Assert.That(_view.FilterMessage, Is.Empty);
         }
 
         [Test]

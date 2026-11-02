@@ -13,13 +13,16 @@ namespace HoaDonDienTu.Application.Portal
         /// <summary>Bán ra: MST người mua (<c>nmmst</c>). Mua vào: MST người bán (<c>nbmst</c>).</summary>
         public string CounterpartyTaxCode { get; set; }
 
-        /// <summary>CCCD người mua (<c>nmcmnd</c>); chỉ có ở tra cứu hóa đơn bán ra.</summary>
+        /// <summary>CCCD người mua (<c>nmcmnd</c>); có ở cả tra cứu bán ra và mua vào.</summary>
         public string BuyerIdNumber { get; set; }
 
         /// <summary>Mã trạng thái hóa đơn <c>tthai</c> "1".."6" (xem <see cref="PortalOptions.InvoiceStatuses"/>); rỗng là Tất cả.</summary>
         public string StatusCode { get; set; }
 
-        /// <summary>Mã kết quả kiểm tra <c>ttxly</c> "0".."8" (xem <see cref="PortalOptions.CheckResults"/>); rỗng là Tất cả.</summary>
+        /// <summary>
+        /// Mã kết quả kiểm tra <c>ttxly</c>. Bán ra: "0".."8" (<see cref="PortalOptions.CheckResults"/>), rỗng là Tất cả.
+        /// Mua vào: "5", "6", "8"; cổng bắt buộc có giá trị nên rỗng nghĩa là tải lần lượt cả ba (<see cref="PortalOptions.CheckResultPasses"/>).
+        /// </summary>
         public string CheckResultCode { get; set; }
 
         /// <summary>Số hóa đơn (<c>shdon</c>), giữ dạng text.</summary>
@@ -33,6 +36,11 @@ namespace HoaDonDienTu.Application.Portal
 
         /// <summary>Hóa đơn ủy nhiệm (<c>unhiem</c>); chỉ gửi khi true, giống checkbox của cổng.</summary>
         public bool? ProxyInvoice { get; set; }
+
+        public InvoiceSearchFilter Clone()
+        {
+            return (InvoiceSearchFilter)MemberwiseClone();
+        }
     }
 
     public sealed class InvoiceSearchRequest

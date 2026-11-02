@@ -348,7 +348,7 @@ namespace HoaDonDienTu.Infrastructure.Development.Mock
                 Currency = foreign ? "USD" : "VND",
                 ExchangeRate = foreign ? 25000m : 1m,
                 StatusRaw = StatusFor(index),
-                CheckResultRaw = CheckResultFor(index)
+                CheckResultRaw = CheckResultFor(index, direction)
             };
 
             return new MockInvoiceRecord
@@ -374,9 +374,17 @@ namespace HoaDonDienTu.Infrastructure.Development.Mock
             return "1";
         }
 
-        /// <summary>Phần lớn đã cấp mã (5); rải rác các kết quả kiểm tra khác (0–8).</summary>
-        private static string CheckResultFor(int index)
+        /// <summary>
+        /// Phần lớn đã cấp mã (5); bán ra rải rác các kết quả kiểm tra khác (0–8). Mua vào chỉ có 5, 6, 8 như dropdown của cổng.
+        /// </summary>
+        private static string CheckResultFor(int index, InvoiceDirection direction)
         {
+            if (direction == InvoiceDirection.Purchase)
+            {
+                if (index % 17 == 0) return "8";
+                return index % 8 == 0 ? "6" : "5";
+            }
+
             if (index % 13 == 0) return "1";
             if (index % 11 == 0) return "0";
             if (index % 8 == 0) return "6";

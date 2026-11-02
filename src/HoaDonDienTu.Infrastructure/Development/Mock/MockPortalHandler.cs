@@ -199,6 +199,9 @@ namespace HoaDonDienTu.Infrastructure.Development.Mock
                 return Error(HttpStatusCode.BadRequest, "invalid state");
             }
 
+            // Form mua vào bắt buộc chọn Kết quả kiểm tra (5, 6 hoặc 8); mô phỏng cổng từ chối khi thiếu (chưa xác nhận trên cổng thật).
+            if (direction == InvoiceDirection.Purchase && !filters.Any(f => f.Key == "ttxly")) return Error(HttpStatusCode.BadRequest, "ttxly is required");
+
             var records = DatasetFor(taxCode).Query(direction, from, to).AsEnumerable();
             foreach (var filter in filters)
             {
@@ -281,7 +284,6 @@ namespace HoaDonDienTu.Infrastructure.Development.Mock
                     if (direction == InvoiceDirection.Sold) break;
                     return records.Where(r => r.Dto.SellerTaxCode == value);
                 case "nmcmnd":
-                    if (direction == InvoiceDirection.Purchase) break;
                     return records.Where(r => r.Dto.BuyerIdNumber == value);
                 case "tthai": return records.Where(r => r.Dto.StatusRaw == value);
                 case "ttxly": return records.Where(r => r.Dto.CheckResultRaw == value);

@@ -1,7 +1,7 @@
 # 02/11/2026 — Đối chiếu tra cứu hóa đơn mua vào với mẫu thật
 
 Nguồn: `docs/api-samples/sample-api-web.md` (mục 2 bán ra, mục 4 mua vào) và ảnh form mua vào trong `docs/api-samples/spec.xlsx`.
-Mục tiêu: sửa tài liệu và tính năng cho đúng hai loại tra cứu. Phần tài liệu đã sửa trong lượt này; phần mã là kế hoạch bên dưới.
+Mục tiêu: sửa tài liệu và tính năng cho đúng hai loại tra cứu. Tài liệu và mã (T04-10, T05-12) đã sửa cùng ngày; bảng mục 3 là danh sách đã làm. Chưa kiểm trên cổng thật.
 
 ## 1. Khác biệt giữa mua vào và bán ra
 
@@ -22,7 +22,7 @@ Mục 2 (bán ra) trong file mới chỉ đổi tiêu đề; tham số không đ
 - `api-samples/README.md`: mục 3 thêm khác biệt mua vào, bỏ ⚠ cho đường dẫn/`nbmst`/`nmcmnd`/`action`; mục 7 chỉ còn phần chưa biết.
 - ADR 0001, DD-04 (mục 5.1a, T04-10), DD-05 (T05-12), `PROJECT-PLAN.md`.
 
-## 3. Hạng mục cần sửa (chưa làm, theo thứ tự)
+## 3. Hạng mục đã sửa (1–8 xong; ghi chú khác kế hoạch ở dưới bảng)
 
 | # | Hạng mục | Nơi sửa | Task |
 |---|---|---|---|
@@ -42,3 +42,5 @@ Mục 2 (bán ra) trong file mới chỉ đổi tiêu đề; tham số không đ
 3. Mua vào có `state`/phân trang giống bán ra không (vẫn ⚠ từ trước).
 
 Việc phải làm ngoài mã: token trong lần ghi traffic này lộ trong file làm việc; nếu chưa đăng xuất thì nên đăng xuất khỏi cổng để vô hiệu phiên.
+
+**Khác kế hoạch ban đầu:** không thêm cờ cấu hình `search.requireCheckResult` (quy tắc nằm ở `PortalOptions.CheckResultPasses`, đổi một chỗ khi xác nhận được); schema v1 thêm cột `download_segment.check_result`; chưa thêm gợi ý "× 3 lượt" trên bảng kế hoạch của SCR-03 (dropdown ghi "Cả 3 loại (tải lần lượt)").

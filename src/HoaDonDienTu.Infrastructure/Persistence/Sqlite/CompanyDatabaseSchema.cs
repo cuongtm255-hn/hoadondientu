@@ -109,6 +109,7 @@ namespace HoaDonDienTu.Infrastructure.Persistence.Sqlite
                     error_count INTEGER NOT NULL,
                     retry_count INTEGER NOT NULL,
                     last_error TEXT,
+                    check_result TEXT,
                     UNIQUE (session_id, segment_index)
                 )",
                 @"CREATE TABLE download_event (
