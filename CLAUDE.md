@@ -60,6 +60,7 @@ UI: Krypton Toolkit/Ribbon **5.500.2008** (last line with a net45 build; 60+ nee
 
 - `src/` — application source (solution + WinForms project go here)
 - `tests/` — unit tests
+- `spikes/` — throwaway technical spikes (not in the solution), e.g. `spikes/SqliteSpike` that backs [ADR 0006](docs/decisions/0006-sqlite-provider.md): the SQLite provider for net45 is `System.Data.SQLite.Core` 1.0.118 (ship both `x86\` and `x64\` interop folders)
 - `docs/` — project context; see `docs/README.md` for the index (`requirements/` SRS + `FEATURE-LIST.md`, `detail-design/` one `DD-xx` per feature with an implement-progress table, `architecture/`, `decisions/` ADRs, `api-samples/`, `plans/PROJECT-PLAN.md` phase-level progress, `progress/` session handoff notes, `runbooks/`). Read `docs/plans/PROJECT-PLAN.md` then `docs/progress/` first when resuming work; record decisions in `docs/decisions/`. When a task changes state, update the DD's progress table and then the summary in `PROJECT-PLAN.md`.
 - `.claude/agents/`, `.claude/commands/`, `.claude/skills/`, `.claude/hooks/` — Claude Code harness extensions (empty; add project subagents, slash commands, skills, hooks here)
 

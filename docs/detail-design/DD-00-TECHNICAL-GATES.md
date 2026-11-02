@@ -46,6 +46,7 @@ Không đưa API WebView cụ thể ra ngoài Infrastructure adapter.
 | G-06 Licence protocol | API, thuật toán chữ ký, mã máy, mã hóa cục bộ, chu kỳ xác thực, hủy/reset, chính sách lệch đồng hồ | ADR + contract server | DD-03 (T03-04, T03-05) |
 | G-07 Company switch safety | Chứng minh thứ tự đóng tác vụ/token/SQLite và phục hồi sau crash | Báo cáo spike + ADR | DD-01 mục 9, DD-02 |
 | G-08 SQLite provider | Chọn thư viện SQLite tương thích net45 (x86/x64, phân phối native), WAL, backup API | ADR | DD-06 |
+|  | **Trạng thái 02/11/2026: ✅ đóng** bằng [ADR 0006](../decisions/0006-sqlite-provider.md): System.Data.SQLite.Core 1.0.118 (SQLite 3.42.0), chạy x86/x64 trên net45, WAL, backup API, 100.000 hóa đơn đạt hiệu năng, bị giết giữa giao dịch không hỏng; còn kiểm trên máy sạch (P6-05). |
 | G-09 PDF/Excel library | Chọn thư viện tạo xlsx/pdf/zip tương thích net45 và giấy phép | ADR | DD-08, DD-09 |
 
 G-08 và G-09 bổ sung so với SRS mục 17 vì chúng quyết định ràng buộc `net45` của phần lưu trữ và xuất.
@@ -72,7 +73,7 @@ Trạng thái: ⬜ Chưa bắt đầu · 🟡 Đang làm · ✅ Hoàn thành · 
 | T00-06 | G-04 | Đối chiếu Excel với workbook mẫu `DANH SÁCH HÓA ĐƠN.xlsx` | — | ✅ | [ADR 0002](../decisions/0002-excel-export-fidelity.md) | Báo cáo đối chiếu nằm trong ADR: so sánh tiêu đề, độ rộng, ô gộp, kiểu ô với mẫu; đã mở bằng Excel thật |
 | T00-07 | G-06 | Chốt giao thức licence với nhà cung cấp | — | ⬜ | | |
 | T00-08 | G-07 | Spike chuyển MST/crash recovery | DD-01 T01-07 | ⬜ | | |
-| T00-09 | G-08 | Đánh giá SQLite provider net45 | — | ⬜ | [ADR 0004](../decisions/0004-interim-in-memory-metadata.md) (giải pháp tạm, chưa đóng gate) | Chưa chọn provider; metadata tạm lưu trong bộ nhớ sau giao diện repository |
+| T00-09 | G-08 | Đánh giá SQLite provider net45 | — | ✅ | [ADR 0006](../decisions/0006-sqlite-provider.md) · [spike](../../spikes/SqliteSpike/README.md) | Chọn System.Data.SQLite.Core 1.0.118; Microsoft.Data.Sqlite, sqlite-net-pcl, SQLitePCLRaw không có bản net45 (NU1202). Còn kiểm máy sạch, diệt virus, ổ mạng |
 | T00-10 | G-09 | Đánh giá thư viện Excel/PDF/ZIP net45 | — | 🟡 | [ADR 0003](../decisions/0003-xlsx-and-zip-generation.md) (một phần) | Excel và ZIP đã chốt (tự dựng bằng System.IO.Compression). Còn thư viện PDF (G-03/G-09) và SQLite (G-08), chưa có ADR |
 
 ### 6.2 Nhật ký tiến độ

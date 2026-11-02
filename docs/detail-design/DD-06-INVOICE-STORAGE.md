@@ -130,7 +130,7 @@ Trạng thái: ⬜ Chưa bắt đầu · 🟡 Đang làm · ✅ Hoàn thành · 
 | ID | Công việc | Lớp | Phụ thuộc | Trạng thái | PR/Commit | Ghi chú |
 |---|---|---|---|---|---|---|
 | T06-01 | Domain: `NormalizedInvoice`, `BusinessKey`, trạng thái/kết quả kiểm tra, `InvoiceFileNamer` | Domain | T01-02 | ✅ | | `NormalizedInvoice`, `InvoiceStatus`/`InvoiceCheckResult` (+ `InvoiceCodes`), `BusinessKey` (khóa bốn trường + chiều, bỏ số 0 đầu), `InvoiceFileNamer` (tên + thư mục + hậu tố + giới hạn đường dẫn) ở Domain; 31 test |
-| T06-02 | Schema + `CompanyDatabaseInitializer` + `SchemaVersionReader` + migration framework | Infra | G-08 | ⛔ | | Chờ chọn SQLite provider |
+| T06-02 | Schema + `CompanyDatabaseInitializer` + `SchemaVersionReader` + migration framework | Infra | G-08 | ⬜ | | Đã gỡ chặn: provider là System.Data.SQLite.Core ([ADR 0006](../decisions/0006-sqlite-provider.md)); chưa bắt đầu cài đặt |
 | T06-03 | Repository `Invoice`/`InvoiceVersion`/`FileAsset` + unit-of-work factory | Infra | T06-02 | ⬜ | | |
 | T06-04 | `IInvoiceNormalizer` + mapping từ DTO cổng | Application/Infra | G-02 | ✅ | | `IInvoiceNormalizer`/`InvoiceNormalizer` từ `PortalInvoiceDto` (đã khớp mẫu thật): làm sạch text, giữ giá trị nguồn của mã |
 | T06-05 | `InvoiceStorageService.UpsertAsync` (file tạm, hash, phiên bản hóa) | Application | T06-01, T06-03 | 🟡 | | `InvoiceStorageService : IInvoiceStore` đủ quy trình mục 6 (chuẩn hóa → kiểm XML `DtdProcessing.Prohibit` → SHA-256 → khóa chống trùng → file tạm → đổi tên atomic → metadata; trùng hash chỉ cập nhật LastSeen, khác hash tạo phiên bản mới giữ bản cũ; lỗi thì dọn file). `FileSystemInvoiceFileStore` ghi thật ra đĩa. Metadata mới ở `InMemoryInvoiceRepository` — chờ SQLite (T06-02/03, G-08) |
