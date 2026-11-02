@@ -63,6 +63,8 @@ namespace HoaDonDienTu.WinForms.Archive
         public event EventHandler<PageRequestedEventArgs> PageRequested;
         public event EventHandler<SortRequestedEventArgs> SortRequested;
         public event EventHandler<InvoiceRequestedEventArgs> InvoiceRequested;
+        public event EventHandler ExportExcelRequested;
+        public event EventHandler ExportZipRequested;
 
         public ArchiveFilterInput ReadFilter()
         {
@@ -154,6 +156,15 @@ namespace HoaDonDienTu.WinForms.Archive
                 var sorted = SortColumn(m.SortKey);
                 if (sorted != null) sorted.HeaderCell.SortGlyphDirection = m.SortDescending ? SortOrder.Descending : SortOrder.Ascending;
                 gridInvoices.ClearSelection();
+            });
+        }
+
+        public void ShowExportAllowed(bool allowed)
+        {
+            OnUi(delegate
+            {
+                btnExportExcel.Enabled = allowed;
+                btnExportZip.Enabled = allowed;
             });
         }
 
@@ -299,6 +310,16 @@ namespace HoaDonDienTu.WinForms.Archive
         private void OnClearClick(object sender, EventArgs e)
         {
             Raise(ClearRequested);
+        }
+
+        private void OnExportExcelClick(object sender, EventArgs e)
+        {
+            Raise(ExportExcelRequested);
+        }
+
+        private void OnExportZipClick(object sender, EventArgs e)
+        {
+            Raise(ExportZipRequested);
         }
 
         private void OnCheckFilesClick(object sender, EventArgs e)

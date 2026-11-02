@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\HoaDonDienTu.Domain\HoaDonDienTu.Domain.csproj" />
+    <Reference Include="System.IO.Compression" />
   </ItemGroup>
 
 </Project>

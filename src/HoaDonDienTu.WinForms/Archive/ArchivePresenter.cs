@@ -6,6 +6,10 @@ using System.Threading;
 using System.Threading.Tasks;
 using HoaDonDienTu.Application.Common;
 using HoaDonDienTu.Application.Companies;
+using HoaDonDienTu.Application.Exports;
+using HoaDonDienTu.Application.Licensing;
+using HoaDonDienTu.Domain.Licensing;
+using HoaDonDienTu.WinForms.Common;
 using HoaDonDienTu.Application.Invoices;
 using HoaDonDienTu.Application.Navigation;
 using HoaDonDienTu.Application.Portal;
@@ -47,6 +51,27 @@ namespace HoaDonDienTu.WinForms.Archive
         }
     }
 
+    /// <summary>Phần phụ thuộc cho "Xuất Excel/ZIP" của SCR-05; không truyền thì hai nút xuất bị khóa.</summary>
+    public sealed class ArchiveExportContext
+    {
+        public ArchiveExportContext(IInvoiceExportService service, IExportSavePicker picker, IConfirmationService confirmation, IEntitlementService entitlement)
+        {
+            if (service == null) throw new ArgumentNullException("service");
+            if (picker == null) throw new ArgumentNullException("picker");
+            if (confirmation == null) throw new ArgumentNullException("confirmation");
+            if (entitlement == null) throw new ArgumentNullException("entitlement");
+            Service = service;
+            Picker = picker;
+            Confirmation = confirmation;
+            Entitlement = entitlement;
+        }
+
+        public IInvoiceExportService Service { get; private set; }
+        public IExportSavePicker Picker { get; private set; }
+        public IConfirmationService Confirmation { get; private set; }
+        public IEntitlementService Entitlement { get; private set; }
+    }
+
     /// <summary>
     /// SCR-05 Kho hóa đơn (DD-07): tra cứu dữ liệu đã lưu của MST đang mở theo chiều, năm, trạng thái, kết quả kiểm tra, tình trạng file và ô tìm nhanh,
     /// kèm tóm tắt tập kết quả. Hoạt động ở mọi chế độ, kể cả ReadOnlyService (chỉ đọc).
@@ -64,6 +89,7 @@ namespace HoaDonDienTu.WinForms.Archive
         private readonly IUserErrorPresenter _errors;
         private readonly DateTime _today;
         private readonly ArchiveNavigationRequest _request;
+        private readonly ArchiveExportContext _export;
         private ArchiveQuery _query = new ArchiveQuery();
         private InvoiceDirection? _yearsFor;
         private bool _initialized;
@@ -85,7 +111,8 @@ namespace HoaDonDienTu.WinForms.Archive
             IUiOperationRunner runner,
             IUserErrorPresenter errors,
             DateTime today,
-            ArchiveNavigationRequest request = null)
+            ArchiveNavigationRequest request = null,
+            ArchiveExportContext export = null)
         {
             if (view == null) throw new ArgumentNullException("view");
             if (service == null) throw new ArgumentNullException("service");
@@ -103,6 +130,7 @@ namespace HoaDonDienTu.WinForms.Archive
             _errors = errors;
             _today = today;
             _request = request;
+            _export = export;
         }
 
         public void Initialize()
@@ -115,6 +143,9 @@ namespace HoaDonDienTu.WinForms.Archive
             _view.PageRequested += OnPage;
             _view.SortRequested += OnSort;
             _view.InvoiceRequested += OnInvoice;
+            _view.ExportExcelRequested += OnExportExcel;
+            _view.ExportZipRequested += OnExportZip;
+            _view.ShowExportAllowed(_export != null && _export.Entitlement.IsAllowed(AppFeature.ReadExport));
 
             _refreshing = true;
             Run("Mở kho hóa đơn", async token =>
@@ -172,6 +203,8 @@ namespace HoaDonDienTu.WinForms.Archive
             _view.PageRequested -= OnPage;
             _view.SortRequested -= OnSort;
             _view.InvoiceRequested -= OnInvoice;
+            _view.ExportExcelRequested -= OnExportExcel;
+            _view.ExportZipRequested -= OnExportZip;
         }
 
         // ---- Sự kiện ----
@@ -215,6 +248,97 @@ namespace HoaDonDienTu.WinForms.Archive
         {
             // Bộ lọc, sắp xếp và trang đã được lưu sau mỗi lần làm mới nên quay lại từ SCR-06 thấy đúng chỗ cũ.
             Run("Mở chi tiết hóa đơn", token => _navigation.NavigateAsync(ScreenId.InvoiceDetail, new InvoiceDetailRequest(e.InvoiceId), token));
+        }
+
+        // ---- Xuất Excel / ZIP XML (DD-09) ----
+
+        private void OnExportExcel(object sender, EventArgs e)
+        {
+            Export("Xuất Excel", "DanhSachHoaDon", "xlsx", "Bảng kê Excel", (scope, path, progress, token) =>
+                _export.Service.ExportExcelAsync(new ExportRequest { Scope = scope, TargetPath = path, Overwrite = true }, progress, token));
+        }
+
+        private void OnExportZip(object sender, EventArgs e)
+        {
+            Export("Xuất ZIP XML", "XML", "zip", "Gói ZIP XML", async (scope, path, progress, token) =>
+            {
+                var request = new ExportRequest { Scope = scope, TargetPath = path, Overwrite = true };
+                try
+                {
+                    return await _export.Service.ExportZipAsync(request, ZipFailurePolicy.Ask, progress, token);
+                }
+                catch (ExportNeedsDecisionException ex)
+                {
+                    // Chưa ghi gì ra đĩa: để người dùng chọn xuất phần hợp lệ hay hủy (FR-EXPORT-006).
+                    var sample = string.Join(", ", ex.Problems.Take(3).Select(p => p.InvoiceNumber));
+                    var message = ex.Problems.Count + " hóa đơn thiếu hoặc lỗi file XML (số " + sample + (ex.Problems.Count > 3 ? ", ..." : string.Empty) + ").\r\n\r\n"
+                        + "Xuất " + ex.ValidCount + " hóa đơn hợp lệ và ghi các hóa đơn bị bỏ qua vào manifest.csv?";
+                    if (!_export.Confirmation.Confirm("Xuất phần hợp lệ", message)) return null;
+                    return await _export.Service.ExportZipAsync(request, ZipFailurePolicy.SkipAndRecord, progress, token);
+                }
+            });
+        }
+
+        private void Export(
+            string name,
+            string kind,
+            string extension,
+            string description,
+            Func<ExportScope, string, IProgress<ExportProgress>, CancellationToken, Task<ExportResult>> run)
+        {
+            if (_export == null) return;
+            Run(name, async token =>
+            {
+                if (!_context.HasCurrent)
+                {
+                    _view.ShowMessage("Chưa chọn doanh nghiệp.", true);
+                    return;
+                }
+
+                var company = _context.Current;
+                Apply(_view.ReadFilter());
+                var scope = ExportScope.ForQuery(_query);
+
+                var folder = System.IO.Path.Combine(company.StorageRoot, "Exports");
+                try
+                {
+                    System.IO.Directory.CreateDirectory(folder);
+                }
+                catch (System.IO.IOException)
+                {
+                }
+                catch (UnauthorizedAccessException)
+                {
+                }
+
+                // Hộp thoại nêu rõ doanh nghiệp bị tác động (NFR-USE-007).
+                var title = name + " — " + company.DisplayName + " (MST " + company.TaxCode.Value + ")";
+                var suggested = ExportFileNamer.FileName(kind, ExportFileNamer.ScopeLabel(scope), DateTime.Now, extension);
+                var path = _export.Picker.Pick(suggested, extension, description, title, folder);
+                if (path == null) return;
+
+                var progress = new Progress<ExportProgress>(p => _view.ShowMessage("Đang xuất " + p.Done.ToString("N0", Vi) + "/" + p.Total.ToString("N0", Vi) + " hóa đơn...", false));
+                try
+                {
+                    var result = await run(scope, path, progress, token);
+                    if (_disposed) return;
+                    if (result == null)
+                    {
+                        _view.ShowMessage("Đã hủy xuất.", false);
+                        return;
+                    }
+
+                    var skipped = result.Skipped == null ? 0 : result.Skipped.Count;
+                    _view.ShowMessage(
+                        "Đã xuất " + result.Exported.ToString("N0", Vi) + " hóa đơn ra " + result.Path
+                            + (skipped > 0 ? ". Bỏ qua " + skipped + " hóa đơn thiếu/lỗi file (xem manifest.csv trong gói)." : "."),
+                        skipped > 0);
+                }
+                catch (InvoiceStorageException ex)
+                {
+                    _view.ShowMessage(ex.Message, true);
+                }
+            });
         }
 
         private void OnCheckFiles(object sender, EventArgs e)

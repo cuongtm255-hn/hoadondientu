@@ -19,6 +19,13 @@ namespace HoaDonDienTu.WinForms.Common
         string Pick(string suggestedFileName);
     }
 
+    /// <summary>Chọn nơi lưu file xuất (Excel/ZIP); hộp thoại hỏi xác nhận trước khi ghi đè (FR-EXPORT-008).</summary>
+    public interface IExportSavePicker
+    {
+        /// <summary>Trả về đường dẫn đã chọn, hoặc null nếu người dùng hủy.</summary>
+        string Pick(string suggestedFileName, string extension, string filterDescription, string title, string initialDirectory);
+    }
+
     public interface IFolderLauncher
     {
         /// <exception cref="DirectoryNotFoundException"/>
@@ -50,6 +57,25 @@ namespace HoaDonDienTu.WinForms.Common
                 Title = "Lưu bản sao XML"
             })
             {
+                return dialog.ShowDialog(Form.ActiveForm) == DialogResult.OK ? dialog.FileName : null;
+            }
+        }
+    }
+
+    public sealed class ExportSavePicker : IExportSavePicker
+    {
+        public string Pick(string suggestedFileName, string extension, string filterDescription, string title, string initialDirectory)
+        {
+            using (var dialog = new SaveFileDialog
+            {
+                FileName = suggestedFileName,
+                Filter = filterDescription + " (*." + extension + ")|*." + extension,
+                DefaultExt = extension,
+                OverwritePrompt = true,
+                Title = title
+            })
+            {
+                if (!string.IsNullOrEmpty(initialDirectory) && Directory.Exists(initialDirectory)) dialog.InitialDirectory = initialDirectory;
                 return dialog.ShowDialog(Form.ActiveForm) == DialogResult.OK ? dialog.FileName : null;
             }
         }

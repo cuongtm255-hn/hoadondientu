@@ -114,7 +114,7 @@ Mỗi phase kết thúc khi đạt đủ **tiêu chí thoát**; không bắt đ�
 
 | Nhóm task | Mô tả | DD | Trạng thái |
 |---|---|---|---|
-| T09-01…T09-07 | Xuất Excel/ZIP | [DD-09](../detail-design/DD-09-EXPORT.md#7-theo-dõi-tiến-độ-implement) | 🟡 (T09-02 đối chiếu mẫu Excel xong; còn lại chờ DD-06/07, G-09) |
+| T09-01…T09-07 | Xuất Excel/ZIP | [DD-09](../detail-design/DD-09-EXPORT.md#7-theo-dõi-tiến-độ-implement) | 🟡 (Excel và ZIP xuất được từ SCR-05; còn xuất theo dòng chọn, ExportRecord, SCR-06/07) |
 | T10-01…T10-07 | Tổng quan, lịch sử | [DD-10](../detail-design/DD-10-DASHBOARD-HISTORY.md#6-theo-dõi-tiến-độ-implement) | 🟡 6/7 (SCR-02, SCR-08 xong; còn T10-05 chế độ chi tiết lịch sử trên SCR-04) |
 | T11-01…T11-08 | Cài đặt, sao lưu/khôi phục | [DD-11](../detail-design/DD-11-SETTINGS-BACKUP.md#7-theo-dõi-tiến-độ-implement) | 🟡 (khung SCR-09 + lối vào Bản quyền; sao lưu chờ DD-06) |
 
@@ -147,7 +147,7 @@ Số task lấy từ bảng theo dõi trong từng DD (cập nhật khi đổi t
 | FT-07 Lưu trữ | [DD-06](../detail-design/DD-06-INVOICE-STORAGE.md) | 3 (T06-02 sớm ở 2) | 9 | 2 | 3 | 1 | Lõi lưu trữ + kho file thật xong; metadata trong bộ nhớ, chờ G-08 (SQLite) |
 | FT-08 Kho hóa đơn | [DD-07](../detail-design/DD-07-INVOICE-ARCHIVE.md) | 4 | 9 | 6 | 0 | 0 | SCR-05 chạy trên kho bộ nhớ; còn SQLite, chọn nhiều |
 | FT-09 Chi tiết/viewer | [DD-08](../detail-design/DD-08-INVOICE-DETAIL-VIEWER.md) | 4 | 8 | 3 | 3 | 1 | SCR-06 và XML SCR-07 xong; PDF/in chờ G-03, G-09 |
-| FT-10 Xuất | [DD-09](../detail-design/DD-09-EXPORT.md) | 5 | 7 | 1 | 0 | 1 | Mẫu Excel đã đối chiếu (T09-02); T09-03 chờ G-09 |
+| FT-10 Xuất | [DD-09](../detail-design/DD-09-EXPORT.md) | 5 | 7 | 4 | 3 | 0 | Excel (bộ ghi xlsx tự viết, đã mở thử bằng Excel) và ZIP chạy từ SCR-05; còn ExportRecord, xuất theo dòng chọn, SCR-06/07 |
 | FT-11 Tổng quan/lịch sử | [DD-10](../detail-design/DD-10-DASHBOARD-HISTORY.md) | 5 | 7 | 6 | 0 | 0 | SCR-02/SCR-08 chạy trên dữ liệu bộ nhớ; còn T10-05 |
 | FT-12 Cài đặt/sao lưu | [DD-11](../detail-design/DD-11-SETTINGS-BACKUP.md) | 5 | 8 | 0 | 0 | 0 | |
 | **Tổng** | | | **112** | **22** | **3** | **9** | DD-01 (dev adapter) + client cổng Thuế theo cấu hình/cổng giả + SCR-03 |
@@ -171,7 +171,7 @@ G-03/G-04/G-09 chặn tương ứng T08-05, T09-02/03
 | R-02 | Cổng Thuế thay đổi API/giới hạn tốc độ | FT-06, FT-07 | — | Mở (G-02, G-05) |
 | R-03 | Giao thức licence và nhà cung cấp máy chủ licence | FT-04 | — | Mở (G-06) |
 | R-04 | Cần tài khoản cổng Thuế thật để spike và UAT | Phase 1, 3, 6 | — | Mở |
-| R-05 | Thư viện SQLite/Excel/PDF phù hợp net45 và giấy phép | FT-07, FT-09, FT-10 | — | Mở (G-08, G-09) |
+| R-05 | Thư viện SQLite/Excel/PDF phù hợp net45 và giấy phép | FT-07, FT-09, FT-10 | — | Mở (G-08 SQLite, G-09 PDF); Excel đã giải bằng bộ ghi xlsx tự viết |
 | R-06 | Máy build cần Visual Studio + net45 targeting pack (môi trường dev hiện chỉ có `dotnet` CLI) | Phase 1 | — | Mở |
 
 ## 7. Nhật ký thay đổi kế hoạch

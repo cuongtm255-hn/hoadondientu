@@ -85,13 +85,13 @@ Trạng thái: ⬜ Chưa bắt đầu · 🟡 Đang làm · ✅ Hoàn thành · 
 
 | ID | Công việc | Lớp | Phụ thuộc | Trạng thái | PR/Commit | Ghi chú |
 |---|---|---|---|---|---|---|
-| T09-01 | `ExportScope`, `ExportFileNamer`, `ExportRecord` | Application | T07-01 | ⬜ | | |
+| T09-01 | `ExportScope`, `ExportFileNamer`, `ExportRecord` | Application | T07-01 | 🟡 | | ExportScope, ExportRequest/Result, ExportFileNamer xong; ExportRecord (ghi lịch sử xuất vào company.db) chờ SQLite G-08 |
 | T09-02 | Đối chiếu mẫu Excel của cổng (cột, kiểu, tiêu đề) | Docs/Test | G-04 | ✅ | | Đã đối chiếu mẫu: bố cục, ô gộp, 19 cột, kiểu dữ liệu, độ rộng cột ghi ở mục 3 và api-samples mục 5. So sánh file do ứng dụng xuất với mẫu thực hiện cùng T09-03 |
-| T09-03 | `ExcelInvoiceWriter` (stream, 19 cột) | Infra | G-09, T09-02 | ⛔ | | Chờ chọn thư viện |
-| T09-04 | `ZipInvoiceWriter` + manifest + chính sách file lỗi | Infra | T06-05 | ⬜ | | |
-| T09-05 | `InvoiceExportService` (tiến độ, hủy, atomic, không ghi đè) | Application | T09-03, T09-04 | ⬜ | | |
-| T09-06 | Hộp thoại xuất + tích hợp SCR-05/06/07 | WinForms | T09-05, T07-04 | ⬜ | | |
-| T09-07 | Unit + integration test (mục 6) | Tests | T09-05 | ⬜ | | AC-08, AC-09 |
+| T09-03 | `ExcelInvoiceWriter` (stream, 19 cột) | Infra | G-09, T09-02 | ✅ | | InvoiceExcelWriter tự dựng SpreadsheetML bằng System.IO.Compression (không cần thư viện ngoài, giải G-09 phần Excel): ghi từng dòng ra luồng, 19 cột đúng mẫu cổng, số 0 đầu giữ dạng chữ, tiền/ngày dạng số. Đã mở thử bằng Excel thật: hiển thị đúng. Đặt ở Application thay vì Infra |
+| T09-04 | `ZipInvoiceWriter` + manifest + chính sách file lỗi | Infra | T06-05 | ✅ | | Đóng gói trong InvoiceExportService: chỉ phiên bản hiện hành, nguyên byte, kiểm SHA-256 từng file, manifest.csv (UTF-8 BOM, chống công thức), chính sách Ask/SkipAndRecord/Abort |
+| T09-05 | `InvoiceExportService` (tiến độ, hủy, atomic, không ghi đè) | Application | T09-03, T09-04 | ✅ | | InvoiceExportService: tiến độ từng hóa đơn, hủy xóa file tạm, ghi tạm rồi đổi tên, không ghi đè khi chưa xác nhận, kiểm quyền ReadExport; chưa lưu ExportRecord |
+| T09-06 | Hộp thoại xuất + tích hợp SCR-05/06/07 | WinForms | T09-05, T07-04 | 🟡 | | SCR-05: nút Xuất Excel / Xuất ZIP XML cho toàn bộ kết quả đang lọc, hộp thoại lưu nêu tên và MST, hỏi xuất phần hợp lệ khi có file lỗi. Chưa có xuất theo dòng chọn (chờ T07-05) và xuất ZIP một hóa đơn ở SCR-06/07 |
+| T09-07 | Unit + integration test (mục 6) | Tests | T09-05 | 🟡 | | 30 test xuất (Excel đọc lại được từng ô, ZIP đối chiếu SHA-256 với manifest, ghi đè, hủy, quyền) + 8 test UI; còn test tập 100.000 dòng và file bị khóa/hết dung lượng |
 
 ### 7.2 Nhật ký tiến độ
 

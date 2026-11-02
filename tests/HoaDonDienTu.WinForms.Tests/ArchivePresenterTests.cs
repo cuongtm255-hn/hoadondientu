@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -9,6 +10,11 @@ using HoaDonDienTu.Application.Invoices;
 using HoaDonDienTu.Application.Navigation;
 using HoaDonDienTu.Domain.Companies;
 using HoaDonDienTu.Domain.Invoices;
+using HoaDonDienTu.Application.Exports;
+using HoaDonDienTu.Application.Licensing;
+using HoaDonDienTu.Domain.Common;
+using HoaDonDienTu.Domain.Licensing;
+using HoaDonDienTu.WinForms.Common;
 using HoaDonDienTu.WinForms.Archive;
 using HoaDonDienTu.WinForms.Detail;
 using NUnit.Framework;
@@ -25,13 +31,16 @@ namespace HoaDonDienTu.WinForms.Tests
         private FakeArchiveView _view;
         private ArchivePresenter _presenter;
         private CompanyContext _company;
+        private string _storageRoot;
 
         [SetUp]
         public void SetUp()
         {
             _repo = new InMemoryInvoiceRepository();
             _files = new FakeFiles();
-            _company = new CompanyContext(CompanyId.NewId(), TaxCode.Parse("0101234567"), "Công ty", @"C:\Kho\0101234567", null);
+            // Thư mục kho thật trên đĩa tạm: nút xuất tạo thư mục Exports trong đó.
+            _storageRoot = Path.Combine(Path.GetTempPath(), "hddt-arch-" + Guid.NewGuid().ToString("N"));
+            _company = new CompanyContext(CompanyId.NewId(), TaxCode.Parse("0101234567"), "Công ty", _storageRoot, null);
             Context.Current = _company;
             _service = new InvoiceArchiveService(_repo, _files, Context);
             _state = new ArchiveViewStateStore();
@@ -42,6 +51,13 @@ namespace HoaDonDienTu.WinForms.Tests
         public void TearDown()
         {
             if (_presenter != null) _presenter.Dispose();
+            try
+            {
+                if (Directory.Exists(_storageRoot)) Directory.Delete(_storageRoot, true);
+            }
+            catch (IOException)
+            {
+            }
         }
 
         private async Task AddAsync(InvoiceDirection direction, string number, DateTime date, string name = "Công ty ABC", string mst = "0100100001",
@@ -481,7 +497,222 @@ namespace HoaDonDienTu.WinForms.Tests
             Assert.That(_view.Result.Rows.Select(r => r.InvoiceNumber), Is.EquivalentTo(new[] { "1", "3" }));
         }
 
+        // ---- Xuất Excel / ZIP (DD-09) ----
+
+        private FakeExportService _exportService;
+        private FakePicker _exportPicker;
+
+        private ArchivePresenter OpenWithExport(bool allowed = true)
+        {
+            _exportService = new FakeExportService();
+            _exportPicker = new FakePicker { Result = @"C:\Xuatile.out" };
+            Entitlement.Value = allowed ? AppMode.Standard : AppMode.ReadOnlyService;
+            var context = new ArchiveExportContext(_exportService, _exportPicker, Confirm, new ReadExportEntitlement(allowed));
+            _presenter = new ArchivePresenter(_view, _service, Context, Nav, _state, Runner, Errors, new DateTime(2026, 11, 2), null, context);
+            _presenter.Initialize();
+            return _presenter;
+        }
+
+        [Test]
+        public async Task Export_Buttons_AreLockedWithoutTheEntitlement_OrWithoutAnExportContext()
+        {
+            await AddAsync(InvoiceDirection.Purchase, "1", new DateTime(2026, 1, 1));
+            OpenWithExport(allowed: false);
+            Assert.That(WaitFor(() => _view.Result != null), Is.True);
+            Assert.That(_view.ExportAllowed, Is.False);
+            _presenter.Dispose();
+
+            var plain = new FakeArchiveView();
+            _view = plain;
+            _presenter = new ArchivePresenter(plain, _service, Context, Nav, _state, Runner, Errors, new DateTime(2026, 11, 2));
+            _presenter.Initialize();
+            Assert.That(WaitFor(() => plain.Result != null), Is.True);
+            Assert.That(plain.ExportAllowed, Is.False);
+            plain.RaiseExportExcel();
+            Thread.Sleep(80);
+            Assert.That(_exportService.Calls, Is.Empty);
+        }
+
+        [Test]
+        public async Task ExportExcel_UsesTheCurrentFilter_AsksWhereToSave_AndReportsTheResult()
+        {
+            await AddAsync(InvoiceDirection.Purchase, "1", new DateTime(2026, 1, 1), name: "Alpha");
+            await AddAsync(InvoiceDirection.Purchase, "2", new DateTime(2026, 1, 2), name: "Beta");
+            OpenWithExport();
+            Assert.That(WaitFor(() => _view.Result != null), Is.True);
+            Assert.That(_view.ExportAllowed, Is.True);
+            _view.Filter.QuickSearch = "beta";
+            _view.RaiseFilterChanged();
+            Assert.That(WaitFor(() => _view.Result.Rows.Count == 1), Is.True);
+            _exportService.Result = new ExportResult { Path = @"C:\Xuatile.out", Exported = 1, Skipped = new List<ExportProblem>() };
+
+            _view.RaiseExportExcel();
+
+            Assert.That(WaitFor(() => _exportService.Calls.Count == 1), Is.True);
+            var call = _exportService.Calls[0];
+            Assert.That(call.Kind, Is.EqualTo("excel"));
+            Assert.That(call.Request.TargetPath, Is.EqualTo(@"C:\Xuatile.out"));
+            Assert.That(call.Request.Overwrite, Is.True, "Hộp thoại lưu đã hỏi xác nhận ghi đè");
+            Assert.That(call.Request.Scope.Query.QuickSearch, Is.EqualTo("beta"));
+            Assert.That(call.Request.Scope.Query.Direction, Is.EqualTo(InvoiceDirection.Purchase));
+            Assert.That(_exportPicker.Extension, Is.EqualTo("xlsx"));
+            Assert.That(_exportPicker.SuggestedName, Does.StartWith("DanhSachHoaDon_Mua-vao_"));
+            Assert.That(_exportPicker.SuggestedName, Does.EndWith(".xlsx"));
+            Assert.That(_exportPicker.Title, Does.Contain("Công ty").And.Contain("0101234567"), "Nêu rõ doanh nghiệp bị tác động");
+            Assert.That(_exportPicker.InitialDirectory, Is.EqualTo(Path.Combine(_storageRoot, "Exports")));
+            Assert.That(WaitFor(() => _view.Message != null && _view.Message.Contains("Đã xuất 1 hóa đơn")), Is.True, _view.Message);
+            Assert.That(_view.MessageIsError, Is.False);
+        }
+
+        [Test]
+        public async Task ExportExcel_CancellingTheSaveDialog_DoesNothing()
+        {
+            await AddAsync(InvoiceDirection.Purchase, "1", new DateTime(2026, 1, 1));
+            OpenWithExport();
+            Assert.That(WaitFor(() => _view.Result != null), Is.True);
+            _exportPicker.Result = null;
+
+            _view.RaiseExportExcel();
+
+            Assert.That(WaitFor(() => _exportPicker.Picks == 1), Is.True);
+            Thread.Sleep(80);
+            Assert.That(_exportService.Calls, Is.Empty);
+        }
+
+        [Test]
+        public async Task ExportZip_WithMissingFiles_AsksFirst_AndExportsTheValidPartOnYes()
+        {
+            await AddAsync(InvoiceDirection.Purchase, "1", new DateTime(2026, 1, 1));
+            OpenWithExport();
+            Assert.That(WaitFor(() => _view.Result != null), Is.True);
+            _exportService.NeedsDecision = new ExportNeedsDecisionException(
+                new List<ExportProblem> { new ExportProblem { InvoiceNumber = "7" }, new ExportProblem { InvoiceNumber = "8" } }, 40);
+            _exportService.Result = new ExportResult
+            {
+                Path = @"C:\Xuatile.out", Exported = 40, Skipped = new List<ExportProblem> { new ExportProblem { InvoiceNumber = "7" }, new ExportProblem { InvoiceNumber = "8" } }
+            };
+            Confirm.Answer = true;
+
+            _view.RaiseExportZip();
+
+            Assert.That(WaitFor(() => _exportService.Calls.Count == 2), Is.True);
+            Assert.That(_exportService.Calls.Select(c => c.Policy), Is.EqualTo(new[] { ZipFailurePolicy.Ask, ZipFailurePolicy.SkipAndRecord }));
+            Assert.That(Confirm.Messages.Single(), Does.Contain("2 hóa đơn thiếu hoặc lỗi").And.Contain("7, 8").And.Contain("40 hóa đơn hợp lệ"));
+            Assert.That(_exportPicker.Extension, Is.EqualTo("zip"));
+            Assert.That(WaitFor(() => _view.Message != null && _view.Message.Contains("Bỏ qua 2")), Is.True, _view.Message);
+            Assert.That(_view.MessageIsError, Is.True, "Có hóa đơn bị bỏ qua nên cảnh báo");
+        }
+
+        [Test]
+        public async Task ExportZip_WithMissingFiles_AndTheUserDeclines_WritesNothingMore()
+        {
+            await AddAsync(InvoiceDirection.Purchase, "1", new DateTime(2026, 1, 1));
+            OpenWithExport();
+            Assert.That(WaitFor(() => _view.Result != null), Is.True);
+            _exportService.NeedsDecision = new ExportNeedsDecisionException(new List<ExportProblem> { new ExportProblem { InvoiceNumber = "7" } }, 3);
+            Confirm.Answer = false;
+
+            _view.RaiseExportZip();
+
+            Assert.That(WaitFor(() => _view.Message != null && _view.Message.Contains("Đã hủy xuất")), Is.True, _view.Message);
+            Assert.That(_exportService.Calls.Count, Is.EqualTo(1));
+            Assert.That(_exportService.Calls[0].Policy, Is.EqualTo(ZipFailurePolicy.Ask));
+        }
+
+        [Test]
+        public async Task Export_NothingToExport_ShowsAClearMessage()
+        {
+            await AddAsync(InvoiceDirection.Purchase, "1", new DateTime(2026, 1, 1));
+            OpenWithExport();
+            Assert.That(WaitFor(() => _view.Result != null), Is.True);
+            _exportService.Failure = new InvoiceStorageException("Không có hóa đơn nào để xuất.");
+
+            _view.RaiseExportExcel();
+
+            Assert.That(WaitFor(() => _view.Message == "Không có hóa đơn nào để xuất."), Is.True, _view.Message);
+            Assert.That(_view.MessageIsError, Is.True);
+            Assert.That(Errors.Shown, Is.Empty);
+        }
+
+        [Test]
+        public async Task Export_UnexpectedFailure_GoesToTheErrorPresenter()
+        {
+            await AddAsync(InvoiceDirection.Purchase, "1", new DateTime(2026, 1, 1));
+            OpenWithExport();
+            Assert.That(WaitFor(() => _view.Result != null), Is.True);
+            _exportService.Failure = new IOException("disk full");
+
+            _view.RaiseExportExcel();
+
+            Assert.That(WaitFor(() => Errors.Shown.Count > 0), Is.True);
+        }
+
         // ---- Fakes ----
+
+        private sealed class ReadExportEntitlement : IEntitlementService
+        {
+            private readonly bool _allowed;
+
+            public ReadExportEntitlement(bool allowed)
+            {
+                _allowed = allowed;
+            }
+
+            public AppMode CurrentMode { get { return AppMode.Standard; } }
+            public bool IsAllowed(AppFeature feature) { return feature == AppFeature.ReadExport && _allowed; }
+            public void Demand(AppFeature feature) { if (!IsAllowed(feature)) throw new EntitlementDeniedException(feature); }
+            public event EventHandler ModeChanged { add { } remove { } }
+        }
+
+        private sealed class FakePicker : IExportSavePicker
+        {
+            public string Result;
+            public string SuggestedName;
+            public string Extension;
+            public string Title;
+            public string InitialDirectory;
+            public int Picks;
+
+            public string Pick(string suggestedFileName, string extension, string filterDescription, string title, string initialDirectory)
+            {
+                Picks++;
+                SuggestedName = suggestedFileName;
+                Extension = extension;
+                Title = title;
+                InitialDirectory = initialDirectory;
+                return Result;
+            }
+        }
+
+        private sealed class ExportCall
+        {
+            public string Kind;
+            public ExportRequest Request;
+            public ZipFailurePolicy Policy;
+        }
+
+        private sealed class FakeExportService : IInvoiceExportService
+        {
+            public readonly List<ExportCall> Calls = new List<ExportCall>();
+            public ExportResult Result = new ExportResult { Path = "x", Exported = 1, Skipped = new List<ExportProblem>() };
+            public ExportNeedsDecisionException NeedsDecision;
+            public Exception Failure;
+
+            public Task<ExportResult> ExportExcelAsync(ExportRequest request, IProgress<ExportProgress> progress, CancellationToken cancellationToken)
+            {
+                lock (Calls) { Calls.Add(new ExportCall { Kind = "excel", Request = request }); }
+                if (Failure != null) throw Failure;
+                return Task.FromResult(Result);
+            }
+
+            public Task<ExportResult> ExportZipAsync(ExportRequest request, ZipFailurePolicy policy, IProgress<ExportProgress> progress, CancellationToken cancellationToken)
+            {
+                lock (Calls) { Calls.Add(new ExportCall { Kind = "zip", Request = request, Policy = policy }); }
+                if (Failure != null) throw Failure;
+                if (policy == ZipFailurePolicy.Ask && NeedsDecision != null) throw NeedsDecision;
+                return Task.FromResult(Result);
+            }
+        }
 
         private sealed class GatedService : IInvoiceArchiveService
         {
@@ -562,6 +793,14 @@ namespace HoaDonDienTu.WinForms.Tests
             public event EventHandler<PageRequestedEventArgs> PageRequested;
             public event EventHandler<SortRequestedEventArgs> SortRequested;
             public event EventHandler<InvoiceRequestedEventArgs> InvoiceRequested;
+            public event EventHandler ExportExcelRequested;
+            public event EventHandler ExportZipRequested;
+
+            public bool? ExportAllowed;
+
+            public void ShowExportAllowed(bool allowed) { ExportAllowed = allowed; }
+            public void RaiseExportExcel() { ExportExcelRequested(this, EventArgs.Empty); }
+            public void RaiseExportZip() { ExportZipRequested(this, EventArgs.Empty); }
 
             public ArchiveFilterInput Filter { get; private set; }
             public IList<int> Years { get; private set; }

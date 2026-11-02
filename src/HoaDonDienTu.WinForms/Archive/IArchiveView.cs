@@ -99,6 +99,12 @@ namespace HoaDonDienTu.WinForms.Archive
         /// <summary>Người dùng nhấp đôi một dòng để xem chi tiết hóa đơn.</summary>
         event EventHandler<InvoiceRequestedEventArgs> InvoiceRequested;
 
+        event EventHandler ExportExcelRequested;
+        event EventHandler ExportZipRequested;
+
+        /// <summary>Khóa/mở hai nút xuất theo quyền (ReadExport).</summary>
+        void ShowExportAllowed(bool allowed);
+
         ArchiveFilterInput ReadFilter();
 
         /// <summary>Đặt lại bộ lọc (khôi phục trạng thái khi quay lại màn hình) mà không phát FilterChanged.</summary>

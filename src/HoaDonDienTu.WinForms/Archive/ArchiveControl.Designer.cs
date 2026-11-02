@@ -22,6 +22,8 @@ namespace HoaDonDienTu.WinForms.Archive
             this.pnlTitle = new ComponentFactory.Krypton.Toolkit.KryptonPanel();
             this.pnlTitleActions = new ComponentFactory.Krypton.Toolkit.KryptonPanel();
             this.btnCheckFiles = new ComponentFactory.Krypton.Toolkit.KryptonButton();
+            this.btnExportExcel = new ComponentFactory.Krypton.Toolkit.KryptonButton();
+            this.btnExportZip = new ComponentFactory.Krypton.Toolkit.KryptonButton();
             this.lblSubtitle = new ComponentFactory.Krypton.Toolkit.KryptonLabel();
             this.lblTitle = new ComponentFactory.Krypton.Toolkit.KryptonLabel();
             this.pnlFilter = new ComponentFactory.Krypton.Toolkit.KryptonPanel();
@@ -103,18 +105,31 @@ namespace HoaDonDienTu.WinForms.Archive
             //
             // pnlTitleActions
             //
+            this.pnlTitleActions.Controls.Add(this.btnExportExcel);
+            this.pnlTitleActions.Controls.Add(this.btnExportZip);
             this.pnlTitleActions.Controls.Add(this.btnCheckFiles);
             this.pnlTitleActions.Dock = System.Windows.Forms.DockStyle.Right;
             this.pnlTitleActions.Name = "pnlTitleActions";
             this.pnlTitleActions.Padding = new System.Windows.Forms.Padding(0, 22, 16, 22);
-            this.pnlTitleActions.Size = new System.Drawing.Size(190, 84);
+            this.pnlTitleActions.Size = new System.Drawing.Size(400, 84);
             //
-            // btnCheckFiles
+            // btnCheckFiles / btnExportZip / btnExportExcel (thứ tự thêm quyết định thứ tự xếp từ phải sang trái)
             //
-            this.btnCheckFiles.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.btnCheckFiles.Dock = System.Windows.Forms.DockStyle.Right;
             this.btnCheckFiles.Name = "btnCheckFiles";
+            this.btnCheckFiles.Size = new System.Drawing.Size(120, 40);
             this.btnCheckFiles.Values.Text = "Kiểm tra file";
             this.btnCheckFiles.Click += new System.EventHandler(this.OnCheckFilesClick);
+            this.btnExportZip.Dock = System.Windows.Forms.DockStyle.Right;
+            this.btnExportZip.Name = "btnExportZip";
+            this.btnExportZip.Size = new System.Drawing.Size(130, 40);
+            this.btnExportZip.Values.Text = "Xuất ZIP XML";
+            this.btnExportZip.Click += new System.EventHandler(this.OnExportZipClick);
+            this.btnExportExcel.Dock = System.Windows.Forms.DockStyle.Right;
+            this.btnExportExcel.Name = "btnExportExcel";
+            this.btnExportExcel.Size = new System.Drawing.Size(120, 40);
+            this.btnExportExcel.Values.Text = "Xuất Excel";
+            this.btnExportExcel.Click += new System.EventHandler(this.OnExportExcelClick);
             //
             // pnlFilter
             //
@@ -464,6 +479,8 @@ namespace HoaDonDienTu.WinForms.Archive
         private ComponentFactory.Krypton.Toolkit.KryptonPanel pnlTitle;
         private ComponentFactory.Krypton.Toolkit.KryptonPanel pnlTitleActions;
         private ComponentFactory.Krypton.Toolkit.KryptonButton btnCheckFiles;
+        private ComponentFactory.Krypton.Toolkit.KryptonButton btnExportExcel;
+        private ComponentFactory.Krypton.Toolkit.KryptonButton btnExportZip;
         private ComponentFactory.Krypton.Toolkit.KryptonLabel lblSubtitle;
         private ComponentFactory.Krypton.Toolkit.KryptonLabel lblTitle;
         private ComponentFactory.Krypton.Toolkit.KryptonPanel pnlFilter;
