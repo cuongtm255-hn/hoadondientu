@@ -94,13 +94,13 @@ Trạng thái: ⬜ Chưa bắt đầu · 🟡 Đang làm · ✅ Hoàn thành · 
 | ID | Công việc | Lớp | Phụ thuộc | Trạng thái | PR/Commit | Ghi chú |
 |---|---|---|---|---|---|---|
 | T07-01 | `ArchiveQuery`, `ArchivePage`, `ArchiveSummary`, `ArchiveViewState` | Application | T06-01 | ✅ | ArchiveQuery/ArchivePage/ArchiveSummary; trạng thái view lưu bằng ArchiveViewStateStore | |
-| T07-02 | `InvoiceArchiveRepository` (SQL lọc/sắp xếp/phân trang, index) | Infra | T06-03 | ⬜ | đã gỡ chặn (T06-03 xong, cột `search_text` đã có); hiện vẫn đọc `ListAsync` rồi lọc trong bộ nhớ | |
+| T07-02 | `InvoiceArchiveRepository` (SQL lọc/sắp xếp/phân trang, index) | Infra | T06-03 | ✅ | | `IInvoiceRepository` thêm `ListFileRefsAsync` (lọc + sắp xếp bằng SQL, trả mã/đường dẫn file/tổng tiền), `FindManyAsync` (nạp đúng một trang), `ListYearsAsync`; `ArchiveCriteria` dịch `ArchiveQuery` sang WHERE có tham số (không nối chuỗi người dùng), cùng một bản lọc trong bộ nhớ cho test. Migration 2 thêm `number_key` (số chuẩn hóa đệm 20 ký tự), `counterparty_sort` (tên bỏ dấu), `current_path`, `version_count` + chỉ mục `(direction, issue_date, number_key)`, `(direction, number_key)`; điền cho dữ liệu cũ trong cùng giao dịch. 26 truy vấn so khớp kho bộ nhớ, SQL injection, nạp nhiều trang, backfill |
 | T07-03 | `InvoiceArchiveService` (query, summary, resolve selection) | Application | T07-02 | ✅ | InvoiceArchiveService (lọc, sắp xếp, phân trang, tóm tắt) trên IInvoiceRepository | |
 | T07-04 | `InvoiceArchiveControl` + presenter (SCR-05): lưới, lọc, tìm nhanh, tóm tắt | WinForms | T07-03, T01-05 | ✅ | ArchiveControl + ArchivePresenter; lưới, lọc, tìm nhanh, thẻ tóm tắt | |
 | T07-05 | Chọn nhiều, ẩn/hiện cột, sao chép, phím tắt | WinForms | T07-04 | ✅ | chọn nhiều/cột/phím tắt chưa làm | Chọn nhiều dòng trên trang (Ctrl/Shift+nhấp, Ctrl+A); Ctrl+C sao chép kèm tiêu đề (mặc định của lưới); ẩn/hiện cột bằng chuột phải tiêu đề, nhớ theo doanh nghiệp; phím tắt Enter mở chi tiết, Ctrl+E xuất Excel, Ctrl+Shift+E xuất ZIP, Esc bỏ chọn. Chọn chỉ trong trang hiện tại, sang trang/lọc mới thì bỏ chọn |
 | T07-06 | Chỉ báo + bộ lọc file lỗi, hành động `Kiểm tra file` | WinForms | T06-06 | ✅ | cột + bộ lọc file lỗi, nút Kiểm tra file | |
 | T07-07 | Giữ trạng thái khi vào/ra SCR-06 | WinForms | T07-04 | ✅ | giữ lọc/sắp xếp/trang theo doanh nghiệp; nhấp đôi một dòng mở SCR-06 và quay lại thấy đúng bộ lọc | |
-| T07-08 | Test hiệu năng 100.000 bản ghi | Tests | T07-02 | ⬜ | làm sau T07-02 | NFR-PERF-002 |
+| T07-08 | Test hiệu năng 100.000 bản ghi | Tests | T07-02 | ✅ | | NFR-PERF-002. 100.000 hóa đơn giả (Debug, máy dev, kho file giả luôn có file): mở trang đầu không lọc ≈ 0,5 s, tìm theo số ≈ 20 ms, theo MST ≈ 110 ms, tìm nhanh theo tên không dấu ≈ 120 ms, sắp xếp theo đối tác trang 100 ≈ 0,5 s (giới hạn kiểm 2 s). Chưa tính chi phí `File.Exists` thật cho 50.000 file khi mở kho lớn không lọc (kết quả được nhớ 10 s) — đo khi có dữ liệu thật (UAT) |
 | T07-09 | Unit + UI smoke test (mục 5.1, 5.3) | Tests | T07-04 | ✅ | 20 test service, 21 test presenter, 1 smoke test | |
 
 ### 6.2 Nhật ký tiến độ
@@ -108,6 +108,7 @@ Trạng thái: ⬜ Chưa bắt đầu · 🟡 Đang làm · ✅ Hoàn thành · 
 | Ngày | Nội dung | Người thực hiện |
 |---|---|---|
 | 01/11/2026 | Tạo tài liệu; chưa có code | Claude Code |
+| 03/11/2026 | T07-02, T07-08: lọc/sắp xếp/đếm bằng SQL, nạp đầy đủ chỉ một trang; migration 2; 100.000 hóa đơn mở trang đầu ≈ 0,5 s | Claude Code |
 
 ## 7. Lịch sử thay đổi tài liệu
 

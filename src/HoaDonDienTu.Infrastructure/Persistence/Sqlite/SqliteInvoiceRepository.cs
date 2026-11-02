@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Data.SQLite;
+using System.Globalization;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using HoaDonDienTu.Application.Invoices;
@@ -20,6 +22,8 @@ namespace HoaDonDienTu.Infrastructure.Persistence.Sqlite
             "currency, exchange_rate, status, status_raw, check_result, check_result_raw, first_seen_utc, last_seen_utc";
 
         private const string VersionColumns = "id, invoice_id, version_no, sha256, relative_path, size_bytes, created_utc, is_current, source_session_id";
+
+        private const int IdChunk = 300;
 
         private readonly CompanyDatabaseProvider _provider;
 
@@ -69,6 +73,7 @@ namespace HoaDonDienTu.Infrastructure.Persistence.Sqlite
                     SqliteDatabase.Run(c, "UPDATE invoice_version SET is_current = 0 WHERE invoice_id = @p0", SqliteValues.Id(invoiceId));
                     version.IsCurrent = true;
                     InsertVersion(c, invoiceId, version);
+                    SqliteDatabase.Run(c, "UPDATE invoice SET current_path = @p1, version_count = version_count + 1 WHERE id = @p0", SqliteValues.Id(invoiceId), version.RelativePath);
                     UpdateInvoice(c, invoiceId, latest, nowUtc);
                 },
                 cancellationToken);
@@ -87,6 +92,7 @@ namespace HoaDonDienTu.Infrastructure.Persistence.Sqlite
                     {
                         SqliteDatabase.Run(
                             c, "UPDATE invoice_version SET relative_path = @p0 WHERE invoice_id = @p1 AND is_current = 1", restoredRelativePath, SqliteValues.Id(invoiceId));
+                        SqliteDatabase.Run(c, "UPDATE invoice SET current_path = @p0 WHERE id = @p1", restoredRelativePath, SqliteValues.Id(invoiceId));
                     }
                 },
                 cancellationToken);
@@ -126,6 +132,156 @@ namespace HoaDonDienTu.Infrastructure.Persistence.Sqlite
                 cancellationToken);
         }
 
+        public Task<IList<InvoiceFileRef>> ListFileRefsAsync(ArchiveCriteria criteria, CancellationToken cancellationToken)
+        {
+            var filter = Filter(criteria);
+            return _provider.Current().ReadAsync(
+                c =>
+                {
+                    IList<InvoiceFileRef> refs = new List<InvoiceFileRef>();
+                    var sql =
+                        "SELECT i.id, i.total_before_tax, i.total_tax, i.total_payment, i.current_path AS relative_path, i.version_count " +
+                        "FROM invoice i WHERE " + filter.Where + " ORDER BY " + OrderBy(criteria);
+                    using (var command = SqliteDatabase.Command(c, sql, filter.Values.ToArray()))
+                    using (var reader = command.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            refs.Add(
+                                new InvoiceFileRef
+                                {
+                                    InvoiceId = SqliteValues.ParseId(reader["id"]),
+                                    RelativePath = SqliteValues.Text(reader["relative_path"]),
+                                    VersionCount = SqliteValues.Int(reader["version_count"]),
+                                    TotalBeforeTax = SqliteValues.ParseMoney(reader["total_before_tax"]) ?? 0m,
+                                    TotalTax = SqliteValues.ParseMoney(reader["total_tax"]) ?? 0m,
+                                    TotalPayment = SqliteValues.ParseMoney(reader["total_payment"]) ?? 0m
+                                });
+                        }
+                    }
+
+                    return refs;
+                },
+                cancellationToken);
+        }
+
+        public Task<IList<StoredInvoice>> FindManyAsync(IList<Guid> ids, CancellationToken cancellationToken)
+        {
+            return _provider.Current().ReadAsync(
+                c =>
+                {
+                    var byId = new Dictionary<Guid, StoredInvoice>();
+                    for (var offset = 0; offset < ids.Count; offset += IdChunk)
+                    {
+                        var chunk = new List<object>();
+                        for (var n = offset; n < Math.Min(ids.Count, offset + IdChunk); n++) chunk.Add(SqliteValues.Id(ids[n]));
+                        var marks = string.Join(", ", chunk.Select((_, n) => "@p" + n.ToString(CultureInfo.InvariantCulture)));
+                        using (var command = SqliteDatabase.Command(c, "SELECT " + InvoiceColumns + " FROM invoice WHERE id IN (" + marks + ")", chunk.ToArray()))
+                        using (var reader = command.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                var stored = ReadInvoice(reader);
+                                byId[stored.InvoiceId] = stored;
+                            }
+                        }
+
+                        using (var command = SqliteDatabase.Command(c, "SELECT " + VersionColumns + " FROM invoice_version WHERE invoice_id IN (" + marks + ") ORDER BY invoice_id, version_no", chunk.ToArray()))
+                        using (var reader = command.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                StoredInvoice owner;
+                                if (byId.TryGetValue(SqliteValues.ParseId(reader["invoice_id"]), out owner)) owner.Versions.Add(ReadVersion(reader));
+                            }
+                        }
+                    }
+
+                    IList<StoredInvoice> ordered = ids.Where(byId.ContainsKey).Select(id => byId[id]).ToList();
+                    return ordered;
+                },
+                cancellationToken);
+        }
+
+        public Task<IList<int>> ListYearsAsync(InvoiceDirection direction, CancellationToken cancellationToken)
+        {
+            return _provider.Current().ReadAsync(
+                c =>
+                {
+                    IList<int> years = new List<int>();
+                    using (var command = SqliteDatabase.Command(c, "SELECT DISTINCT CAST(substr(issue_date, 1, 4) AS INTEGER) AS y FROM invoice WHERE direction = @p0 ORDER BY y DESC", (int)direction))
+                    using (var reader = command.ExecuteReader())
+                    {
+                        while (reader.Read()) years.Add(SqliteValues.Int(reader["y"]));
+                    }
+
+                    return years;
+                },
+                cancellationToken);
+        }
+
+        private sealed class SqlFilter
+        {
+            public string Where;
+            public readonly List<object> Values = new List<object>();
+
+            public string Add(object value)
+            {
+                Values.Add(value);
+                return "@p" + (Values.Count - 1).ToString(CultureInfo.InvariantCulture);
+            }
+        }
+
+        /// <summary>Dịch <see cref="ArchiveCriteria"/> sang mệnh đề WHERE có tham số; giá trị người dùng không bao giờ được nối vào câu lệnh.</summary>
+        private static SqlFilter Filter(ArchiveCriteria q)
+        {
+            var f = new SqlFilter();
+            var clauses = new List<string>();
+            clauses.Add("i.direction = " + f.Add((int)q.Direction));
+            if (q.IssueFrom.HasValue) clauses.Add("i.issue_date >= " + f.Add(SqliteValues.Date(q.IssueFrom.Value)));
+            if (q.IssueTo.HasValue) clauses.Add("i.issue_date <= " + f.Add(SqliteValues.Date(q.IssueTo.Value)));
+            if (q.StatusCode != null) clauses.Add("i.status_raw = " + f.Add(q.StatusCode));
+            if (q.CheckResultCode != null) clauses.Add("i.check_result_raw = " + f.Add(q.CheckResultCode));
+            if (q.FormSymbol != null) clauses.Add("i.form_symbol = " + f.Add(q.FormSymbol) + " COLLATE NOCASE");
+            if (q.InvoiceSymbol != null) clauses.Add("i.invoice_symbol = " + f.Add(q.InvoiceSymbol) + " COLLATE NOCASE");
+            if (q.NumberKey != null) clauses.Add("i.number_key = " + f.Add(q.NumberKey));
+            if (q.CounterpartyId != null)
+            {
+                // MST/CCCD là chữ số nên so sánh nhị phân (dùng được chỉ mục); người mua cá nhân chỉ có CCCD khi không có MST.
+                var id = f.Add(q.CounterpartyId);
+                clauses.Add(
+                    q.Direction == InvoiceDirection.Purchase
+                        ? "i.seller_tax_code = " + id
+                        : "(i.buyer_tax_code = " + id + " OR (COALESCE(i.buyer_tax_code, '') = '' AND i.buyer_id_number = " + id + "))");
+            }
+
+            if (q.QuickSearchFolded != null) clauses.Add("i.search_text LIKE " + f.Add("%" + EscapeLike(q.QuickSearchFolded) + "%") + " ESCAPE '\\'");
+
+            f.Where = string.Join(" AND ", clauses);
+            return f;
+        }
+
+        private static string EscapeLike(string text)
+        {
+            return text.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_");
+        }
+
+        /// <summary>Thứ tự khớp <see cref="ArchiveCriteria.Compare"/>: khóa chính, rồi số hóa đơn, rồi mã cho ổn định giữa các trang.</summary>
+        private static string OrderBy(ArchiveCriteria q)
+        {
+            string primary;
+            switch (q.SortKey)
+            {
+                case ArchiveSortKey.InvoiceNumber: primary = "i.number_key"; break;
+                case ArchiveSortKey.Counterparty: primary = "i.counterparty_sort"; break;
+                case ArchiveSortKey.TotalPayment: primary = "COALESCE(i.total_payment, 0)"; break;
+                default: primary = "i.issue_date"; break;
+            }
+
+            var direction = q.SortDescending ? " DESC" : " ASC";
+            return primary + direction + ", i.number_key" + direction + ", i.id ASC";
+        }
+
         private static StoredInvoice LoadOne(SQLiteConnection c, string where, string parameter)
         {
             StoredInvoice stored;
@@ -158,13 +314,19 @@ namespace HoaDonDienTu.Infrastructure.Persistence.Sqlite
             var i = s.Invoice;
             SqliteDatabase.Run(
                 c,
-                "INSERT INTO invoice (" + InvoiceColumns + ", search_text) VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8, @p9, @p10, @p11, @p12, @p13, @p14, @p15, @p16, @p17, @p18, " +
-                "@p19, @p20, @p21, @p22, @p23, @p24, @p25, @p26, @p27)",
+                "INSERT INTO invoice (" + InvoiceColumns + ", search_text, number_key, counterparty_sort, current_path, version_count) VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8, @p9, @p10, @p11, @p12, @p13, @p14, @p15, @p16, @p17, @p18, " +
+                "@p19, @p20, @p21, @p22, @p23, @p24, @p25, @p26, @p27, @p28, @p29, @p30, @p31)",
                 SqliteValues.Id(s.InvoiceId), s.BusinessKey, (int)i.Direction, i.PortalInvoiceId, i.FormSymbol, i.InvoiceSymbol, i.InvoiceNumber, SqliteValues.Date(i.IssueDate),
                 i.SellerTaxCode, i.SellerName, i.BuyerTaxCode, i.BuyerIdNumber, i.BuyerName, i.BuyerAddress,
                 SqliteValues.Money(i.TotalBeforeTax), SqliteValues.Money(i.TotalTax), SqliteValues.Money(i.TotalDiscount), SqliteValues.Money(i.TotalFee), SqliteValues.Money(i.TotalPayment),
                 i.Currency, SqliteValues.Rate(i.ExchangeRate), (int)i.Status, i.StatusRaw, (int)i.CheckResult, i.CheckResultRaw,
-                SqliteValues.Time(s.FirstSeenAtUtc), SqliteValues.Time(s.LastSeenAtUtc), SearchText(i));
+                SqliteValues.Time(s.FirstSeenAtUtc), SqliteValues.Time(s.LastSeenAtUtc), ArchiveKeys.SearchText(i), ArchiveKeys.NumberKey(i.InvoiceNumber), ArchiveKeys.CounterpartySort(i),
+                CurrentPathOf(s), s.Versions.Count);
+        }
+
+        private static object CurrentPathOf(StoredInvoice s)
+        {
+            return s.Current == null ? null : s.Current.RelativePath;
         }
 
         /// <summary>Cập nhật metadata mới nhất của cổng (không đổi khóa nghiệp vụ, chiều hay thời điểm thấy lần đầu) và thời điểm thấy lần cuối.</summary>
@@ -174,12 +336,13 @@ namespace HoaDonDienTu.Infrastructure.Persistence.Sqlite
                 c,
                 "UPDATE invoice SET portal_invoice_id = @p1, form_symbol = @p2, invoice_symbol = @p3, invoice_number = @p4, issue_date = @p5, seller_tax_code = @p6, seller_name = @p7, " +
                 "buyer_tax_code = @p8, buyer_id_number = @p9, buyer_name = @p10, buyer_address = @p11, total_before_tax = @p12, total_tax = @p13, total_discount = @p14, total_fee = @p15, " +
-                "total_payment = @p16, currency = @p17, exchange_rate = @p18, status = @p19, status_raw = @p20, check_result = @p21, check_result_raw = @p22, search_text = @p23, last_seen_utc = @p24 " +
+                "total_payment = @p16, currency = @p17, exchange_rate = @p18, status = @p19, status_raw = @p20, check_result = @p21, check_result_raw = @p22, search_text = @p23, last_seen_utc = @p24, number_key = @p25, counterparty_sort = @p26 " +
                 "WHERE id = @p0",
                 SqliteValues.Id(invoiceId), i.PortalInvoiceId, i.FormSymbol, i.InvoiceSymbol, i.InvoiceNumber, SqliteValues.Date(i.IssueDate), i.SellerTaxCode, i.SellerName,
                 i.BuyerTaxCode, i.BuyerIdNumber, i.BuyerName, i.BuyerAddress,
                 SqliteValues.Money(i.TotalBeforeTax), SqliteValues.Money(i.TotalTax), SqliteValues.Money(i.TotalDiscount), SqliteValues.Money(i.TotalFee), SqliteValues.Money(i.TotalPayment),
-                i.Currency, SqliteValues.Rate(i.ExchangeRate), (int)i.Status, i.StatusRaw, (int)i.CheckResult, i.CheckResultRaw, SearchText(i), SqliteValues.Time(nowUtc));
+                i.Currency, SqliteValues.Rate(i.ExchangeRate), (int)i.Status, i.StatusRaw, (int)i.CheckResult, i.CheckResultRaw, ArchiveKeys.SearchText(i), SqliteValues.Time(nowUtc),
+                ArchiveKeys.NumberKey(i.InvoiceNumber), ArchiveKeys.CounterpartySort(i));
         }
 
         private static void InsertVersion(SQLiteConnection c, Guid invoiceId, InvoiceVersionRecord v)
@@ -189,13 +352,6 @@ namespace HoaDonDienTu.Infrastructure.Persistence.Sqlite
                 "INSERT INTO invoice_version (" + VersionColumns + ") VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8)",
                 SqliteValues.Id(v.VersionId), SqliteValues.Id(invoiceId), v.VersionNo, v.Sha256, v.RelativePath, v.SizeBytes, SqliteValues.Time(v.CreatedAtUtc),
                 v.IsCurrent ? 1 : 0, SqliteValues.Id(v.SourceSessionId));
-        }
-
-        /// <summary>Cột tìm nhanh: chữ thường, bỏ dấu (SQLite không hạ/so khớp chữ có dấu, ADR 0006 mục 5).</summary>
-        private static string SearchText(NormalizedInvoice i)
-        {
-            var name = i.Direction == InvoiceDirection.Purchase ? i.SellerName : i.BuyerName;
-            return InvoiceArchiveService.Fold(string.Join(" ", i.InvoiceNumber, i.InvoiceSymbol, i.CounterpartyIdentifier, name));
         }
 
         private static StoredInvoice ReadInvoice(SQLiteDataReader r)

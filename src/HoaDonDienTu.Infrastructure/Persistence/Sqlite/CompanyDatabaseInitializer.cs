@@ -112,6 +112,7 @@ namespace HoaDonDienTu.Infrastructure.Persistence.Sqlite
             using (var transaction = connection.BeginTransaction())
             {
                 foreach (var statement in migration.Statements) SqliteDatabase.Execute(connection, statement);
+                if (migration.Backfill != null) migration.Backfill(connection);
                 SqliteDatabase.Execute(connection, "PRAGMA user_version=" + migration.Version.ToString(CultureInfo.InvariantCulture));
                 transaction.Commit();
             }

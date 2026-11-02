@@ -76,6 +76,18 @@ namespace HoaDonDienTu.Application.Invoices
         Task TouchAsync(Guid invoiceId, DateTime nowUtc, NormalizedInvoice latest, string restoredRelativePath, CancellationToken cancellationToken);
 
         Task<IList<StoredInvoice>> ListAsync(CancellationToken cancellationToken);
+
+        /// <summary>
+        /// Mọi hóa đơn khớp <paramref name="criteria"/>, theo thứ tự đã chọn, ở dạng rút gọn (mã, đường dẫn file, tổng tiền): đủ để đếm,
+        /// cộng tổng và kiểm tra file trên đĩa mà không nạp cả bản ghi. Trang hiển thị nạp đầy đủ bằng <see cref="FindManyAsync"/>.
+        /// </summary>
+        Task<IList<InvoiceFileRef>> ListFileRefsAsync(ArchiveCriteria criteria, CancellationToken cancellationToken);
+
+        /// <summary>Các hóa đơn theo mã, đúng thứ tự <paramref name="ids"/>; mã không tồn tại bị bỏ qua.</summary>
+        Task<IList<StoredInvoice>> FindManyAsync(IList<Guid> ids, CancellationToken cancellationToken);
+
+        /// <summary>Các năm lập hóa đơn có dữ liệu của chiều đã chọn, mới nhất trước.</summary>
+        Task<IList<int>> ListYearsAsync(InvoiceDirection direction, CancellationToken cancellationToken);
     }
 
     /// <summary>Ghi file XML vào thư mục kho: file tạm → kiểm tra → đổi tên atomic (DD-06 mục 6).</summary>

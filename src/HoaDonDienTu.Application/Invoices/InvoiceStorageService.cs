@@ -257,6 +257,50 @@ namespace HoaDonDienTu.Application.Invoices
             }
         }
 
+        public Task<IList<InvoiceFileRef>> ListFileRefsAsync(ArchiveCriteria criteria, CancellationToken cancellationToken)
+        {
+            IList<InvoiceFileRef> refs = Matched(criteria).Select(
+                s => new InvoiceFileRef
+                {
+                    InvoiceId = s.InvoiceId,
+                    RelativePath = s.Current == null ? null : s.Current.RelativePath,
+                    VersionCount = s.Versions.Count,
+                    TotalBeforeTax = s.Invoice.TotalBeforeTax ?? 0m,
+                    TotalTax = s.Invoice.TotalTax ?? 0m,
+                    TotalPayment = s.Invoice.TotalPayment ?? 0m
+                }).ToList();
+            return Task.FromResult(refs);
+        }
+
+        public Task<IList<StoredInvoice>> FindManyAsync(IList<Guid> ids, CancellationToken cancellationToken)
+        {
+            lock (_gate)
+            {
+                var byId = _byKey.Values.ToDictionary(s => s.InvoiceId);
+                IList<StoredInvoice> found = ids.Where(byId.ContainsKey).Select(id => Copy(byId[id])).ToList();
+                return Task.FromResult(found);
+            }
+        }
+
+        public Task<IList<int>> ListYearsAsync(InvoiceDirection direction, CancellationToken cancellationToken)
+        {
+            lock (_gate)
+            {
+                IList<int> years = _byKey.Values.Where(s => s.Invoice.Direction == direction).Select(s => s.Invoice.IssueDate.Year).Distinct().OrderByDescending(y => y).ToList();
+                return Task.FromResult(years);
+            }
+        }
+
+        private List<StoredInvoice> Matched(ArchiveCriteria criteria)
+        {
+            lock (_gate)
+            {
+                var matched = _byKey.Values.Where(criteria.Matches).ToList();
+                matched.Sort(criteria.Compare);
+                return matched;
+            }
+        }
+
         private static StoredInvoice Copy(StoredInvoice s)
         {
             return new StoredInvoice

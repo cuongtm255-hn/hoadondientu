@@ -1,4 +1,7 @@
+using System;
 using System.Collections.Generic;
+using System.Data.SQLite;
+using HoaDonDienTu.Application.Invoices;
 
 namespace HoaDonDienTu.Infrastructure.Persistence.Sqlite
 {
@@ -15,6 +18,9 @@ namespace HoaDonDienTu.Infrastructure.Persistence.Sqlite
         public int Version { get; private set; }
         public string Description { get; private set; }
         public IList<string> Statements { get; private set; }
+
+        /// <summary>Bước điền dữ liệu cho dòng đã có sau khi chạy <see cref="Statements"/>, trong cùng giao dịch (cần mã C#, không viết được bằng SQL).</summary>
+        public Action<SQLiteConnection> Backfill { get; set; }
     }
 
     /// <summary>
@@ -121,8 +127,53 @@ namespace HoaDonDienTu.Infrastructure.Persistence.Sqlite
                     code TEXT NOT NULL,
                     message TEXT NOT NULL
                 )",
-                "CREATE INDEX ix_download_event_session ON download_event (session_id, time_utc)")
+                "CREATE INDEX ix_download_event_session ON download_event (session_id, time_utc)"),
+            new SchemaMigration(
+                2,
+                "Khóa sắp xếp và lọc của Kho hóa đơn: số hóa đơn chuẩn hóa, tên đối tác bỏ dấu; file hiện hành và số phiên bản ngay trên hóa đơn",
+                "ALTER TABLE invoice ADD COLUMN number_key TEXT NOT NULL DEFAULT ''",
+                "ALTER TABLE invoice ADD COLUMN counterparty_sort TEXT NOT NULL DEFAULT ''",
+                "ALTER TABLE invoice ADD COLUMN current_path TEXT",
+                "ALTER TABLE invoice ADD COLUMN version_count INTEGER NOT NULL DEFAULT 0",
+                "UPDATE invoice SET current_path = (SELECT v.relative_path FROM invoice_version v WHERE v.invoice_id = invoice.id AND v.is_current = 1), " +
+                "version_count = (SELECT COUNT(*) FROM invoice_version v WHERE v.invoice_id = invoice.id)",
+                "CREATE INDEX ix_invoice_direction_date_number ON invoice (direction, issue_date, number_key)",
+                "CREATE INDEX ix_invoice_direction_number ON invoice (direction, number_key)")
+            {
+                Backfill = BackfillInvoiceKeys
+            }
         };
+
+        /// <summary>Điền <c>number_key</c> và <c>counterparty_sort</c> cho hóa đơn lưu trước migration 2, bằng đúng hàm của lúc ghi mới.</summary>
+        private static void BackfillInvoiceKeys(SQLiteConnection connection)
+        {
+            var rows = new List<object[]>();
+            using (var command = SqliteDatabase.Command(connection, "SELECT id, direction, invoice_number, seller_name, buyer_name FROM invoice"))
+            using (var reader = command.ExecuteReader())
+            {
+                while (reader.Read())
+                {
+                    var purchase = SqliteValues.Int(reader["direction"]) == (int)Domain.Invoices.InvoiceDirection.Purchase;
+                    rows.Add(new object[]
+                    {
+                        reader["id"],
+                        ArchiveKeys.NumberKey(SqliteValues.Text(reader["invoice_number"])),
+                        ArchiveKeys.Fold(SqliteValues.Text(reader[purchase ? "seller_name" : "buyer_name"]))
+                    });
+                }
+            }
+
+            using (var update = SqliteDatabase.Command(connection, "UPDATE invoice SET number_key = @p1, counterparty_sort = @p2 WHERE id = @p0", null, null, null))
+            {
+                foreach (var row in rows)
+                {
+                    update.Parameters["@p0"].Value = row[0];
+                    update.Parameters["@p1"].Value = row[1];
+                    update.Parameters["@p2"].Value = row[2];
+                    update.ExecuteNonQuery();
+                }
+            }
+        }
 
         public static IList<SchemaMigration> Migrations
         {

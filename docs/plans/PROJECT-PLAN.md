@@ -31,7 +31,7 @@ Ký hiệu: ⬜ Chưa bắt đầu · 🟡 Đang làm · ✅ Hoàn thành · ⛔
 | 1 | Nền tảng và technical spike | Solution chạy build được; ADR chặn kiến trúc | FT-00 | 🟡 Solution xong; ADR 0001–0006 đã có (G-02 một phần, G-04 và G-08 đóng, G-09 Excel/ZIP); chưa có ADR cho G-01, G-03, G-05, G-06, G-07 và PDF |
 | 2 | Khung chương trình, doanh nghiệp, licence và đăng nhập | Chạy 3 chế độ bằng development adapter | FT-01, FT-02, FT-03, FT-04 | 🟡 DD-01 16/18 task xong; DD-02 6/10; DD-03 5/8 (khóa/hợp đồng licence thật chờ G-06) |
 | 3 | Tải hóa đơn end-to-end | Chọn kỳ → tải → lưu XML trên cổng thật | FT-05, FT-06, FT-07, FT-02 (production) | 🟡 DD-04 xong; DD-05 7/11 và DD-06 3/9 chạy trên cổng giả; còn cài đặt repository SQLite ([ADR 0006](../decisions/0006-sqlite-provider.md)), đăng nhập WebView thật (G-01), UAT cổng thật |
-| 4 | Kho hóa đơn, chi tiết và trình xem | Tra cứu, xem XML/PDF | FT-08, FT-09 | 🟡 DD-07 7/9 (còn SQLite); DD-08 3/8 (XML xong, PDF/in chờ G-03, G-09) |
+| 4 | Kho hóa đơn, chi tiết và trình xem | Tra cứu, xem XML/PDF | FT-08, FT-09 | ✅ DD-07 9/9; DD-08 3/8 (XML xong, PDF/in chờ G-03, G-09) |
 | 5 | Xuất dữ liệu, tổng quan, lịch sử, cài đặt và sao lưu | Hoàn thiện tính năng còn lại | FT-10, FT-11, FT-12 | 🟡 DD-09 4/7; DD-10 6/7; DD-11 4/8 (sao lưu/khôi phục XML/PDF, dung lượng, kiểm tra kết nối; còn đổi thư mục kho, database trong gói chờ SQLite) |
 | 6 | Hardening, UAT và phát hành | Nghiệm thu AC-01…AC-17, đóng gói | Xuyên suốt | ⬜ |
 
@@ -145,12 +145,12 @@ Số task lấy từ bảng theo dõi trong từng DD (cập nhật khi đổi t
 | FT-05 Chọn kỳ | [DD-04](../detail-design/DD-04-PERIOD-DOWNLOAD-CONFIG.md) | 3 | 10 | 10 | 0 | 0 | Bộ lọc bán ra và mua vào khớp mẫu thật (mua vào: `ttxly` 5/6/8, có CCCD); đã nối SCR-03 → SCR-04 |
 | FT-06 Hàng đợi tải | [DD-05](../detail-design/DD-05-DOWNLOAD-ENGINE.md) | 3 | 12 | 9 | 2 | 1 | Chạy toàn tuyến trên cổng giả (SCR-03 → engine → kho file → SCR-04); còn SQLite (G-08), khôi phục lúc khởi động, T05-04 chờ G-05, UAT cổng thật |
 | FT-07 Lưu trữ | [DD-06](../detail-design/DD-06-INVOICE-STORAGE.md) | 3 (T06-02 sớm ở 2) | 9 | 4 | 3 | 0 | Lõi lưu trữ, kho file thật, schema và repository SQLite xong (metadata bền vững); còn quét file mồ côi (T06-06), kiểm tra kho (T06-07) |
-| FT-08 Kho hóa đơn | [DD-07](../detail-design/DD-07-INVOICE-ARCHIVE.md) | 4 | 9 | 7 | 0 | 0 | SCR-05 chạy trên kho bộ nhớ; còn SQLite (T07-02, T07-08) |
+| FT-08 Kho hóa đơn | [DD-07](../detail-design/DD-07-INVOICE-ARCHIVE.md) | 4 | 9 | 9 | 0 | 0 | SCR-05 truy vấn bằng SQL (lọc, sắp xếp, nạp một trang); 100.000 hóa đơn mở trang đầu ≈ 0,5 s; còn đo `File.Exists` thật trên kho lớn |
 | FT-09 Chi tiết/viewer | [DD-08](../detail-design/DD-08-INVOICE-DETAIL-VIEWER.md) | 4 | 8 | 3 | 3 | 1 | SCR-06 và XML SCR-07 xong; PDF/in chờ G-03, G-09 |
 | FT-10 Xuất | [DD-09](../detail-design/DD-09-EXPORT.md) | 5 | 7 | 4 | 3 | 0 | Excel (bộ ghi xlsx tự viết, đã mở thử bằng Excel) và ZIP chạy từ SCR-05; hỗ trợ xuất theo dòng chọn; còn ExportRecord (chờ SQLite) và xuất từ SCR-06/07 |
 | FT-11 Tổng quan/lịch sử | [DD-10](../detail-design/DD-10-DASHBOARD-HISTORY.md) | 5 | 7 | 6 | 0 | 0 | SCR-02/SCR-08 chạy trên dữ liệu bộ nhớ; còn T10-05 |
 | FT-12 Cài đặt/sao lưu | [DD-11](../detail-design/DD-11-SETTINGS-BACKUP.md) | 5 | 8 | 4 | 4 | 0 | Sao lưu/khôi phục XML/PDF (có điểm an toàn + rollback), dung lượng, kiểm tra kết nối; gói chưa có database (ADR 0004) |
-| **Tổng** | | | **116** | **76** | **25** | **2** | Còn 13 task chưa bắt đầu; số liệu đếm tự động từ các bảng DD ngày 02/11/2026 |
+| **Tổng** | | | **116** | **78** | **25** | **2** | Còn 11 task chưa bắt đầu; số liệu đếm tự động từ các bảng DD ngày 02/11/2026 |
 
 ## 5. Phụ thuộc quan trọng
 
@@ -198,3 +198,4 @@ G-03/G-09 (PDF) chặn T08-04/05; Excel và ZIP (T09-03/04) không cần thư vi
 | 02/11/2026 | Mẫu thật tra cứu mua vào + ảnh form (`docs/api-samples`): `ttxly` mua vào chỉ 5/6/8, không có Tất cả và bắt buộc; có `nmcmnd`; `nbmst` là MST người bán. Cập nhật api-samples/ADR 0001/DD-04/DD-05, thêm T04-10, T05-12 ([kế hoạch sửa](../progress/2026-11-02-purchase-search-alignment.md)); đã thay token/cookie thật trong `sample-api-web.md` bằng chỗ giữ chỗ |
 | 02/11/2026 | T04-10 và T05-12: tra cứu mua vào theo mẫu thật (CCCD ở cả hai chiều, `ttxly` chỉ 5/6/8, "Tất cả" = tải ba lượt mỗi tháng), cổng giả bắt buộc `ttxly`; 1084 test qua, Release sạch. Còn xác nhận trên cổng thật việc bỏ `ttxly` |
 | 03/11/2026 | T06-03 và T05-02: repository SQLite cho hóa đơn và phiên tải nối vào `CompositionRoot` (Debug và Release); Release bật engine tải (đăng nhập thật vẫn chờ G-01); ADR 0004 hết hiệu lực. Còn: truy vấn SQL cho Kho hóa đơn (T07-02), khôi phục phiên lúc khởi động (T05-09), `company.db` trong gói sao lưu |
+| 03/11/2026 | T07-02 và T07-08: Kho hóa đơn lọc/sắp xếp/đếm bằng SQL (migration 2: `number_key`, `counterparty_sort`, `current_path`, `version_count`), chỉ nạp đầy đủ một trang; 100.000 hóa đơn giả mở trang đầu ≈ 0,5 s. Còn: khôi phục phiên lúc khởi động (T05-09), `company.db` trong gói sao lưu, đo `File.Exists` thật trên kho lớn |

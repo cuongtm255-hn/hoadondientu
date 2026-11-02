@@ -346,6 +346,9 @@ namespace HoaDonDienTu.Application.Tests
             public Task AddVersionAsync(Guid invoiceId, InvoiceVersionRecord version, NormalizedInvoice latest, DateTime nowUtc, CancellationToken cancellationToken) { throw new InvalidOperationException("db"); }
             public Task TouchAsync(Guid invoiceId, DateTime nowUtc, NormalizedInvoice latest, string restoredRelativePath, CancellationToken cancellationToken) { return Task.FromResult(0); }
             public Task<IList<StoredInvoice>> ListAsync(CancellationToken cancellationToken) { return Task.FromResult<IList<StoredInvoice>>(new List<StoredInvoice>()); }
+            public Task<IList<InvoiceFileRef>> ListFileRefsAsync(ArchiveCriteria criteria, CancellationToken cancellationToken) { return Task.FromResult<IList<InvoiceFileRef>>(new List<InvoiceFileRef>()); }
+            public Task<IList<StoredInvoice>> FindManyAsync(IList<Guid> ids, CancellationToken cancellationToken) { return Task.FromResult<IList<StoredInvoice>>(new List<StoredInvoice>()); }
+            public Task<IList<int>> ListYearsAsync(InvoiceDirection direction, CancellationToken cancellationToken) { return Task.FromResult<IList<int>>(new List<int>()); }
         }
 
         private sealed class FakeContext : ICompanyContextAccessor

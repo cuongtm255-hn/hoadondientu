@@ -156,56 +156,63 @@ namespace HoaDonDienTu.Application.Invoices
         {
             if (query == null) throw new ArgumentNullException("query");
             var root = RequireRoot();
-            var all = await _repository.ListAsync(cancellationToken).ConfigureAwait(false);
             var refresh = query.RefreshFiles;
 
-            var matched = all.Where(i => Matches(i, query)).ToList();
-            var needFileState = query.FileFilter != FileIntegrityFilter.All;
-            var states = new Dictionary<Guid, ArchiveFileState>();
-            if (needFileState)
+            // Lọc và sắp xếp ở repository; ở đây chỉ còn kiểm tra file trên đĩa (không có trong cơ sở dữ liệu) và nạp đầy đủ đúng một trang.
+            var refs = await _repository.ListFileRefsAsync(ArchiveCriteria.From(query), cancellationToken).ConfigureAwait(false);
+            var states = new List<ArchiveFileState>(refs.Count);
+            foreach (var r in refs) states.Add(StateOf(root, r, refresh));
+
+            var matched = new List<InvoiceFileRef>(refs.Count);
+            var matchedStates = new List<ArchiveFileState>(refs.Count);
+            for (var n = 0; n < refs.Count; n++)
             {
-                foreach (var i in matched) states[i.InvoiceId] = StateOf(root, i, refresh);
-                matched = matched.Where(i => FileMatches(states[i.InvoiceId], query.FileFilter)).ToList();
+                if (!FileMatches(states[n], query.FileFilter)) continue;
+                matched.Add(refs[n]);
+                matchedStates.Add(states[n]);
             }
 
-            var sorted = Sort(matched, query).ToList();
             var pageSize = Math.Max(1, query.PageSize);
-            var pageCount = Math.Max(1, (sorted.Count + pageSize - 1) / pageSize);
+            var pageCount = Math.Max(1, (matched.Count + pageSize - 1) / pageSize);
             var pageIndex = Math.Max(0, Math.Min(query.PageIndex, pageCount - 1));
-            var slice = sorted.Skip(pageIndex * pageSize).Take(pageSize).ToList();
+            var first = pageIndex * pageSize;
+            var take = Math.Min(pageSize, matched.Count - first);
 
-            var rows = new List<ArchiveRow>();
-            for (var n = 0; n < slice.Count; n++)
+            var ids = new List<Guid>(take);
+            for (var n = 0; n < take; n++) ids.Add(matched[first + n].InvoiceId);
+            var slice = take > 0 ? await _repository.FindManyAsync(ids, cancellationToken).ConfigureAwait(false) : new List<StoredInvoice>();
+
+            var rows = new List<ArchiveRow>(slice.Count);
+            foreach (var inv in slice)
             {
-                var inv = slice[n];
-                ArchiveFileState state;
-                if (!states.TryGetValue(inv.InvoiceId, out state)) state = StateOf(root, inv, refresh);
+                var position = ids.IndexOf(inv.InvoiceId);
                 rows.Add(new ArchiveRow
                 {
-                    Number = pageIndex * pageSize + n + 1,
+                    Number = first + position + 1,
                     InvoiceId = inv.InvoiceId,
                     Invoice = inv.Invoice,
-                    FileState = state,
+                    FileState = matchedStates[first + position],
                     VersionCount = inv.Versions.Count,
                     RelativePath = inv.Current == null ? null : inv.Current.RelativePath
                 });
             }
 
-            return new ArchivePage
+            var summary = new ArchiveSummary { Count = matched.Count };
+            for (var n = 0; n < matched.Count; n++)
             {
-                Rows = rows,
-                TotalCount = sorted.Count,
-                PageIndex = pageIndex,
-                PageSize = pageSize,
-                Summary = Summarize(sorted, root, needFileState ? states : null, refresh)
-            };
+                summary.TotalBeforeTax += matched[n].TotalBeforeTax;
+                summary.TotalTax += matched[n].TotalTax;
+                summary.TotalPayment += matched[n].TotalPayment;
+                if (matchedStates[n] == ArchiveFileState.Missing) summary.ProblemCount++;
+            }
+
+            return new ArchivePage { Rows = rows, TotalCount = matched.Count, PageIndex = pageIndex, PageSize = pageSize, Summary = summary };
         }
 
-        public async Task<IList<int>> YearsAsync(InvoiceDirection direction, CancellationToken cancellationToken)
+        public Task<IList<int>> YearsAsync(InvoiceDirection direction, CancellationToken cancellationToken)
         {
             RequireRoot();
-            var all = await _repository.ListAsync(cancellationToken).ConfigureAwait(false);
-            return all.Where(i => i.Invoice.Direction == direction).Select(i => i.Invoice.IssueDate.Year).Distinct().OrderByDescending(y => y).ToList();
+            return _repository.ListYearsAsync(direction, cancellationToken);
         }
 
         private string RequireRoot()
@@ -214,11 +221,10 @@ namespace HoaDonDienTu.Application.Invoices
             return _context.Current.StorageRoot;
         }
 
-        private ArchiveFileState StateOf(string root, StoredInvoice invoice, bool refresh)
+        private ArchiveFileState StateOf(string root, InvoiceFileRef invoice, bool refresh)
         {
-            var current = invoice.Current;
-            if (current == null || !FileExists(root, current.RelativePath, refresh)) return ArchiveFileState.Missing;
-            return invoice.Versions.Count > 1 ? ArchiveFileState.MultiVersion : ArchiveFileState.Ok;
+            if (invoice.RelativePath == null || !FileExists(root, invoice.RelativePath, refresh)) return ArchiveFileState.Missing;
+            return invoice.VersionCount > 1 ? ArchiveFileState.MultiVersion : ArchiveFileState.Ok;
         }
 
         private bool FileExists(string root, string relativePath, bool refresh)
@@ -251,91 +257,10 @@ namespace HoaDonDienTu.Application.Invoices
             }
         }
 
-        private ArchiveSummary Summarize(IList<StoredInvoice> matched, string root, Dictionary<Guid, ArchiveFileState> known, bool refresh)
-        {
-            var summary = new ArchiveSummary { Count = matched.Count };
-            foreach (var i in matched)
-            {
-                summary.TotalBeforeTax += i.Invoice.TotalBeforeTax ?? 0m;
-                summary.TotalTax += i.Invoice.TotalTax ?? 0m;
-                summary.TotalPayment += i.Invoice.TotalPayment ?? 0m;
-            }
-
-            summary.ProblemCount = matched.Count(i => (known != null && known.ContainsKey(i.InvoiceId) ? known[i.InvoiceId] : StateOf(root, i, refresh)) == ArchiveFileState.Missing);
-            return summary;
-        }
-
-        private static bool Matches(StoredInvoice stored, ArchiveQuery q)
-        {
-            var i = stored.Invoice;
-            if (i.Direction != q.Direction) return false;
-            if (q.IssueFrom.HasValue && i.IssueDate.Date < q.IssueFrom.Value.Date) return false;
-            if (q.IssueTo.HasValue && i.IssueDate.Date > q.IssueTo.Value.Date) return false;
-            if (Has(q.StatusCode) && i.StatusRaw != q.StatusCode.Trim()) return false;
-            if (Has(q.CheckResultCode) && i.CheckResultRaw != q.CheckResultCode.Trim()) return false;
-            if (Has(q.FormSymbol) && !string.Equals(i.FormSymbol, q.FormSymbol.Trim(), StringComparison.OrdinalIgnoreCase)) return false;
-            if (Has(q.InvoiceSymbol) && !string.Equals(i.InvoiceSymbol, q.InvoiceSymbol.Trim(), StringComparison.OrdinalIgnoreCase)) return false;
-            if (Has(q.InvoiceNumber) && BusinessKey.NormalizeNumber(i.InvoiceNumber) != BusinessKey.NormalizeNumber(q.InvoiceNumber)) return false;
-            if (Has(q.CounterpartyTaxCode) && !string.Equals(i.CounterpartyIdentifier, q.CounterpartyTaxCode.Trim(), StringComparison.OrdinalIgnoreCase)) return false;
-
-            if (Has(q.QuickSearch))
-            {
-                var needle = Fold(q.QuickSearch);
-                var name = i.Direction == InvoiceDirection.Purchase ? i.SellerName : i.BuyerName;
-                var hay = new[] { i.InvoiceNumber, i.InvoiceSymbol, i.CounterpartyIdentifier, name };
-                if (!hay.Any(h => Fold(h).Contains(needle))) return false;
-            }
-
-            return true;
-        }
-
-        private static IEnumerable<StoredInvoice> Sort(IEnumerable<StoredInvoice> source, ArchiveQuery q)
-        {
-            IOrderedEnumerable<StoredInvoice> ordered;
-            switch (q.SortKey)
-            {
-                case ArchiveSortKey.InvoiceNumber: ordered = Order(source, s => Pad(s.Invoice.InvoiceNumber), StringComparer.Ordinal, q.SortDescending); break;
-                case ArchiveSortKey.Counterparty:
-                    ordered = Order(source, s => Fold(s.Invoice.Direction == InvoiceDirection.Purchase ? s.Invoice.SellerName : s.Invoice.BuyerName), StringComparer.Ordinal, q.SortDescending);
-                    break;
-                case ArchiveSortKey.TotalPayment: ordered = Order(source, s => s.Invoice.TotalPayment ?? 0m, Comparer<decimal>.Default, q.SortDescending); break;
-                default: ordered = Order(source, s => s.Invoice.IssueDate, Comparer<DateTime>.Default, q.SortDescending); break;
-            }
-
-            return q.SortDescending
-                ? ordered.ThenByDescending(s => Pad(s.Invoice.InvoiceNumber), StringComparer.Ordinal).ThenBy(s => s.InvoiceId)
-                : ordered.ThenBy(s => Pad(s.Invoice.InvoiceNumber), StringComparer.Ordinal).ThenBy(s => s.InvoiceId);
-        }
-
-        private static IOrderedEnumerable<StoredInvoice> Order<TKey>(IEnumerable<StoredInvoice> source, Func<StoredInvoice, TKey> key, IComparer<TKey> comparer, bool descending)
-        {
-            return descending ? source.OrderByDescending(key, comparer) : source.OrderBy(key, comparer);
-        }
-
-        /// <summary>Số hóa đơn so sánh theo giá trị số (9 đứng trước 10), không theo thứ tự chữ.</summary>
-        private static string Pad(string number)
-        {
-            var n = BusinessKey.NormalizeNumber(number);
-            return n.Length < 20 ? n.PadLeft(20, '0') : n;
-        }
-
-        private static bool Has(string value)
-        {
-            return !string.IsNullOrWhiteSpace(value);
-        }
-
         /// <summary>Chữ thường, bỏ dấu tiếng Việt (kể cả đ) để "cong ty" tìm được "CÔNG TY".</summary>
         public static string Fold(string value)
         {
-            if (string.IsNullOrEmpty(value)) return string.Empty;
-            var decomposed = value.Trim().ToLowerInvariant().Replace('đ', 'd').Normalize(NormalizationForm.FormD);
-            var sb = new StringBuilder(decomposed.Length);
-            foreach (var c in decomposed)
-            {
-                if (CharUnicodeInfo.GetUnicodeCategory(c) != UnicodeCategory.NonSpacingMark) sb.Append(c);
-            }
-
-            return sb.ToString().Normalize(NormalizationForm.FormC);
+            return ArchiveKeys.Fold(value);
         }
     }
 
@@ -383,6 +308,21 @@ namespace HoaDonDienTu.Application.Invoices
         public Task<IList<StoredInvoice>> ListAsync(CancellationToken cancellationToken)
         {
             return Current().ListAsync(cancellationToken);
+        }
+
+        public Task<IList<InvoiceFileRef>> ListFileRefsAsync(ArchiveCriteria criteria, CancellationToken cancellationToken)
+        {
+            return Current().ListFileRefsAsync(criteria, cancellationToken);
+        }
+
+        public Task<IList<StoredInvoice>> FindManyAsync(IList<Guid> ids, CancellationToken cancellationToken)
+        {
+            return Current().FindManyAsync(ids, cancellationToken);
+        }
+
+        public Task<IList<int>> ListYearsAsync(InvoiceDirection direction, CancellationToken cancellationToken)
+        {
+            return Current().ListYearsAsync(direction, cancellationToken);
         }
 
         private IInvoiceRepository Current()
