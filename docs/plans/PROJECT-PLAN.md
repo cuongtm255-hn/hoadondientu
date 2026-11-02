@@ -28,7 +28,7 @@ Ký hiệu: ⬜ Chưa bắt đầu · 🟡 Đang làm · ✅ Hoàn thành · ⛔
 | Phase | Tên | Mục tiêu | Tính năng | Trạng thái |
 |---|---|---|---|---|
 | 0 | Yêu cầu và thiết kế | SRS, wireframe, feature list, detail design, kế hoạch | Tất cả (tài liệu) | 🟡 Đang review |
-| 1 | Nền tảng và technical spike | Solution chạy build được; ADR chặn kiến trúc | FT-00 | 🟡 Solution xong; chưa làm spike/ADR (G-01, G-02, G-08, G-09) |
+| 1 | Nền tảng và technical spike | Solution chạy build được; ADR chặn kiến trúc | FT-00 | 🟡 Solution xong; ADR 0001–0005 đã có (G-02 một phần, G-04 đóng, G-09 Excel/ZIP); chưa có ADR cho G-01, G-08 và PDF |
 | 2 | Khung chương trình, doanh nghiệp, licence và đăng nhập | Chạy 3 chế độ bằng development adapter | FT-01, FT-02, FT-03, FT-04 | 🟡 DD-01 16/18 task xong; DD-02 6/10; DD-03 5/8 (khóa/hợp đồng licence thật chờ G-06) |
 | 3 | Tải hóa đơn end-to-end | Chọn kỳ → tải → lưu XML trên cổng thật | FT-05, FT-06, FT-07, FT-02 (production) | 🟡 DD-04 xong; DD-05 7/11 và DD-06 2/9 chạy trên cổng giả; còn SQLite (G-08), đăng nhập WebView thật (G-01), UAT cổng thật |
 | 4 | Kho hóa đơn, chi tiết và trình xem | Tra cứu, xem XML/PDF | FT-08, FT-09 | 🟡 DD-07 7/9 (còn SQLite); DD-08 3/8 (XML xong, PDF/in chờ G-03, G-09) |
@@ -68,10 +68,10 @@ Mỗi phase kết thúc khi đạt đủ **tiêu chí thoát**; không bắt đ�
 | T00-03 | Ghi traffic API (xác minh phiên/MST, tra cứu, phân trang, tải XML) | DD-00 | 🟡 (đăng nhập, bán ra, chi tiết, xuất XML/Excel đã có; còn mua vào, `state`, 401/429 thật) |
 | T00-04 | Giới hạn tốc độ / 429 | DD-00 | ⬜ |
 | T00-05 | Chiến lược PDF | DD-00 | ⬜ |
-| T00-06 | Đối chiếu mẫu Excel | DD-00 | 🟡 (file xuất khớp bố cục mẫu và đã mở thử bằng Excel; còn báo cáo/ADR G-04) |
+| T00-06 | Đối chiếu mẫu Excel | DD-00 | ✅ ([ADR 0002](../decisions/0002-excel-export-fidelity.md)) |
 | T00-07 | Chốt giao thức licence | DD-00 | ⬜ |
-| T00-09 | Chọn SQLite provider net45 | DD-00 | ⬜ |
-| T00-10 | Chọn thư viện Excel/PDF/ZIP net45 | DD-00 | 🟡 (Excel và ZIP dùng System.IO.Compression tự viết; còn PDF và SQLite, chưa có ADR) |
+| T00-09 | Chọn SQLite provider net45 | DD-00 | ⬜ (giải pháp tạm: [ADR 0004](../decisions/0004-interim-in-memory-metadata.md)) |
+| T00-10 | Chọn thư viện Excel/PDF/ZIP net45 | DD-00 | 🟡 (Excel/ZIP chốt ở [ADR 0003](../decisions/0003-xlsx-and-zip-generation.md); còn PDF) |
 
 ### Phase 2 — Khung chương trình, doanh nghiệp, licence và đăng nhập
 
@@ -138,7 +138,7 @@ Số task lấy từ bảng theo dõi trong từng DD (cập nhật khi đổi t
 
 | Tính năng | DD | Phase | Tổng task | ✅ | 🟡 | ⛔ | Ghi chú |
 |---|---|---|---:|---:|---:|---:|---|
-| FT-00 Cổng kỹ thuật | [DD-00](../detail-design/DD-00-TECHNICAL-GATES.md) | 1 | 10 | 0 | 3 | 0 | T00-03 (traffic thật còn thiếu mua vào, `state`, 401/429), T00-06, T00-10 đang làm; các gate còn lại chưa có ADR |
+| FT-00 Cổng kỹ thuật | [DD-00](../detail-design/DD-00-TECHNICAL-GATES.md) | 1 | 10 | 1 | 2 | 0 | ADR: [0001](../decisions/0001-portal-api-contract.md) (G-02, một phần), [0002](../decisions/0002-excel-export-fidelity.md) (G-04), [0003](../decisions/0003-xlsx-and-zip-generation.md) (G-09 Excel/ZIP), [0004](../decisions/0004-interim-in-memory-metadata.md) (tạm cho G-08), [0005](../decisions/0005-mock-only-testing-policy.md); chưa có ADR cho G-01, G-03, G-05, G-06, G-07, G-08 ||
 | FT-01/02 Khung + đăng nhập | [DD-01](../detail-design/DD-01-APP-SHELL-LOGIN.md) | 1–3 | 18 | 16 | 2 | 0 | T01-14 một phần; T01-16 Release chạy được, đăng nhập WebView chờ gate G-01; hợp đồng đăng nhập thật đã có (T01-18) |
 | FT-03 Doanh nghiệp | [DD-02](../detail-design/DD-02-COMPANY-MANAGEMENT.md) | 2 | 10 | 6 | 3 | 0 | T02-08 chờ DD-03; 486 test pass |
 | FT-04 Licence | [DD-03](../detail-design/DD-03-LICENSING.md) | 2 | 8 | 5 | 3 | 0 | Lõi + SCR-12 + HTTP client + nạp cấu hình xong; khóa/hợp đồng thật chờ G-06 |
@@ -150,7 +150,7 @@ Số task lấy từ bảng theo dõi trong từng DD (cập nhật khi đổi t
 | FT-10 Xuất | [DD-09](../detail-design/DD-09-EXPORT.md) | 5 | 7 | 4 | 3 | 0 | Excel (bộ ghi xlsx tự viết, đã mở thử bằng Excel) và ZIP chạy từ SCR-05; hỗ trợ xuất theo dòng chọn; còn ExportRecord (chờ SQLite) và xuất từ SCR-06/07 |
 | FT-11 Tổng quan/lịch sử | [DD-10](../detail-design/DD-10-DASHBOARD-HISTORY.md) | 5 | 7 | 6 | 0 | 0 | SCR-02/SCR-08 chạy trên dữ liệu bộ nhớ; còn T10-05 |
 | FT-12 Cài đặt/sao lưu | [DD-11](../detail-design/DD-11-SETTINGS-BACKUP.md) | 5 | 8 | 1 | 1 | 0 | Khung SCR-09 + lối vào Bản quyền; sao lưu/khôi phục chưa làm |
-| **Tổng** | | | **114** | **66** | **24** | **3** | Còn 21 task chưa bắt đầu; số liệu đếm tự động từ các bảng DD ngày 02/11/2026 |
+| **Tổng** | | | **114** | **67** | **23** | **3** | Còn 21 task chưa bắt đầu; số liệu đếm tự động từ các bảng DD ngày 02/11/2026 |
 
 ## 5. Phụ thuộc quan trọng
 
@@ -171,7 +171,7 @@ G-03/G-09 (PDF) chặn T08-04/05; Excel và ZIP (T09-03/04) không cần thư vi
 | R-02 | Cổng Thuế thay đổi API/giới hạn tốc độ | FT-06, FT-07 | — | Mở (G-02, G-05) |
 | R-03 | Giao thức licence và nhà cung cấp máy chủ licence | FT-04 | — | Mở (G-06) |
 | R-04 | Cần tài khoản cổng Thuế thật để spike và UAT | Phase 1, 3, 6 | — | Mở |
-| R-05 | Thư viện SQLite/Excel/PDF phù hợp net45 và giấy phép | FT-07, FT-09, FT-10 | — | Mở (G-08 SQLite, G-09 PDF); Excel đã giải bằng bộ ghi xlsx tự viết |
+| R-05 | Thư viện SQLite/Excel/PDF phù hợp net45 và giấy phép | FT-07, FT-09, FT-10 | — | Mở (G-08 SQLite, G-09 PDF); Excel/ZIP đã chốt ([ADR 0003](../decisions/0003-xlsx-and-zip-generation.md)) |
 | R-06 | Máy build cần Visual Studio + net45 targeting pack (môi trường dev hiện chỉ có `dotnet` CLI) | Phase 1 | — | Mở |
 
 ## 7. Nhật ký thay đổi kế hoạch
@@ -190,4 +190,5 @@ G-03/G-09 (PDF) chặn T08-04/05; Excel và ZIP (T09-03/04) không cần thư vi
 | 02/11/2026 | Review `e91145c..HEAD` và sửa: kiểm tra file không báo thành công khi chưa truy vấn, tải lại cùng hash làm mới metadata và ghi lại file thiếu, bỏ `CancelAll` khi rời màn hình, thay đổi bộ lọc khi đang tải không bị mất, đọc phân đoạn một lần cho lịch sử |
 | 02/11/2026 | DD-08: SCR-06 Chi tiết hóa đơn và SCR-07 Xem chứng từ (XML cây/thô, đổi phiên bản, lưu bản sao); PDF/in chờ G-03, G-09 |
 | 02/11/2026 | DD-09: xuất Excel (bộ ghi xlsx tự viết, đã mở thử bằng Excel) và ZIP XML kèm manifest từ SCR-05, hỗ trợ xuất theo dòng chọn; còn ExportRecord và xuất từ SCR-06/07 |
-| 02/11/2026 | Đồng bộ lại toàn bộ trạng thái task trong file này theo bảng từng DD (đếm tự động): 114 task, 66 ✅, 24 🟡, 3 ⛔, 21 ⬜; sửa tổng số task trước đó sai (112) |
+| 02/11/2026 | Đồng bộ lại toàn bộ trạng thái task trong file này theo bảng từng DD (đếm tự động): 114 task, 66 ✅, 24 🟡, 3 ⛔, 21 ⬜ (sau khi bổ sung ADR: 67 ✅, 23 🟡); sửa tổng số task trước đó sai (112) |
+| 02/11/2026 | Bổ sung ADR 0002 (độ khớp Excel, đóng G-04), 0003 (xlsx/zip tự dựng, G-09 phần Excel/ZIP), 0004 (metadata trong bộ nhớ, tạm cho G-08), 0005 (chính sách chỉ kiểm thử trên dữ liệu giả); thêm chỉ mục `docs/decisions/README.md`; T00-06 ✅, T00-10 🟡 |

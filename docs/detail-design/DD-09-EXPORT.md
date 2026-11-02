@@ -8,7 +8,7 @@
 | Tên | Xuất Excel theo mẫu cổng Thuế, ZIP XML kèm manifest, xử lý file lỗi, ghi đè và hủy |
 | Phiên bản | 1.0 |
 | Ngày | 01/11/2026 |
-| Trạng thái | Thiết kế — chờ review; thư viện/mẫu Excel chờ gate G-04, G-09 |
+| Trạng thái | Thiết kế — chờ review; gate G-04 đóng ([ADR 0002](../decisions/0002-excel-export-fidelity.md)), Excel/ZIP chốt ([ADR 0003](../decisions/0003-xlsx-and-zip-generation.md)) |
 | Feature | [FT-10](../requirements/FEATURE-LIST.md#ft-10--xuất-excel-và-zip-xml) |
 | SRS | FR-EXPORT-001..008, FR-ARCH-008, mục 9.1, NFR-PERF-005, AC-08, AC-09 |
 | Màn hình | Hộp thoại/hành động trong SCR-05, SCR-06, SCR-07 |
@@ -87,7 +87,7 @@ Trạng thái: ⬜ Chưa bắt đầu · 🟡 Đang làm · ✅ Hoàn thành · 
 |---|---|---|---|---|---|---|
 | T09-01 | `ExportScope`, `ExportFileNamer`, `ExportRecord` | Application | T07-01 | 🟡 | | ExportScope, ExportRequest/Result, ExportFileNamer xong; ExportRecord (ghi lịch sử xuất vào company.db) chờ SQLite G-08 |
 | T09-02 | Đối chiếu mẫu Excel của cổng (cột, kiểu, tiêu đề) | Docs/Test | G-04 | ✅ | | Đã đối chiếu mẫu: bố cục, ô gộp, 19 cột, kiểu dữ liệu, độ rộng cột ghi ở mục 3 và api-samples mục 5. So sánh file do ứng dụng xuất với mẫu thực hiện cùng T09-03 |
-| T09-03 | `ExcelInvoiceWriter` (stream, 19 cột) | Infra | G-09, T09-02 | ✅ | | InvoiceExcelWriter tự dựng SpreadsheetML bằng System.IO.Compression (không cần thư viện ngoài, giải G-09 phần Excel): ghi từng dòng ra luồng, 19 cột đúng mẫu cổng, số 0 đầu giữ dạng chữ, tiền/ngày dạng số. Đã mở thử bằng Excel thật: hiển thị đúng. Đặt ở Application thay vì Infra |
+| T09-03 | `ExcelInvoiceWriter` (stream, 19 cột) | Infra | G-09, T09-02 | ✅ | [ADR 0002](../decisions/0002-excel-export-fidelity.md), [ADR 0003](../decisions/0003-xlsx-and-zip-generation.md) | InvoiceExcelWriter tự dựng SpreadsheetML bằng System.IO.Compression (không cần thư viện ngoài, giải G-09 phần Excel): ghi từng dòng ra luồng, 19 cột đúng mẫu cổng, số 0 đầu giữ dạng chữ, tiền/ngày dạng số. Đã mở thử bằng Excel thật: hiển thị đúng. Đặt ở Application thay vì Infra |
 | T09-04 | `ZipInvoiceWriter` + manifest + chính sách file lỗi | Infra | T06-05 | ✅ | | Đóng gói trong InvoiceExportService: chỉ phiên bản hiện hành, nguyên byte, kiểm SHA-256 từng file, manifest.csv (UTF-8 BOM, chống công thức), chính sách Ask/SkipAndRecord/Abort |
 | T09-05 | `InvoiceExportService` (tiến độ, hủy, atomic, không ghi đè) | Application | T09-03, T09-04 | ✅ | | InvoiceExportService: tiến độ từng hóa đơn, hủy xóa file tạm, ghi tạm rồi đổi tên, không ghi đè khi chưa xác nhận, kiểm quyền ReadExport; chưa lưu ExportRecord |
 | T09-06 | Hộp thoại xuất + tích hợp SCR-05/06/07 | WinForms | T09-05, T07-04 | 🟡 | | SCR-05: nút Xuất Excel / Xuất ZIP XML; có dòng chọn thì chỉ xuất các dòng đó, không thì toàn bộ kết quả đang lọc; hộp thoại lưu nêu tên và MST; hỏi xuất phần hợp lệ khi có file lỗi. Chưa có xuất ZIP một hóa đơn ở SCR-06/07 |

@@ -41,7 +41,7 @@ Không đưa API WebView cụ thể ra ngoài Infrastructure adapter.
 |  | **Trạng thái 11/2026: 🟡 đóng một phần.** Đã có mẫu thật cho đăng nhập (JWT, MST ở `sub`), tra cứu **bán ra** (RSQL, mọi tham số), chi tiết, xuất XML (zip), xuất Excel; xem [api-samples](../api-samples/README.md). Còn thiếu: tra cứu mua vào, `state` phân trang, `size` tối đa, mã lỗi hết phiên | | |
 | G-03 PDF strategy | Dùng PDF/print endpoint của cổng hay render XML theo mẫu; nhất quán với XML | ADR | DD-08 |
 | G-04 Excel fidelity | So sánh file xuất với workbook mẫu: cột, kiểu dữ liệu, tiêu đề, phạm vi ngày | Báo cáo đối chiếu + ADR | DD-09 |
-|  | **Trạng thái 11/2026: 🟡 đã có mẫu** `DANH SÁCH HÓA ĐƠN.xlsx` và `spec.xlsx`; bố cục 19 cột, tiêu đề, ô gộp, độ rộng cột đã ghi ở [api-samples mục 5](../api-samples/README.md). Còn lại: so sánh file do ứng dụng xuất với mẫu khi có `ExcelInvoiceWriter` | | |
+|  | **Trạng thái 02/11/2026: ✅ đóng** bằng [ADR 0002](../decisions/0002-excel-export-fidelity.md): file do ứng dụng xuất khớp mẫu về tiêu đề, 19 cột, ô gộp, độ rộng, kiểu chữ/số; khác biệt có chủ đích (ngày và tỷ giá dạng số, thêm dòng phạm vi) đã ghi lại. Còn cần đối chiếu mẫu mua vào/ngoại tệ khi có. |
 | G-05 Rate limit | Nhịp gọi an toàn; hành vi 429/giới hạn tương đương | ADR + cấu hình mặc định | DD-05 |
 | G-06 Licence protocol | API, thuật toán chữ ký, mã máy, mã hóa cục bộ, chu kỳ xác thực, hủy/reset, chính sách lệch đồng hồ | ADR + contract server | DD-03 (T03-04, T03-05) |
 | G-07 Company switch safety | Chứng minh thứ tự đóng tác vụ/token/SQLite và phục hồi sau crash | Báo cáo spike + ADR | DD-01 mục 9, DD-02 |
@@ -69,11 +69,11 @@ Trạng thái: ⬜ Chưa bắt đầu · 🟡 Đang làm · ✅ Hoàn thành · 
 | T00-03 | G-02 | Ghi traffic: xác minh phiên/MST, tra cứu mua vào/bán ra, phân trang, tải XML | T00-02 | 🟡 | | Đã ghi traffic thật cho đăng nhập, tra cứu bán ra, chi tiết, xuất XML/Excel (11/2026) và cập nhật cấu hình/cổng giả/mã nguồn theo đó. **Còn:** tra cứu mua vào, phân trang `state`, mã lỗi hết phiên. Bản ghi nguyên văn chứa mật khẩu/token thật nên chỉ giữ bản đã làm sạch |
 | T00-04 | G-05 | Đo giới hạn tốc độ / hành vi 429 | T00-03 | ⬜ | | |
 | T00-05 | G-03 | Quyết định chiến lược PDF | T00-03 | ⬜ | | |
-| T00-06 | G-04 | Đối chiếu Excel với workbook mẫu `DANH SÁCH HÓA ĐƠN.xlsx` | — | 🟡 | | Bố cục, ô gộp, 19 cột, kiểu ô khớp mẫu; test đọc lại từng ô và đã mở thử bằng Excel thật. Còn viết báo cáo đối chiếu/ADR G-04 |
+| T00-06 | G-04 | Đối chiếu Excel với workbook mẫu `DANH SÁCH HÓA ĐƠN.xlsx` | — | ✅ | [ADR 0002](../decisions/0002-excel-export-fidelity.md) | Báo cáo đối chiếu nằm trong ADR: so sánh tiêu đề, độ rộng, ô gộp, kiểu ô với mẫu; đã mở bằng Excel thật |
 | T00-07 | G-06 | Chốt giao thức licence với nhà cung cấp | — | ⬜ | | |
 | T00-08 | G-07 | Spike chuyển MST/crash recovery | DD-01 T01-07 | ⬜ | | |
-| T00-09 | G-08 | Đánh giá SQLite provider net45 | — | ⬜ | | |
-| T00-10 | G-09 | Đánh giá thư viện Excel/PDF/ZIP net45 | — | 🟡 | | Excel: bộ ghi xlsx tự viết bằng System.IO.Compression; ZIP: System.IO.Compression. Còn chọn thư viện PDF (G-03/G-09) và SQLite (G-08), chưa có ADR |
+| T00-09 | G-08 | Đánh giá SQLite provider net45 | — | ⬜ | [ADR 0004](../decisions/0004-interim-in-memory-metadata.md) (giải pháp tạm, chưa đóng gate) | Chưa chọn provider; metadata tạm lưu trong bộ nhớ sau giao diện repository |
+| T00-10 | G-09 | Đánh giá thư viện Excel/PDF/ZIP net45 | — | 🟡 | [ADR 0003](../decisions/0003-xlsx-and-zip-generation.md) (một phần) | Excel và ZIP đã chốt (tự dựng bằng System.IO.Compression). Còn thư viện PDF (G-03/G-09) và SQLite (G-08), chưa có ADR |
 
 ### 6.2 Nhật ký tiến độ
 
