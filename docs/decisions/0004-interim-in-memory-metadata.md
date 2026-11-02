@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Trạng thái | **Accepted (tạm thời)** — provider đã chọn ở [ADR 0006](0006-sqlite-provider.md); giải pháp tạm này còn hiệu lực tới khi repository SQLite được cài đặt và nối vào `CompositionRoot` |
+| Trạng thái | **Superseded bởi [ADR 0006](0006-sqlite-provider.md)** (03/11/2026): repository SQLite đã được cài đặt và nối vào `CompositionRoot` (T05-02, T06-03); các lớp trong bộ nhớ chỉ còn dùng cho test |
 | Ngày | 02/11/2026 |
 | Gate | G-08 SQLite provider ([DD-00](../detail-design/DD-00-TECHNICAL-GATES.md)) |
 | Liên quan | [DD-05](../detail-design/DD-05-DOWNLOAD-ENGINE.md), [DD-06](../detail-design/DD-06-INVOICE-STORAGE.md), [DD-07](../detail-design/DD-07-INVOICE-ARCHIVE.md), [DD-10](../detail-design/DD-10-DASHBOARD-HISTORY.md) |

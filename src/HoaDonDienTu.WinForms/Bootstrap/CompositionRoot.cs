@@ -21,6 +21,7 @@ using HoaDonDienTu.Application.Invoices;
 using HoaDonDienTu.Infrastructure.Invoices;
 using HoaDonDienTu.Infrastructure.Licensing;
 using HoaDonDienTu.Infrastructure.Logging;
+using HoaDonDienTu.Infrastructure.Persistence.Sqlite;
 using HoaDonDienTu.Infrastructure.Portal;
 using HoaDonDienTu.Infrastructure.Portal.Config;
 using HoaDonDienTu.WinForms.Archive;
@@ -204,7 +205,8 @@ namespace HoaDonDienTu.WinForms.Bootstrap
 #else
             dataDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "HoaDonDienTu", "data");
             jobs = new IdleActiveJobService();
-            starter = new UnavailableDownloadSessionStarter();
+            // Tải bật ở Release từ khi metadata nằm trong SQLite (ADR 0006); đăng nhập cổng thật vẫn chờ G-01 nên chưa có phiên để tải.
+            downloadsEnabled = true;
             loginBrowser = () => new UnavailablePortalLoginBrowser();
             var licenseSettings = LicenseApiSettingsLoader.TryLoad(LocateConfigFile("license-api.json"));
             if (licenseSettings == null)
@@ -250,10 +252,11 @@ namespace HoaDonDienTu.WinForms.Bootstrap
             ApiClientProvider = new PortalApiClientProvider(
                 SessionStore, contextManager, new PortalApiClientFactory(portalConfig, portalHandler));
 
-            // Engine tải: chạy tuần tự theo tháng, ghi XML vào thư mục kho của MST. Metadata còn trong bộ nhớ tới khi có SQLite (DD-06),
-            // nên Release chưa bật tải (UnavailableDownloadSessionStarter) để không mất dấu dữ liệu đã tải.
-            var downloadRepository = new InMemoryDownloadRepository();
-            var invoiceRepository = new CompanyScopedInvoiceRepository(contextManager, () => new InMemoryInvoiceRepository());
+            // Engine tải: chạy tuần tự theo tháng, ghi XML vào thư mục kho của MST và metadata/phiên tải vào company.db của MST đó
+            // (SQLite, ADR 0006): tắt ứng dụng không mất chỉ mục, phiên dở dang còn nguyên checkpoint.
+            var databases = new CompanyDatabaseProvider(contextManager);
+            var downloadRepository = new SqliteDownloadRepository(databases);
+            var invoiceRepository = new SqliteInvoiceRepository(databases);
             var invoiceFiles = new FileSystemInvoiceFileStore();
             var archive = new InvoiceArchiveService(invoiceRepository, invoiceFiles, contextManager);
             var archiveState = new ArchiveViewStateStore();

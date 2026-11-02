@@ -252,8 +252,10 @@ namespace HoaDonDienTu.WinForms.Download
         private async Task RenderAsync(bool force)
         {
             if (_disposed || _sessionId == Guid.Empty) return;
-            var session = await _repository.GetSessionAsync(_sessionId, CancellationToken.None).ConfigureAwait(false);
-            var segments = await _repository.GetSegmentsAsync(_sessionId, CancellationToken.None).ConfigureAwait(false);
+
+            // Không ConfigureAwait(false): repository thật (SQLite) hoàn tất trên luồng khác nhưng view phải được cập nhật trên luồng giao diện.
+            var session = await _repository.GetSessionAsync(_sessionId, CancellationToken.None);
+            var segments = await _repository.GetSegmentsAsync(_sessionId, CancellationToken.None);
             if (session == null) return;
             _view.Show(Build(session, segments));
         }

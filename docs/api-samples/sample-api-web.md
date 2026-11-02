@@ -178,8 +178,8 @@ curl --url 'https://hoadondientu.gdt.gov.vn/api/query/invoices/sold?sort=tdlap:d
 
 Các tham số:
 4.1 Ngày lập hóa đơn (*): tdlap=ge=02/10/2026T00:00:00;tdlap=le=01/11/2026T23:59:59
-4.2 MST người bán: nbmst==1112232234
-4.3 CCCD Người mua: nmcmnd==036402421225
+4.2 MST người bán: nbmst==1234567890
+4.3 CCCD Người mua: nmcmnd==999999999999
 4.4 Trạng thái hóa đơn  (*): 
   tthai: trạng thái hóa đơn: giá trị được lấy từ dropdownlist sau
   <div id="5eb513f8-034e-4394-b4f6-aeba1571e111" style="overflow: auto; transform: translateZ(0px);"><ul role="listbox" class="ant-select-dropdown-menu  ant-select-dropdown-menu-root ant-select-dropdown-menu-vertical" tabindex="0"><li role="option" unselectable="on" class="ant-select-dropdown-menu-item" aria-selected="false" style="user-select: none;">Tất cả</li><li role="option" unselectable="on" class="ant-select-dropdown-menu-item ant-select-dropdown-menu-item-selected" aria-selected="true" style="user-select: none;">Hóa đơn mới</li><li role="option" unselectable="on" class="ant-select-dropdown-menu-item" aria-selected="false" style="user-select: none;">Hóa đơn thay thế</li><li role="option" unselectable="on" class="ant-select-dropdown-menu-item" aria-selected="false" style="user-select: none;">Hóa đơn điều chỉnh</li><li role="option" unselectable="on" class="ant-select-dropdown-menu-item" aria-selected="false" style="user-select: none;">Hóa đơn đã bị thay thế</li><li role="option" unselectable="on" class="ant-select-dropdown-menu-item" aria-selected="false" style="user-select: none;">Hóa đơn đã bị điều chỉnh</li><li role="option" unselectable="on" class="ant-select-dropdown-menu-item" aria-selected="false" style="user-select: none;">Hóa đơn đã bị hủy</li></ul></div>
@@ -190,7 +190,7 @@ Các tham số:
   Hóa đơn đã bị thay thế: 4
   Hóa đơn đã bị điều chỉnh: 5
   Hóa đơn đã bị hủy: 6
-4.5 Kết quả kiểm tra  (*): ttxly==0
+4.5 Kết quả kiểm tra  (*): ttxly==6 (bắt buộc, chỉ có 3 giá trị 5, 6, 8)
 Giá trị tham số này lấy từ dropdownlist sau
 <div id="17234b61-a8a0-48dc-bc10-0334573eedf1" style="overflow: auto; transform: translateZ(0px);"><ul role="listbox" class="ant-select-dropdown-menu  ant-select-dropdown-menu-root ant-select-dropdown-menu-vertical" tabindex="0"><li role="option" unselectable="on" class="ant-select-dropdown-menu-item" aria-selected="false" style="user-select: none;">Đã cấp mã hóa đơn</li><li role="option" unselectable="on" class="ant-select-dropdown-menu-item ant-select-dropdown-menu-item-selected" aria-selected="true" style="user-select: none;">Cục Thuế đã nhận không mã</li><li role="option" unselectable="on" class="ant-select-dropdown-menu-item" aria-selected="false" style="user-select: none;">Cục Thuế đã nhận hóa đơn có mã khởi tạo từ máy tính tiền</li></ul></div>
 - Đã cấp mã hóa đơn: ttxly==5

@@ -34,6 +34,7 @@ namespace HoaDonDienTu.WinForms.Tests
         [SetUp]
         public void SetUp()
         {
+            UseUiSynchronizationContext();
             _oldMode = Environment.GetEnvironmentVariable("HDDT_DEV_MODE");
             _oldJob = Environment.GetEnvironmentVariable("HDDT_DEV_JOB");
             // Mỗi test có thư mục dữ liệu riêng (danh mục + kho thật trên đĩa) để không ảnh hưởng nhau hay dữ liệu dev.
@@ -56,6 +57,7 @@ namespace HoaDonDienTu.WinForms.Tests
             Environment.SetEnvironmentVariable("HDDT_DEV_MODE", _oldMode);
             Environment.SetEnvironmentVariable("HDDT_DEV_JOB", _oldJob);
             Environment.SetEnvironmentVariable("HDDT_DATA_DIR", _oldDataDir);
+            SynchronizationContext.SetSynchronizationContext(null);
             try
             {
                 if (System.IO.Directory.Exists(_dataDir)) System.IO.Directory.Delete(_dataDir, true);
@@ -431,6 +433,7 @@ namespace HoaDonDienTu.WinForms.Tests
         {
             LoginAndOpenDownload();
             Click("btnStartDownload");
+            Assert.That(WaitFor(() => ContentTitle() == "Tiến độ tải hóa đơn"), Is.True, "Tạo phiên (SQLite) rồi mở SCR-04");
 
             Assert.That(WaitFor(() => ProgressMessage().Contains("Đã tải xong toàn bộ"), 90000), Is.True, ProgressMessage());
 
@@ -450,6 +453,7 @@ namespace HoaDonDienTu.WinForms.Tests
         {
             LoginAndOpenDownload();
             Click("btnStartDownload");
+            Assert.That(WaitFor(() => ContentTitle() == "Tiến độ tải hóa đơn"), Is.True, "Tạo phiên (SQLite) rồi mở SCR-04");
             Assert.That(WaitFor(() => Control<KryptonButton>("btnPause").Enabled), Is.True);
 
             Click("btnPause");
@@ -806,8 +810,21 @@ namespace HoaDonDienTu.WinForms.Tests
             return label == null ? null : label.Values.Text;
         }
 
+        /// <summary>
+        /// Như vòng lặp chính của Application.Run: tiếp nối sau await (repository SQLite hoàn tất trên luồng khác) phải quay về luồng giao diện.
+        /// Đóng một hộp thoại modal đặt lại context về SynchronizationContext trơn (tiếp nối chạy trên thread pool) nên gọi lại trước mỗi thao tác.
+        /// </summary>
+        private static void UseUiSynchronizationContext()
+        {
+            if (!(SynchronizationContext.Current is WindowsFormsSynchronizationContext))
+            {
+                SynchronizationContext.SetSynchronizationContext(new WindowsFormsSynchronizationContext());
+            }
+        }
+
         private void Click(string name)
         {
+            UseUiSynchronizationContext();
             Invoke(Control<System.Windows.Forms.Control>(name));
         }
 

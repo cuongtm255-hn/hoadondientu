@@ -57,6 +57,18 @@ namespace HoaDonDienTu.Application.Downloads
         public DateTime? FinishedAtUtc { get; private set; }
         public string StartedByUser { get; private set; }
 
+        /// <summary>Dựng lại phiên đã lưu (đọc từ kho bền vững); không kiểm tra chuyển trạng thái vì đây là trạng thái đã được chấp nhận trước đó.</summary>
+        public static DownloadSession Restore(
+            Guid id, CompanyId companyId, TaxCode taxCode, string storageRoot, InvoiceDirection direction, PeriodSpec period,
+            InvoiceSearchFilter filter, DownloadSessionState state, DateTime createdAtUtc, DateTime? startedAtUtc, DateTime? finishedAtUtc, string startedByUser)
+        {
+            var session = new DownloadSession(id, companyId, taxCode, storageRoot, direction, period, filter, createdAtUtc, startedByUser);
+            session.State = state;
+            session.StartedAtUtc = startedAtUtc;
+            session.FinishedAtUtc = finishedAtUtc;
+            return session;
+        }
+
         public void TransitionTo(DownloadSessionState next, DateTime nowUtc)
         {
             if (!DownloadStateMachine.CanTransition(State, next))
@@ -124,6 +136,12 @@ namespace HoaDonDienTu.Application.Downloads
         /// <summary>Mô tả ngắn đã làm sạch của lỗi gần nhất.</summary>
         public string LastError { get; set; }
 
+        /// <summary>Đặt lại trạng thái đã lưu khi dựng đoạn từ kho bền vững (không đi qua state machine).</summary>
+        public void RestoreState(DownloadSegmentState state)
+        {
+            State = state;
+        }
+
         public void TransitionTo(DownloadSegmentState next)
         {
             if (!DownloadStateMachine.CanTransition(State, next))
@@ -169,6 +187,14 @@ namespace HoaDonDienTu.Application.Downloads
             Level = level;
             Code = code;
             Message = message;
+        }
+
+        /// <summary>Dựng lại sự kiện đã lưu, giữ nguyên mã sự kiện.</summary>
+        public static DownloadEvent Restore(Guid eventId, Guid sessionId, Guid? segmentId, DateTime timeUtc, DownloadEventLevel level, string code, string message)
+        {
+            var e = new DownloadEvent(sessionId, segmentId, timeUtc, level, code, message);
+            e.EventId = eventId;
+            return e;
         }
 
         public Guid EventId { get; private set; }
