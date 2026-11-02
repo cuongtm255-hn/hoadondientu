@@ -371,8 +371,49 @@ namespace HoaDonDienTu.WinForms.Tests
 
             Click("btnStartDownload");
 
-            Assert.That(WaitFor(() => ContentTitle() == "Tiến độ tải"), Is.True);
+            Assert.That(WaitFor(() => ContentTitle() == "Tiến độ tải hóa đơn"), Is.True);
         }
+
+#if DEBUG
+        private string ProgressMessage()
+        {
+            return Control<KryptonWrapLabel>("lblMessage").Text;
+        }
+
+        [Test]
+        public void Download_RunsToCompletion_OnMockData_AndWritesXmlIntoTheCompanyFolder()
+        {
+            LoginAndOpenDownload();
+            Click("btnStartDownload");
+
+            Assert.That(WaitFor(() => ProgressMessage().Contains("Đã tải xong toàn bộ"), 90000), Is.True, ProgressMessage());
+
+            var grid = Control<KryptonDataGridView>("gridSegments");
+            Assert.That(grid.Rows.Count, Is.EqualTo(12), "Năm 2026 → 12 tháng");
+            Assert.That(Control<KryptonLabel>("lblStat1Value").Values.Text, Is.EqualTo("100%"));
+            Assert.That(Control<KryptonButton>("btnPause").Enabled, Is.False);
+            Assert.That(Control<KryptonButton>("btnCancel").Enabled, Is.False, "Phiên đã kết thúc");
+            var root = _root.ContextManager.Current.StorageRoot;
+            var files = System.IO.Directory.GetFiles(System.IO.Path.Combine(root, "2026"), "*.xml", System.IO.SearchOption.AllDirectories);
+            Assert.That(files.Length, Is.GreaterThan(20));
+            Assert.That(Control<KryptonLabel>("lblStat3Value").Values.Text, Is.EqualTo(files.Length.ToString("N0", System.Globalization.CultureInfo.InvariantCulture)));
+        }
+
+        [Test]
+        public void Download_PauseThenResume_ContinuesFromTheCheckpoint()
+        {
+            LoginAndOpenDownload();
+            Click("btnStartDownload");
+            Assert.That(WaitFor(() => Control<KryptonButton>("btnPause").Enabled), Is.True);
+
+            Click("btnPause");
+            Assert.That(WaitFor(() => Control<KryptonButton>("btnResume").Enabled, 30000), Is.True, ProgressMessage());
+            Assert.That(ProgressMessage(), Does.Contain("tạm dừng"));
+
+            Click("btnResume");
+            Assert.That(WaitFor(() => ProgressMessage().Contains("Đã tải xong toàn bộ"), 90000), Is.True, ProgressMessage());
+        }
+#endif
 
         [Test]
         public void Download_DirectionToggle_IsExclusive()

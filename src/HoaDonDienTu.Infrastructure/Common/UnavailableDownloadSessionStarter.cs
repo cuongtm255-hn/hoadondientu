@@ -10,7 +10,7 @@ namespace HoaDonDienTu.Infrastructure.Common
     /// </summary>
     public sealed class UnavailableDownloadSessionStarter : IDownloadSessionStarter
     {
-        public Task StartAsync(DownloadPlan plan, CancellationToken cancellationToken)
+        public Task<System.Guid> StartAsync(DownloadPlan plan, CancellationToken cancellationToken)
         {
             throw new FeatureNotAvailableException("Chức năng tải hóa đơn chưa có trong phiên bản này.");
         }

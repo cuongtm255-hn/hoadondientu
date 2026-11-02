@@ -314,7 +314,7 @@ namespace HoaDonDienTu.WinForms.Tests
             Assert.That(plan.Filter.InvoiceNumber, Is.Null);
             Assert.That(plan.Filter.ProxyInvoice, Is.True);
             Assert.That(_navigation.Targets, Is.EqualTo(new[] { ScreenId.DownloadProgress }));
-            Assert.That(_navigation.Parameters.Single(), Is.SameAs(plan));
+            Assert.That(_navigation.Parameters.Single(), Is.EqualTo(_starter.SessionId), "SCR-04 nhận mã phiên vừa tạo");
         }
 
         [Test]
@@ -531,12 +531,14 @@ namespace HoaDonDienTu.WinForms.Tests
             public List<DownloadPlan> Plans = new List<DownloadPlan>();
             public Exception Failure;
             public Task Gate;
+            public Guid SessionId = Guid.NewGuid();
 
-            public async Task StartAsync(DownloadPlan plan, CancellationToken cancellationToken)
+            public async Task<Guid> StartAsync(DownloadPlan plan, CancellationToken cancellationToken)
             {
                 Plans.Add(plan);
                 if (Gate != null) await Gate;
                 if (Failure != null) throw Failure;
+                return SessionId;
             }
         }
 

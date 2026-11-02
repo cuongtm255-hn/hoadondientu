@@ -92,7 +92,8 @@ namespace HoaDonDienTu.Application.Downloads
     /// <summary>Tạo phiên tải từ kế hoạch; implementation ở DD-05 (<c>IDownloadOrchestrator</c>).</summary>
     public interface IDownloadSessionStarter
     {
-        Task StartAsync(DownloadPlan plan, CancellationToken cancellationToken);
+        /// <summary>Tạo phiên tải từ kế hoạch và trả về mã phiên để màn hình tiến độ (SCR-04) chạy và theo dõi.</summary>
+        Task<Guid> StartAsync(DownloadPlan plan, CancellationToken cancellationToken);
     }
 
     public sealed class StartDecision

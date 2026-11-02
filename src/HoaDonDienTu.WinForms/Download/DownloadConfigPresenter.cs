@@ -214,8 +214,8 @@ namespace HoaDonDienTu.WinForms.Download
                 "Bắt đầu tải",
                 async token =>
                 {
-                    await _starter.StartAsync(plan, token);
-                    await _navigation.NavigateAsync(ScreenId.DownloadProgress, plan, token);
+                    var sessionId = await _starter.StartAsync(plan, token);
+                    await _navigation.NavigateAsync(ScreenId.DownloadProgress, sessionId, token);
                 },
                 state => { if (state.Error != null) _errors.Show(state.Error); });
         }

@@ -92,6 +92,15 @@
     </Compile>
     <Compile Include="Download\DownloadConfigPresenter.cs" />
     <Compile Include="Download\DownloadConfigScreen.cs" />
+    <Compile Include="Download\DownloadProgressControl.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Download\DownloadProgressControl.Designer.cs">
+      <DependentUpon>DownloadProgressControl.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Download\DownloadProgressPresenter.cs" />
+    <Compile Include="Download\DownloadProgressScreen.cs" />
+    <Compile Include="Download\IDownloadProgressView.cs" />
     <Compile Include="Download\IDownloadConfigView.cs" />
     <Compile Include="Login\DevelopmentPortalLoginBrowser.cs" />
     <Compile Include="Login\UnavailablePortalLoginBrowser.cs" />

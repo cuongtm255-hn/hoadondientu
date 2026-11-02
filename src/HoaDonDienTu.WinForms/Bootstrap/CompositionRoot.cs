@@ -13,6 +13,8 @@ using HoaDonDienTu.Domain.Invoices;
 using HoaDonDienTu.Domain.Licensing;
 using HoaDonDienTu.Infrastructure.Common;
 using HoaDonDienTu.Infrastructure.Companies;
+using HoaDonDienTu.Application.Invoices;
+using HoaDonDienTu.Infrastructure.Invoices;
 using HoaDonDienTu.Infrastructure.Licensing;
 using HoaDonDienTu.Infrastructure.Logging;
 using HoaDonDienTu.Infrastructure.Portal;
@@ -136,7 +138,9 @@ namespace HoaDonDienTu.WinForms.Bootstrap
             System.Func<System.Net.Http.HttpMessageHandler> portalHandler = null;
             System.Func<IPortalLoginBrowser> loginBrowser;
             IActiveJobService jobs;
-            IDownloadSessionStarter starter;
+            IDownloadSessionStarter starter = null;
+            var downloadsEnabled = false;
+            var developmentJobs = false;
             ILicenseServer licenseServer;
             ILicenseSignatureVerifier licenseVerifier;
             PortalApiConfig portalConfig;
@@ -174,10 +178,12 @@ namespace HoaDonDienTu.WinForms.Bootstrap
 
             DevelopmentDataSeeder.Seed(dataDirectory, text);
             developmentLicense = new DevelopmentLicenseService(licenseStatus);
-            starter = new PendingDownloadSessionStarter();
+            downloadsEnabled = true;
             var mockPortal = new MockPortalHandler(portalConfig);
             portalHandler = () => mockPortal;
-            jobs = new DevelopmentActiveJobService(Environment.GetEnvironmentVariable("HDDT_DEV_JOB") == "1");
+            // HDDT_DEV_JOB=1 mô phỏng một phiên tải đang chạy để thử luồng chuyển MST/đóng ứng dụng; mặc định dùng engine tải thật.
+            developmentJobs = Environment.GetEnvironmentVariable("HDDT_DEV_JOB") == "1";
+            jobs = new DevelopmentActiveJobService(developmentJobs);
             loginBrowser = () => new DevelopmentPortalLoginBrowser(
                 () => ContextManager.HasCurrent ? ContextManager.Current.TaxCode.Value : string.Empty);
             var developmentServer = new DevelopmentLicenseServer(
@@ -225,9 +231,36 @@ namespace HoaDonDienTu.WinForms.Bootstrap
             var entitlement = new EntitlementService(mode, mode == AppMode.ReadOnlyService);
             Entitlement = entitlement;
             ContextManager = contextManager;
-            ShutdownCoordinator = new ShutdownCoordinator(contextManager, jobs, SessionStore, new ShutdownPrompt(), Logger);
             ApiClientProvider = new PortalApiClientProvider(
                 SessionStore, contextManager, new PortalApiClientFactory(portalConfig, portalHandler));
+
+            // Engine tải: chạy tuần tự theo tháng, ghi XML vào thư mục kho của MST. Metadata còn trong bộ nhớ tới khi có SQLite (DD-06),
+            // nên Release chưa bật tải (UnavailableDownloadSessionStarter) để không mất dấu dữ liệu đã tải.
+            var downloadRepository = new InMemoryDownloadRepository();
+            IDownloadOrchestrator orchestrator = null;
+            if (downloadsEnabled)
+            {
+                var invoiceStore = new InvoiceStorageService(
+                    new InMemoryInvoiceRepository(), new FileSystemInvoiceFileStore(), new InvoiceNormalizer(), contextManager, Clock, Logger);
+#if DEBUG
+                // Cổng giả không cần giãn nhịp 500 ms như cổng thật; giữ nhỏ để thử nghiệm nhanh.
+                var interval = Math.Min(portalConfig.RateLimit.MinIntervalMs, 20);
+#else
+                var interval = portalConfig.RateLimit.MinIntervalMs;
+#endif
+                var concrete = new DownloadOrchestrator(
+                    downloadRepository, contextManager, SessionStore, () => ApiClientProvider.GetClient(), invoiceStore,
+                    new MinIntervalRateLimiter(interval), DefaultRetryPolicy.Standard, entitlement, Clock, Logger, null);
+                orchestrator = concrete;
+                starter = new OrchestratorSessionStarter(concrete);
+                if (!developmentJobs) jobs = new DownloadJobService(concrete);
+            }
+            else if (starter == null)
+            {
+                starter = new UnavailableDownloadSessionStarter();
+            }
+
+            ShutdownCoordinator = new ShutdownCoordinator(contextManager, jobs, SessionStore, new ShutdownPrompt(), Logger);
 
             var switchService = new CompanySwitchService(registry, contextManager, jobs, SessionStore, entitlement, Logger);
             var management = new CompanyManagementService(registry, storage, contextManager, entitlement, Logger);
@@ -250,6 +283,13 @@ namespace HoaDonDienTu.WinForms.Bootstrap
                         view => new DownloadConfigPresenter(
                             view, splitter, startPolicy, storageProbe, capabilities, SessionStore, contextManager,
                             entitlement, starter, Confirmation, OperationRunner, ErrorPresenter, NavigationService, Clock))),
+                new ScreenDescriptor(
+                    HoaDonDienTu.Application.Navigation.ScreenId.DownloadProgress, "Tiến độ tải", "SCR-04",
+                    parameter => new DownloadProgressScreen(
+                        new DownloadProgressControl(),
+                        view => new DownloadProgressPresenter(
+                            view, orchestrator, downloadRepository, SessionStore, () => ShellActions, Confirmation, OperationRunner,
+                            ErrorPresenter, Clock, parameter is Guid ? (Guid?)parameter : null))),
                 new ScreenDescriptor(
                     HoaDonDienTu.Application.Navigation.ScreenId.Settings, "Cài đặt", "SCR-09",
                     parameter => new SettingsScreen(
