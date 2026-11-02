@@ -162,6 +162,7 @@ Trạng thái: ⬜ Chưa bắt đầu · 🟡 Đang làm · ✅ Hoàn thành · 
 | T05-09 | Khôi phục phiên chưa hoàn tất khi khởi động | Application | T05-02 | 🟡 | | `GetUnfinishedAsync` + phiên bị ngắt chạy tiếp được; SCR-04 mở phiên chưa xong mới nhất khi không có mã phiên. Chưa gọi lúc khởi động ứng dụng và chưa có nơi liệt kê phiên (SCR-08) |
 | T05-10 | Unit test (mục 7.1) | Tests | T05-03..T05-05 | ✅ | | 76 test (state machine, nhiều trang, retry/backoff, 429, schema, auth, pause/resume, cancel, kho đầy, guard, tuần tự) |
 | T05-11 | Integration test + UAT cổng thật (mục 7.2–7.3) | Tests | T05-06 | ⛔ | | Integration + UAT cổng thật (mục 7.2–7.3): mẫu bán ra đã có để làm test (RealSamples); còn cần traffic mua vào, nhiều trang và 401/429 thật |
+| T05-12 | Tra cứu mua vào bắt buộc `ttxly`: khi bộ lọc không chọn kết quả kiểm tra thì mỗi tháng tải lần lượt ba mã 5, 6, 8 (đoạn tải thêm chiều "kết quả kiểm tra", checkpoint theo từng lượt), gộp và khử trùng theo khóa chống trùng; cấu hình `search.requireCheckResult` cho mua vào; cổng giả mô phỏng bắt buộc `ttxly`; thêm cột tương ứng vào `download_segment` trước T06-03 | Application/Infra | T04-10, T05-03 | ⬜ | | [Kế hoạch](../progress/2026-11-02-purchase-search-alignment.md) |
 
 ### 8.2 Nhật ký tiến độ
 

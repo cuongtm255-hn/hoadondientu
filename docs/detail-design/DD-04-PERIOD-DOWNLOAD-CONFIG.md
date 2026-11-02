@@ -48,10 +48,10 @@ public sealed class DateSegment                    // một đoạn trong 1 thá
 
 public sealed class InvoiceSearchFilter          // theo form "Tra cứu hóa đơn" của cổng; rỗng = "Tất cả", không gửi
 {
-    public string CounterpartyTaxCode { get; set; } // bán ra: MST người mua (nmmst); mua vào: MST người bán (nbmst) ⚠
-    public string BuyerIdNumber { get; set; }       // CCCD người mua (nmcmnd) — chỉ bán ra
+    public string CounterpartyTaxCode { get; set; } // bán ra: MST người mua (nmmst); mua vào: MST người bán (nbmst)
+    public string BuyerIdNumber { get; set; }       // CCCD người mua (nmcmnd) — cả bán ra và mua vào
     public string StatusCode { get; set; }          // tthai "1".."6"
-    public string CheckResultCode { get; set; }     // ttxly "0".."8"
+    public string CheckResultCode { get; set; }     // ttxly: bán ra "0".."8" hoặc rỗng; mua vào "5"/"6"/"8" (rỗng = cả ba, tải từng mã)
     public string InvoiceNumber { get; set; }       // shdon, tối đa 8 chữ số
     public string FormSymbol { get; set; }          // khmshdon "1".."9" (dropdown)
     public string InvoiceSymbol { get; set; }       // khhdon, ví dụ C26TBN
@@ -113,10 +113,10 @@ DownloadConfigControl
 
 | Ô trên SCR-03 | Trường | Tham số cổng | Kiểu nhập / giá trị | Chiều |
 |---|---|---|---|---|
-| MST người mua / MST người bán (nhãn đổi theo chiều) | `CounterpartyTaxCode` | `nmmst` / `nbmst` ⚠ | text; 10 số, 13 số hoặc `10 số-3 số` | cả hai |
-| CCCD người mua | `BuyerIdNumber` | `nmcmnd` | text; 12 số (9 số CMND cũ) | chỉ **bán ra** (ẩn khi mua vào, giá trị cũ bị bỏ khỏi kế hoạch) |
+| MST người mua / MST người bán (nhãn đổi theo chiều) | `CounterpartyTaxCode` | `nmmst` / `nbmst` (mua vào đã có mẫu thật 02/11/2026) | text; 10 số, 13 số hoặc `10 số-3 số` | cả hai |
+| CCCD người mua | `BuyerIdNumber` | `nmcmnd` | text; 12 số (9 số CMND cũ) | **cả hai chiều** (form mua vào cũng có ô "CCCD người mua", mẫu thật gửi `nmcmnd`) |
 | Trạng thái hóa đơn | `StatusCode` | `tthai` | dropdown *không cho gõ*: Tất cả · 1 Hóa đơn mới · 2 thay thế · 3 điều chỉnh · 4 đã bị thay thế · 5 đã bị điều chỉnh · 6 đã bị hủy | cả hai |
-| Kết quả kiểm tra | `CheckResultCode` | `ttxly` | dropdown: Tất cả · 0…8 (9 nhãn của cổng, `PortalOptions.CheckResults`) | cả hai |
+| Kết quả kiểm tra | `CheckResultCode` | `ttxly` | **bán ra**: Tất cả · 0…8 (9 nhãn, `PortalOptions.CheckResults`). **Mua vào**: chỉ 5 Đã cấp mã · 6 Cục Thuế đã nhận không mã · 8 có mã khởi tạo từ máy tính tiền, **không có "Tất cả"** và bắt buộc; "mọi kết quả" = tải lần lượt 5, 6, 8 (T04-10, T05-12) | cả hai |
 | Ký hiệu mẫu số | `FormSymbol` | `khmshdon` | dropdown Tất cả, 1…9 | cả hai |
 | Ký hiệu hóa đơn | `InvoiceSymbol` | `khhdon` | text chữ + số | cả hai |
 | Số hóa đơn | `InvoiceNumber` | `shdon` | text số, ≤ 8 chữ số | cả hai |
@@ -170,6 +170,7 @@ Trạng thái: ⬜ Chưa bắt đầu · 🟡 Đang làm · ✅ Hoàn thành · 
 | T04-07 | Nối `IDownloadOrchestrator.CreateSessionAsync` → SCR-04 | WinForms | T05-03 | ✅ | | `IDownloadSessionStarter.StartAsync` trả mã phiên: `OrchestratorSessionStarter` tạo phiên từ `DownloadPlan`, SCR-03 mở SCR-04 với mã phiên đó; Release dùng `UnavailableDownloadSessionStarter` tới khi có SQLite |
 | T04-08 | UI smoke test (mục 6.2) | Tests | T04-04 | ✅ | | 6 test: năm 2026 → 12 dòng (AC-02), 15/01–10/03 → 3 dòng (AC-03), kỳ sai, chưa đăng nhập, bắt đầu → SCR-04, chiều hóa đơn loại trừ |
 | T04-09 | Rà soát bộ lọc theo mô tả tham số của cổng: dropdown đúng mã/nhãn (`PortalOptions`), thêm CCCD người mua, `InvoiceFilterValidator`, thông báo lỗi trên form | Application/WinForms | G-02 | ✅ | | 25 test (validator, options, presenter); SCR-03 vẽ lại thẻ bộ lọc bằng dock; dropdown là `DropDownList`, không còn gõ tự do |
+| T04-10 | Cập nhật bộ lọc mua vào theo mẫu thật 02/11/2026: CCCD người mua hiện ở cả hai chiều (`PurchaseFilterFields` thêm `nmcmnd`); dropdown Kết quả kiểm tra theo chiều (`PortalOptions.CheckResultsFor`, mua vào 5/6/8, không có Tất cả, mặc định "Đã cấp mã hóa đơn" hoặc "Cả ba"); `InvoiceFilterValidator` theo chiều; nhãn nhóm tab "có mã khởi tạo từ máy tính tiền" | WinForms/Application | T04-09 | ⬜ | | [Kế hoạch](../progress/2026-11-02-purchase-search-alignment.md) |
 
 ### 7.2 Nhật ký tiến độ
 

@@ -5,7 +5,7 @@
 > [`sample-api-web.md`](sample-api-web.md) là bản ghi traffic **đã thay mọi giá trị nhạy cảm bằng placeholder** (`<JWT>`, `<COOKIES…>`, `<PASSWORD>`, `<CAPTCHA>`, `<CAPTCHA_KEY>`). Bản ghi nguyên văn (có mật khẩu, token, cookie thật) phải đặt tên `*.raw.*` hoặc trong `raw/` — các đường dẫn này nằm trong `.gitignore`; sau khi làm sạch mới lưu thành tệp thường và chỉ commit khi không còn bí mật.
 >
 > **Đã xác nhận bằng mẫu thật:** đăng nhập, tra cứu bán ra và toàn bộ tham số lọc, chi tiết, xuất XML (zip), xuất Excel.
-> **Chưa có mẫu thật (suy luận, đánh dấu ⚠):** tra cứu **mua vào**, trang kế tiếp qua `state`, kích thước trang tối đa, giới hạn tốc độ. Xem mục 7.
+> **Chưa có mẫu thật (suy luận, đánh dấu ⚠):** hành vi bỏ `ttxly` của tra cứu **mua vào** (đã có mẫu URL mua vào), trang kế tiếp qua `state`, kích thước trang tối đa, giới hạn tốc độ. Xem mục 7.
 
 ## 1. Cách hoạt động
 
@@ -54,13 +54,13 @@ content-type: application/json
 | `request-id` | GUID mới mỗi lần gọi |
 | `cookie`, `user-agent` | từ WebView (bảng trên) |
 
-`action` theo thao tác: **Tìm kiếm** / **Xem hóa đơn** / **Xuất hóa đơn** (Excel) / **Xuất xml**, kèm `(hóa đơn bán ra)`; mua vào dùng `(hóa đơn mua vào)` ⚠ (suy luận). Máy chủ có bắt buộc `action`/`end-point` hay không chưa rõ nên ứng dụng gửi đủ như trình duyệt.
+`action` theo thao tác: **Tìm kiếm** / **Xem hóa đơn** / **Xuất hóa đơn** (Excel) / **Xuất xml**, kèm `(hóa đơn bán ra)`; mua vào dùng `(hóa đơn mua vào)` (đã có mẫu thật 02/11/2026). Máy chủ có bắt buộc `action`/`end-point` hay không chưa rõ nên ứng dụng gửi đủ như trình duyệt.
 
 ## 3. Tra cứu hóa đơn
 
 ```
 GET /api/query/invoices/sold?sort=tdlap:desc&size=15&search=<RSQL>[&state=<con trỏ>]
-GET /api/query/invoices/purchase?…            ⚠ đường dẫn suy luận
+GET /api/query/invoices/purchase?…            (mẫu thật 02/11/2026, cùng định dạng `search` với bán ra)
 ```
 
 `search` là biểu thức RSQL, các điều kiện nối bằng `;` (AND). Ví dụ thật (đủ mọi tham số):
@@ -73,14 +73,25 @@ tdlap=ge=02/10/2026T00:00:00;tdlap=le=01/11/2026T23:59:59;nmmst==1112232234;ttha
 |---|---|:---:|---|
 | Ngày lập hóa đơn – Từ ngày / Đến ngày | `tdlap=ge=` / `tdlap=le=` | ✓ | `dd/MM/yyyy'T'HH:mm:ss`; từ 00:00:00, đến 23:59:59. Cổng giới hạn khoảng tìm kiếm (UI nói "theo từng tháng"; mẫu thật 02/10–01/11 = 30 ngày vẫn được chấp nhận) |
 | MST người mua *(bán ra)* | `nmmst==` | | 10 hoặc 13 số |
-| MST người bán *(mua vào)* | `nbmst==` ⚠ | | |
-| CCCD người mua *(chỉ bán ra)* | `nmcmnd==` | | 12 số (9 số với CMND cũ) |
+| MST người bán *(mua vào)* | `nbmst==` | | 10 hoặc 13 số. Mẫu thật mua vào dùng `nbmst`; bản ghi tay mục 4.2 ghi nhầm "MST người mua / `nmmst`" nhưng URL mẫu và form đều là **MST người bán** |
+| CCCD người mua *(cả bán ra và mua vào)* | `nmcmnd==` | | 12 số (9 số với CMND cũ). Form mua vào có ô "CCCD người mua" và URL mẫu mua vào gửi `nmcmnd` |
 | Trạng thái hóa đơn (\*) | `tthai==` | | "Tất cả" = không gửi; **1** Hóa đơn mới · **2** thay thế · **3** điều chỉnh · **4** đã bị thay thế · **5** đã bị điều chỉnh · **6** đã bị hủy |
 | Kết quả kiểm tra (\*) | `ttxly==` | | "Tất cả" = không gửi; **0** Cục Thuế đã nhận · **1** Đang tiến hành kiểm tra điều kiện cấp mã · **2** CQT từ chối hóa đơn theo từng lần phát sinh · **3** Hóa đơn đủ điều kiện cấp mã · **4** không đủ điều kiện cấp mã · **5** Đã cấp mã hóa đơn · **6** Cục Thuế đã nhận không mã · **7** Đã kiểm tra định kỳ HĐĐT không có mã · **8** Cục Thuế đã nhận hóa đơn có mã khởi tạo từ máy tính tiền |
 | Ký hiệu mẫu số hóa đơn | `khmshdon==` | | dropdown 1…9 |
 | Ký hiệu hóa đơn | `khhdon==` | | chuỗi, ví dụ `C26TBN`, `121` |
 | Số hóa đơn | `shdon==` | | số nguyên, ví dụ `323` (bản ghi tay ghi nhầm `hdon==`; mẫu URL và trường phản hồi đều là `shdon`) |
 | Hóa đơn ủy nhiệm | `unhiem==1` | | checkbox: **chỉ gửi khi tích**, bỏ tích thì không gửi gì |
+
+**Khác biệt của tra cứu mua vào** (mẫu thật + ảnh `spec.xlsx`, 02/11/2026):
+
+```
+tdlap=ge=02/10/2026T00:00:00;tdlap=le=01/11/2026T23:59:59;nbmst==1234567890;tthai==1;ttxly==6;khmshdon==8;shdon==123;khhdon==321;unhiem==1;nmcmnd==999999999999
+```
+
+- Dropdown **Kết quả kiểm tra** của mua vào **không có "Tất cả"**, chỉ 3 giá trị: **5** Đã cấp mã hóa đơn · **6** Cục Thuế đã nhận không mã · **8** Cục Thuế đã nhận hóa đơn có mã khởi tạo từ máy tính tiền (các giá trị 0–4, 7 chỉ có ở bán ra). Ô được đánh dấu (\*) bắt buộc trên form.
+- Dropdown **Trạng thái hóa đơn** của mua vào vẫn có "Tất cả" (không gửi `tthai`); mặc định của form là "Hóa đơn mới".
+- ⚠ Chưa biết: bỏ hẳn `ttxly` khi gọi API có được không (form bắt buộc chọn nên có thể máy chủ cũng bắt buộc), và ba mã 5/6/8 có phủ hết hóa đơn mua vào hay không. Cho tới khi xác nhận, ứng dụng coi `ttxly` là bắt buộc với mua vào: "Tất cả" = gọi lần lượt ba mã rồi gộp (khử trùng theo khóa chống trùng).
+- Hai tab kết quả *Hóa đơn điện tử* / *Hóa đơn có mã khởi tạo từ máy tính tiền*: ⚠ nhiều khả năng là `ttxly` 5, 6 và 8; chưa có traffic phân biệt.
 
 Chuỗi ghép từng ký tự giống URL mẫu (`=`, `;`, `:`, `/` giữ nguyên); thứ tự điều kiện như form. Giá trị chứa ký tự đặc biệt của RSQL được đặt trong dấu nháy kép để không chèn thêm điều kiện.
 Mã trạng thái/kết quả kiểm tra và nhãn nằm ở `PortalOptions` (dùng chung cho dropdown, cột bảng kê và dữ liệu giả).
@@ -131,10 +142,10 @@ Yêu cầu của PM (sheet *Requirement*): đăng nhập tích hợp WebView g�
 
 | ⚠ | Cần ghi traffic |
 |---|---|
-| Đường dẫn và tên trường tra cứu **mua vào** | `/api/query/invoices/purchase`? `nbmst==` hay trường khác cho "MST người bán"; mua vào có `nmcmnd` không |
+| Tra cứu **mua vào**: bỏ `ttxly` được không | Đường dẫn, `nbmst`, `nmcmnd`, `action` đã xác nhận (02/11/2026). Còn: gọi không có `ttxly` có bị 400 hay trả thiếu; 5/6/8 có phủ hết; tab "có mã khởi tạo từ máy tính tiền" có dùng cùng endpoint không |
 | Trang kế tiếp | tên tham số gửi lại `state`, khi nào `state` khác null, `size` tối đa |
 | Hóa đơn có mã khởi tạo từ máy tính tiền | tab riêng; có thể là endpoint khác (`sco-…`); hiện chưa hỗ trợ |
-| `action` của mua vào | chuỗi thật; máy chủ có kiểm tra `action`/`end-point`/`request-id` không |
+| Kiểm tra header | máy chủ có kiểm tra `action`/`end-point`/`request-id` không (`action` mua vào đã biết: `Tìm kiếm (hóa đơn mua vào)`) |
 | Giới hạn tốc độ, mã lỗi | 429/403 thật, `Retry-After`, nhịp gọi an toàn (G-05) |
 | Lỗi hết phiên | mã HTTP và thân khi token hết hạn (hiện coi 401/403 là `AuthExpired`) |
 

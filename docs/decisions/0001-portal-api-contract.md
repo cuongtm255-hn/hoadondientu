@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Trạng thái | **Accepted một phần** — đã đối chiếu traffic thật cho đăng nhập, tra cứu bán ra, chi tiết, xuất XML/Excel (11/2026); tra cứu mua vào và phân trang `state` còn là suy luận, đóng hẳn G-02 khi có mẫu |
+| Trạng thái | **Accepted một phần** — đã đối chiếu traffic thật cho đăng nhập, tra cứu bán ra và mua vào (mẫu URL), chi tiết, xuất XML/Excel (11/2026); phân trang `state` còn là suy luận, đóng hẳn G-02 khi có mẫu |
 | Ngày | 01/11/2026 |
 | Liên quan | [DD-00 G-02](../detail-design/DD-00-TECHNICAL-GATES.md), [DD-05](../detail-design/DD-05-DOWNLOAD-ENGINE.md), [DD-06](../detail-design/DD-06-INVOICE-STORAGE.md), [api-samples](../api-samples/README.md) |
 
@@ -36,5 +36,6 @@ Ban đầu endpoint, tham số, phân trang và cấu trúc phản hồi của c
   - Phản hồi là `{datas, total, state, time}`; header `action`, `request-id`, `end-point` được gửi như trình duyệt.
   - Không có API hồ sơ: **MST xác minh bằng claim `sub` của JWT** (`PortalToken`), `exp` báo hết phiên. Đăng nhập vẫn do WebView; `PortalAuthCapture` ghi lại token, cookie, User-Agent và không bao giờ đọc mật khẩu/CAPTCHA.
 - **Quyết định 3 điều chỉnh.** Cổng giả mô phỏng **đúng hình dạng API thật** (JWT, RSQL, zip) thay vì nhiều "hình dạng" tự định nghĩa; các biến thể Page/POST-Body/Base64 đã bỏ khỏi code và test vì cổng thật không dùng.
-- **Còn phải xác nhận (⚠):** tra cứu mua vào (đường dẫn `/purchase`, trường `nbmst`), tên tham số/điều kiện của `state`, `size` tối đa, tab "hóa đơn có mã khởi tạo từ máy tính tiền", giới hạn tốc độ (G-05).
+- **Bổ sung 02/11/2026 (mẫu thật tra cứu mua vào):** đường dẫn `/api/query/invoices/purchase`, `action` `Tìm kiếm (hóa đơn mua vào)`, lọc người bán bằng `nbmst`, có cả `nmcmnd` (CCCD người mua); dropdown Kết quả kiểm tra của mua vào chỉ có `ttxly` 5/6/8, không có "Tất cả" và bắt buộc. Hệ quả: khi người dùng muốn mọi kết quả, ứng dụng tải từng mã 5, 6, 8 (T05-12) cho tới khi xác nhận bỏ `ttxly` được.
+- **Còn phải xác nhận (⚠):** gọi mua vào không có `ttxly`, 5/6/8 có phủ hết hóa đơn mua vào, tên tham số/điều kiện của `state`, `size` tối đa, tab "hóa đơn có mã khởi tạo từ máy tính tiền", giới hạn tốc độ (G-05).
 - **Bảo mật:** bản ghi nguyên văn chứa mật khẩu/token/cookie thật không được lưu trong repo (`.gitignore`); chỉ dùng bản đã làm sạch.

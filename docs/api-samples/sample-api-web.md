@@ -26,7 +26,7 @@ curl --url 'https://hoadondientu.gdt.gov.vn/api/security-taxpayer/authenticate' 
 }
 
 
-2. API tra cứu hóa đơn
+2. API tra cứu hóa đơn bán ra
 https://hoadondientu.gdt.gov.vn/api/query/invoices/sold?sort=tdlap:desc&size=15&search=tdlap=ge=02/10/2026T00:00:00;tdlap=le=01/11/2026T23:59:59
 https://hoadondientu.gdt.gov.vn/api/query/invoices/sold?sort=tdlap:desc&size=15&search=tdlap=ge=02/10/2026T00:00:00;tdlap=le=01/11/2026T23:59:59;tthai==1
 https://hoadondientu.gdt.gov.vn/api/query/invoices/sold?sort=tdlap:desc&size=15&search=tdlap=ge=02/10/2026T00:00:00;tdlap=le=01/11/2026T23:59:59;nmmst==1112232234;tthai==6;ttxly==0;khmshdon==1;shdon==323;khhdon==121;unhiem==1;nmcmnd==036402421225
@@ -153,3 +153,51 @@ curl --url 'https://hoadondientu.gdt.gov.vn/api/query/invoices/sold?sort=tdlap:d
   -H 'user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36'
   Response: file zip
   
+
+  4. API tra cứu hóa đơn mua vào
+  https://hoadondientu.gdt.gov.vn/api/query/invoices/purchase?sort=tdlap:desc&size=15&search=tdlap=ge=02/10/2026T00:00:00;tdlap=le=01/11/2026T23:59:59;nbmst==1234567890;tthai==1;ttxly==6;khmshdon==8;shdon==123;khhdon==321;unhiem==1;nmcmnd==999999999999
+
+  curl --url 'https://hoadondientu.gdt.gov.vn/api/query/invoices/purchase?sort=tdlap:desc&size=15&search=tdlap=ge=02/10/2026T00:00:00;tdlap=le=01/11/2026T23:59:59;nbmst==1234567890;tthai==1;ttxly==6;khmshdon==8;shdon==123;khhdon==321;unhiem==1;nmcmnd==999999999999' \
+  -H 'accept: application/json, text/plain, */*' \
+  -H 'accept-language: vi' \
+  -H 'action: T%C3%ACm%20ki%E1%BA%BFm%20(h%C3%B3a%20%C4%91%C6%A1n%20mua%20v%C3%A0o)' \
+  -H 'authorization: Bearer <JWT>' \
+  -b '<COOKIES: jwt=<JWT>; JSESSIONID=<…>; cookie WAF/F5 …>' \
+  -H 'end-point: /tra-cuu/tra-cuu-hoa-don' \
+  -H 'priority: u=1, i' \
+  -H 'referer: https://hoadondientu.gdt.gov.vn/tra-cuu/tra-cuu-hoa-don' \
+  -H 'request-id: 0cca8e2a-a837-4846-bcef-8cedc5b49116' \
+  -H 'sec-ch-ua: "Not:A-Brand";v="8", "Chromium";v="156", "Google Chrome";v="156"' \
+  -H 'sec-ch-ua-mobile: ?0' \
+  -H 'sec-ch-ua-platform: "Windows"' \
+  -H 'sec-fetch-dest: empty' \
+  -H 'sec-fetch-mode: cors' \
+  -H 'sec-fetch-site: same-origin' \
+  -H 'user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36'
+
+
+Các tham số:
+4.1 Ngày lập hóa đơn (*): tdlap=ge=02/10/2026T00:00:00;tdlap=le=01/11/2026T23:59:59
+4.2 MST Người mua: nmmst==1112232234
+4.3 CCCD Người mua: nmcmnd==036402421225
+4.4 Trạng thái hóa đơn  (*): 
+  tthai: trạng thái hóa đơn: giá trị được lấy từ dropdownlist sau
+  <div id="5eb513f8-034e-4394-b4f6-aeba1571e111" style="overflow: auto; transform: translateZ(0px);"><ul role="listbox" class="ant-select-dropdown-menu  ant-select-dropdown-menu-root ant-select-dropdown-menu-vertical" tabindex="0"><li role="option" unselectable="on" class="ant-select-dropdown-menu-item" aria-selected="false" style="user-select: none;">Tất cả</li><li role="option" unselectable="on" class="ant-select-dropdown-menu-item ant-select-dropdown-menu-item-selected" aria-selected="true" style="user-select: none;">Hóa đơn mới</li><li role="option" unselectable="on" class="ant-select-dropdown-menu-item" aria-selected="false" style="user-select: none;">Hóa đơn thay thế</li><li role="option" unselectable="on" class="ant-select-dropdown-menu-item" aria-selected="false" style="user-select: none;">Hóa đơn điều chỉnh</li><li role="option" unselectable="on" class="ant-select-dropdown-menu-item" aria-selected="false" style="user-select: none;">Hóa đơn đã bị thay thế</li><li role="option" unselectable="on" class="ant-select-dropdown-menu-item" aria-selected="false" style="user-select: none;">Hóa đơn đã bị điều chỉnh</li><li role="option" unselectable="on" class="ant-select-dropdown-menu-item" aria-selected="false" style="user-select: none;">Hóa đơn đã bị hủy</li></ul></div>
+  Tất cả: không cần truyền
+  Hóa đơn mới: 1
+  Hóa đơn thay thế: 2
+  Hóa đơn điều chỉnh: 3
+  Hóa đơn đã bị thay thế: 4
+  Hóa đơn đã bị điều chỉnh: 5
+  Hóa đơn đã bị hủy: 6
+4.5 Kết quả kiểm tra  (*): ttxly==0
+Giá trị tham số này lấy từ dropdownlist sau
+<div id="17234b61-a8a0-48dc-bc10-0334573eedf1" style="overflow: auto; transform: translateZ(0px);"><ul role="listbox" class="ant-select-dropdown-menu  ant-select-dropdown-menu-root ant-select-dropdown-menu-vertical" tabindex="0"><li role="option" unselectable="on" class="ant-select-dropdown-menu-item" aria-selected="false" style="user-select: none;">Đã cấp mã hóa đơn</li><li role="option" unselectable="on" class="ant-select-dropdown-menu-item ant-select-dropdown-menu-item-selected" aria-selected="true" style="user-select: none;">Cục Thuế đã nhận không mã</li><li role="option" unselectable="on" class="ant-select-dropdown-menu-item" aria-selected="false" style="user-select: none;">Cục Thuế đã nhận hóa đơn có mã khởi tạo từ máy tính tiền</li></ul></div>
+- Đã cấp mã hóa đơn: ttxly==5
+- Cục Thuế đã nhận không mã: ttxly==6
+- Cục Thuế đã nhận hóa đơn có mã khởi tạo từ máy tính tiền: ttxly==8
+
+4.6 Ký hiệu mẫu số hóa đơn: khmshdon==9 <Giá trị từ 1 -> 9>
+4.7 Hóa đơn ủy nhiệm: unhiem==1 (Dạng checkbox, không check thì bỏ trống)
+4.8: Số hóa đơn: hdon==323
+4.9: Kí hiệu mẫu số hóa đơn: khhdon==121

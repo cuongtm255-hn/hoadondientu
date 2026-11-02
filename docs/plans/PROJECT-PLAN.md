@@ -95,8 +95,8 @@ Mỗi phase kết thúc khi đạt đủ **tiêu chí thoát**; không bắt đ�
 |---|---|---|---|
 | T01-18 | Ghi lại API đăng nhập thật: `PortalToken`, `PortalAuthCapture`, xác minh MST bằng JWT | [DD-01](../detail-design/DD-01-APP-SHELL-LOGIN.md#21-theo-dõi-tiến-độ-implement) | ✅ |
 | T01-16 | Thay development adapter bằng production login adapter | [DD-01](../detail-design/DD-01-APP-SHELL-LOGIN.md#21-theo-dõi-tiến-độ-implement) | 🟡 (Release chạy được; đăng nhập cổng Thuế chờ G-01, G-02) |
-| T04-01…T04-09 | Chia kỳ, SCR-03, bộ lọc theo tham số thật của cổng | [DD-04](../detail-design/DD-04-PERIOD-DOWNLOAD-CONFIG.md#7-theo-dõi-tiến-độ-implement) | ✅ |
-| T05-01…T05-11 | Orchestrator, checkpoint, SCR-04, API client | [DD-05](../detail-design/DD-05-DOWNLOAD-ENGINE.md#8-theo-dõi-tiến-độ-implement) | 🟡 (engine, client, SCR-04 và nối vào ứng dụng xong trên cổng giả; còn SQLite, khôi phục khi khởi động, UAT cổng thật) |
+| T04-01…T04-10 | Chia kỳ, SCR-03, bộ lọc theo tham số thật của cổng | [DD-04](../detail-design/DD-04-PERIOD-DOWNLOAD-CONFIG.md#7-theo-dõi-tiến-độ-implement) | 🟡 9 ✅ · T04-10 ⬜ (bộ lọc mua vào theo mẫu thật 02/11/2026) |
+| T05-01…T05-12 | Orchestrator, checkpoint, SCR-04, API client | [DD-05](../detail-design/DD-05-DOWNLOAD-ENGINE.md#8-theo-dõi-tiến-độ-implement) | 🟡 (engine, client, SCR-04 và nối vào ứng dụng xong trên cổng giả; còn SQLite, khôi phục khi khởi động, T05-12 mua vào bắt buộc `ttxly`, UAT cổng thật) |
 | T06-01…T06-09 | Chuẩn hóa, lưu XML, phiên bản hóa, toàn vẹn | [DD-06](../detail-design/DD-06-INVOICE-STORAGE.md#9-theo-dõi-tiến-độ-implement) | 🟡 3 ✅ (T06-01, 02, 04) · 3 🟡 (T06-05/08/09) · 3 ⬜ (T06-03, 06, 07; T06-03 đã gỡ chặn) |
 
 ### Phase 4 — Kho hóa đơn, chi tiết và trình xem
@@ -142,15 +142,15 @@ Số task lấy từ bảng theo dõi trong từng DD (cập nhật khi đổi t
 | FT-01/02 Khung + đăng nhập | [DD-01](../detail-design/DD-01-APP-SHELL-LOGIN.md) | 1–3 | 18 | 16 | 2 | 0 | T01-14 một phần; T01-16 Release chạy được, đăng nhập WebView chờ gate G-01; hợp đồng đăng nhập thật đã có (T01-18) |
 | FT-03 Doanh nghiệp | [DD-02](../detail-design/DD-02-COMPANY-MANAGEMENT.md) | 2 | 10 | 6 | 3 | 0 | T02-08 chờ DD-03; 486 test pass |
 | FT-04 Licence | [DD-03](../detail-design/DD-03-LICENSING.md) | 2 | 8 | 5 | 3 | 0 | Lõi + SCR-12 + HTTP client + nạp cấu hình xong; khóa/hợp đồng thật chờ G-06 |
-| FT-05 Chọn kỳ | [DD-04](../detail-design/DD-04-PERIOD-DOWNLOAD-CONFIG.md) | 3 | 9 | 9 | 0 | 0 | Bộ lọc bán ra khớp tham số thật, mua vào ⚠; đã nối SCR-03 → SCR-04 |
-| FT-06 Hàng đợi tải | [DD-05](../detail-design/DD-05-DOWNLOAD-ENGINE.md) | 3 | 11 | 7 | 3 | 1 | Chạy toàn tuyến trên cổng giả (SCR-03 → engine → kho file → SCR-04); còn SQLite (G-08), khôi phục lúc khởi động, T05-04 chờ G-05, UAT cổng thật |
+| FT-05 Chọn kỳ | [DD-04](../detail-design/DD-04-PERIOD-DOWNLOAD-CONFIG.md) | 3 | 10 | 9 | 0 | 0 | Bộ lọc bán ra khớp tham số thật; mua vào đã có mẫu thật 02/11/2026 nhưng form còn theo suy luận cũ (T04-10); đã nối SCR-03 → SCR-04 |
+| FT-06 Hàng đợi tải | [DD-05](../detail-design/DD-05-DOWNLOAD-ENGINE.md) | 3 | 12 | 7 | 3 | 1 | Chạy toàn tuyến trên cổng giả (SCR-03 → engine → kho file → SCR-04); còn SQLite (G-08), khôi phục lúc khởi động, T05-04 chờ G-05, UAT cổng thật |
 | FT-07 Lưu trữ | [DD-06](../detail-design/DD-06-INVOICE-STORAGE.md) | 3 (T06-02 sớm ở 2) | 9 | 3 | 3 | 0 | Lõi lưu trữ + kho file thật + schema/initializer SQLite xong; metadata còn trong bộ nhớ, chờ repository SQLite (T06-03) |
 | FT-08 Kho hóa đơn | [DD-07](../detail-design/DD-07-INVOICE-ARCHIVE.md) | 4 | 9 | 7 | 0 | 0 | SCR-05 chạy trên kho bộ nhớ; còn SQLite (T07-02, T07-08) |
 | FT-09 Chi tiết/viewer | [DD-08](../detail-design/DD-08-INVOICE-DETAIL-VIEWER.md) | 4 | 8 | 3 | 3 | 1 | SCR-06 và XML SCR-07 xong; PDF/in chờ G-03, G-09 |
 | FT-10 Xuất | [DD-09](../detail-design/DD-09-EXPORT.md) | 5 | 7 | 4 | 3 | 0 | Excel (bộ ghi xlsx tự viết, đã mở thử bằng Excel) và ZIP chạy từ SCR-05; hỗ trợ xuất theo dòng chọn; còn ExportRecord (chờ SQLite) và xuất từ SCR-06/07 |
 | FT-11 Tổng quan/lịch sử | [DD-10](../detail-design/DD-10-DASHBOARD-HISTORY.md) | 5 | 7 | 6 | 0 | 0 | SCR-02/SCR-08 chạy trên dữ liệu bộ nhớ; còn T10-05 |
 | FT-12 Cài đặt/sao lưu | [DD-11](../detail-design/DD-11-SETTINGS-BACKUP.md) | 5 | 8 | 4 | 4 | 0 | Sao lưu/khôi phục XML/PDF (có điểm an toàn + rollback), dung lượng, kiểm tra kết nối; gói chưa có database (ADR 0004) |
-| **Tổng** | | | **114** | **72** | **26** | **2** | Còn 14 task chưa bắt đầu; số liệu đếm tự động từ các bảng DD ngày 02/11/2026 |
+| **Tổng** | | | **116** | **72** | **26** | **2** | Còn 16 task chưa bắt đầu; số liệu đếm tự động từ các bảng DD ngày 02/11/2026 |
 
 ## 5. Phụ thuộc quan trọng
 
@@ -195,3 +195,4 @@ G-03/G-09 (PDF) chặn T08-04/05; Excel và ZIP (T09-03/04) không cần thư vi
 | 02/11/2026 | DD-11: SCR-09 có thống kê dung lượng, sao lưu/khôi phục (manifest + SHA-256, điểm an toàn, rollback, chặn gói khác MST) và kiểm tra kết nối (Debug mô phỏng); gói chưa chứa database vì chưa có SQLite |
 | 02/11/2026 | Spike G-08 ([spikes/SqliteSpike](../../spikes/SqliteSpike/README.md)) và ADR 0006: chọn System.Data.SQLite.Core 1.0.118 cho net45 (x86/x64, WAL, backup API, 100.000 hóa đơn, chịu bị giết giữa giao dịch); T00-09 ✅, gỡ chặn T06-02/03, T07-02/08, T05-02/09; còn kiểm máy sạch |
 | 02/11/2026 | T06-02: `CompanyDatabaseInitializer`, schema v1 và khung migration cho `company.db` (System.Data.SQLite.Core 1.0.118 trong Infrastructure, 14 test); chưa nối vào `CompositionRoot`, T06-03 (repository) là bước kế |
+| 02/11/2026 | Mẫu thật tra cứu mua vào + ảnh form (`docs/api-samples`): `ttxly` mua vào chỉ 5/6/8, không có Tất cả và bắt buộc; có `nmcmnd`; `nbmst` là MST người bán. Cập nhật api-samples/ADR 0001/DD-04/DD-05, thêm T04-10, T05-12 ([kế hoạch sửa](../progress/2026-11-02-purchase-search-alignment.md)); đã thay token/cookie thật trong `sample-api-web.md` bằng chỗ giữ chỗ |
