@@ -42,7 +42,7 @@ Với System.Data.SQLite.Core (kết quả chính):
 3. Quy ước truy cập: **một kết nối ghi tuần tự** (khóa `SemaphoreSlim`, khớp `InvoiceStorageService._gate`) và mỗi truy vấn đọc dùng kết nối riêng; mọi ghi nhiều dòng nằm trong giao dịch; đọc kết quả lớn bằng `DataReader` (không nạp cả danh sách).
 4. Schema do `CompanyDatabaseInitializer` tạo và nâng cấp bằng **`PRAGMA user_version` + migration trong giao dịch** (đã chạy thử `ALTER TABLE ADD COLUMN`). Schema mới hơn ứng dụng bị từ chối.
 5. **Tiếng Việt**: SQLite không hạ chữ hoa/bỏ dấu cho chữ có dấu. Lưu thêm cột tìm kiếm đã bỏ dấu và chữ thường do ứng dụng tạo (dùng đúng `InvoiceArchiveService.Fold`), tìm bằng `LIKE` trên cột đó; sắp xếp theo tên dùng cột đã bỏ dấu.
-6. **Tiền và số thập phân**: không dùng `REAL`; lưu số nguyên theo đơn vị nhỏ nhất hoặc `TEXT` chính xác — chi tiết chốt trong DD-06 khi thiết kế schema.
+6. **Tiền và số thập phân**: không dùng `REAL`; lưu số nguyên theo đơn vị nhỏ nhất hoặc `TEXT` chính xác — đã chốt ở schema v1 (T06-02): cột tiền là số nguyên nhân 10.000 (`CompanyDatabaseSchema.MoneyScale`, bốn chữ số thập phân) để `SUM` chính xác, tỷ giá lưu TEXT.
 7. **Sao lưu**: dùng `BackupDatabase` ra file tạm, `integrity_check` bản sao rồi đổi tên atomic; đưa `company.db` vào gói sao lưu (DD-11, tăng `formatVersion` lên 2, giữ đọc được gói định dạng 1 không có database).
 8. Cài đặt `IInvoiceRepository` và `IDownloadRepository` bằng SQLite thay cho bản trong bộ nhớ ở `CompositionRoot` (ADR 0004 mục 5); bản Release chỉ bật tải thật sau khi việc này xong.
 9. Đường dẫn `company.db` chịu giới hạn 260 ký tự của .NET 4.5 như các file khác; kho nằm trên đĩa cục bộ, không hỗ trợ thư mục mạng (WAL không an toàn trên chia sẻ mạng).
