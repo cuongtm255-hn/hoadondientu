@@ -432,6 +432,28 @@ namespace HoaDonDienTu.WinForms.Tests
             Assert.That(_view.Result.Rows[0].FileText, Is.EqualTo("Thiếu XML"));
         }
 
+        [Test]
+        public async Task OpenedWithARequest_StartsFresh_OnTheRequestedDirectionAndProblemsOnly_ForAllYears()
+        {
+            await AddAsync(InvoiceDirection.Sold, "1", new DateTime(2024, 3, 1), fileExists: false);
+            await AddAsync(InvoiceDirection.Sold, "2", new DateTime(2026, 3, 1));
+            await AddAsync(InvoiceDirection.Sold, "3", new DateTime(2025, 3, 1), fileExists: false);
+            await AddAsync(InvoiceDirection.Purchase, "4", new DateTime(2026, 3, 1), fileExists: false);
+            _state.Save(_company.CompanyId, new ArchiveFilterInput { Direction = InvoiceDirection.Purchase, StatusCode = "6" }, new ArchiveQuery { Direction = InvoiceDirection.Purchase });
+
+            _presenter = new ArchivePresenter(
+                _view, _service, Context, _state, Runner, Errors, new DateTime(2026, 11, 2),
+                new ArchiveNavigationRequest(InvoiceDirection.Sold, FileIntegrityFilter.Problems));
+            _presenter.Initialize();
+
+            Assert.That(WaitFor(() => _view.Result != null && _view.Result.Rows.Count == 2), Is.True);
+            Assert.That(_view.Filter.Direction, Is.EqualTo(InvoiceDirection.Sold));
+            Assert.That(_view.Filter.FileFilter, Is.EqualTo(FileIntegrityFilter.Problems));
+            Assert.That(_view.Filter.StatusCode, Is.Empty, "Bộ lọc đã nhớ bị bỏ qua");
+            Assert.That(_view.SelectedYear, Is.EqualTo(0), "Xem mọi năm");
+            Assert.That(_view.Result.Rows.Select(r => r.InvoiceNumber), Is.EquivalentTo(new[] { "1", "3" }));
+        }
+
         // ---- Fakes ----
 
         private sealed class GatedService : IInvoiceArchiveService

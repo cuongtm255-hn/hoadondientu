@@ -58,6 +58,7 @@ namespace HoaDonDienTu.Application.Downloads
         public string Code { get; set; }
 
         public DateTime CreatedAtUtc { get; set; }
+        public DateTime? FinishedAtUtc { get; set; }
         public InvoiceDirection Direction { get; set; }
         public string PeriodText { get; set; }
         public DownloadSessionState State { get; set; }
@@ -197,6 +198,7 @@ namespace HoaDonDienTu.Application.Downloads
                     SessionId = session.Id,
                     Code = "DL-" + day + "-" + sequence.ToString("000", CultureInfo.InvariantCulture),
                     CreatedAtUtc = session.CreatedAtUtc,
+                    FinishedAtUtc = session.FinishedAtUtc,
                     Direction = session.Direction,
                     PeriodText = PeriodText(session.Period),
                     State = session.State,

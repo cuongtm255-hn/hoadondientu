@@ -216,6 +216,22 @@ namespace HoaDonDienTu.WinForms.Tests
         }
 
         [Test]
+        public void Dashboard_ShowsEmptyState_AndOpenArchiveButtonNavigates()
+        {
+            Start("Standard");
+
+            Assert.That(ContentTitle(), Is.EqualTo("Tổng quan"));
+            Assert.That(WaitFor(() => Control<KryptonLabel>("lblStat4Sub").Values.Text == "Không có việc cần xử lý"), Is.True);
+            Assert.That(Control<KryptonLabel>("lblStat1Value").Values.Text, Is.EqualTo("0"));
+            Assert.That(Control<KryptonLabel>("lblNoSession").Visible, Is.True);
+            Assert.That(Control<DataGridView>("gridRecent").Rows.Count, Is.EqualTo(0));
+
+            Click("btnOpenArchive");
+
+            Assert.That(WaitFor(() => ContentTitle() == "Kho hóa đơn"), Is.True);
+        }
+
+        [Test]
         public void History_Opens_WithEmptyMockStore_AndNewSessionGoesToDownload()
         {
             Start("Standard");

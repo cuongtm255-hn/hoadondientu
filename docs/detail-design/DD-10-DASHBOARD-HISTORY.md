@@ -81,13 +81,13 @@ Trạng thái: ⬜ Chưa bắt đầu · 🟡 Đang làm · ✅ Hoàn thành · 
 
 | ID | Công việc | Lớp | Phụ thuộc | Trạng thái | PR/Commit | Ghi chú |
 |---|---|---|---|---|---|---|
-| T10-01 | `IDashboardService`, `DashboardSnapshot`, truy vấn số liệu | Application/Infra | T05-02, T06-03 | ⬜ | | |
-| T10-02 | `DashboardControl` + presenter (SCR-02) | WinForms | T10-01, T01-05 | ⬜ | | |
+| T10-01 | `IDashboardService`, `DashboardSnapshot`, truy vấn số liệu | Application/Infra | T05-02, T06-03 | ✅ | | IDashboardService + DashboardSnapshot (DashboardService): số liệu kho, phiên đang chạy, việc cần xử lý, hóa đơn mới tải; không chứa token (trạng thái đăng nhập do thanh đầu trang hiển thị) |
+| T10-02 | `DashboardControl` + presenter (SCR-02) | WinForms | T10-01, T01-05 | ✅ | | DashboardControl + DashboardPresenter (SCR-02): 4 thẻ, phiên đang chạy, việc cần xử lý, hóa đơn mới tải, khóa nút tải theo quyền (ReadOnlyService) |
 | T10-03 | `IDownloadHistoryService`, `HistoryQuery` | Application/Infra | T05-02 | ✅ | | IDownloadHistoryService + HistoryQuery; IDownloadRepository.GetSessionsAsync; mã phiên DL-yyyy-MMdd-NNN suy ra từ ngày tạo |
 | T10-04 | `DownloadHistoryControl` + presenter (SCR-08) | WinForms | T10-03 | ✅ | | HistoryControl + HistoryPresenter (SCR-08): lọc loại/trạng thái/ngày/tìm nhanh, thẻ tóm tắt, phân trang, mở phiên sang SCR-04, Tạo phiên mới |
 | T10-05 | Tái sử dụng SCR-04 ở chế độ chi tiết lịch sử | WinForms | T05-08 | ⬜ | | |
-| T10-06 | Điều hướng có bộ lọc sang SCR-05 | WinForms | T07-04 | ⬜ | | |
-| T10-07 | Unit + UI smoke test (mục 5) | Tests | T10-02, T10-04 | 🟡 | | Phần SCR-08 xong: 14 test service, 17 test presenter, 1 smoke; còn phần Dashboard (SCR-02) |
+| T10-06 | Điều hướng có bộ lọc sang SCR-05 | WinForms | T07-04 | ✅ | | ArchiveNavigationRequest: thẻ file thiếu mở SCR-05 đúng chiều với bộ lọc lỗi/thiếu file, mọi năm; thẻ phiên lỗi mở SCR-04 |
+| T10-07 | Unit + UI smoke test (mục 5) | Tests | T10-02, T10-04 | ✅ | | 14 test service lịch sử, 17 test presenter lịch sử, 12 test service Tổng quan, 17 test presenter Tổng quan, 3 smoke |
 
 ### 6.2 Nhật ký tiến độ
 

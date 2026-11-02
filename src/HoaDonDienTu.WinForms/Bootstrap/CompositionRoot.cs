@@ -5,6 +5,7 @@ using HoaDonDienTu.Application.Abstractions;
 using HoaDonDienTu.Application.Authentication;
 using HoaDonDienTu.Application.Common;
 using HoaDonDienTu.Application.Companies;
+using HoaDonDienTu.Application.Dashboard;
 using HoaDonDienTu.Application.Downloads;
 using HoaDonDienTu.Application.Licensing;
 using HoaDonDienTu.Application.Startup;
@@ -21,6 +22,7 @@ using HoaDonDienTu.Infrastructure.Portal;
 using HoaDonDienTu.Infrastructure.Portal.Config;
 using HoaDonDienTu.WinForms.Archive;
 using HoaDonDienTu.WinForms.Common;
+using HoaDonDienTu.WinForms.Dashboard;
 using HoaDonDienTu.WinForms.History;
 using HoaDonDienTu.WinForms.Companies;
 using HoaDonDienTu.WinForms.Download;
@@ -245,6 +247,7 @@ namespace HoaDonDienTu.WinForms.Bootstrap
             var archiveState = new ArchiveViewStateStore();
             var history = new DownloadHistoryService(downloadRepository, contextManager);
             var historyState = new HistoryViewStateStore();
+            var dashboard = new DashboardService(invoiceRepository, invoiceFiles, archive, history, contextManager, Clock);
             IDownloadOrchestrator orchestrator = null;
             if (downloadsEnabled)
             {
@@ -295,7 +298,14 @@ namespace HoaDonDienTu.WinForms.Bootstrap
                     HoaDonDienTu.Application.Navigation.ScreenId.InvoiceArchive, "Kho hóa đơn", "SCR-05",
                     parameter => new ArchiveScreen(
                         new ArchiveControl(),
-                        view => new ArchivePresenter(view, archive, contextManager, archiveState, OperationRunner, ErrorPresenter, DateTime.Today))),
+                        view => new ArchivePresenter(
+                            view, archive, contextManager, archiveState, OperationRunner, ErrorPresenter, DateTime.Today,
+                            parameter as ArchiveNavigationRequest))),
+                new ScreenDescriptor(
+                    HoaDonDienTu.Application.Navigation.ScreenId.Dashboard, "Tổng quan", "SCR-02",
+                    parameter => new DashboardScreen(
+                        new DashboardControl(),
+                        view => new DashboardPresenter(view, dashboard, contextManager, entitlement, NavigationService, OperationRunner, ErrorPresenter))),
                 new ScreenDescriptor(
                     HoaDonDienTu.Application.Navigation.ScreenId.DownloadHistory, "Lịch sử tải", "SCR-08",
                     parameter => new HistoryScreen(

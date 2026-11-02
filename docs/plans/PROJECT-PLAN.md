@@ -115,7 +115,7 @@ Mỗi phase kết thúc khi đạt đủ **tiêu chí thoát**; không bắt đ�
 | Nhóm task | Mô tả | DD | Trạng thái |
 |---|---|---|---|
 | T09-01…T09-07 | Xuất Excel/ZIP | [DD-09](../detail-design/DD-09-EXPORT.md#7-theo-dõi-tiến-độ-implement) | 🟡 (T09-02 đối chiếu mẫu Excel xong; còn lại chờ DD-06/07, G-09) |
-| T10-01…T10-07 | Tổng quan, lịch sử | [DD-10](../detail-design/DD-10-DASHBOARD-HISTORY.md#6-theo-dõi-tiến-độ-implement) | 🟡 (SCR-08 lịch sử xong; còn SCR-02 Tổng quan) |
+| T10-01…T10-07 | Tổng quan, lịch sử | [DD-10](../detail-design/DD-10-DASHBOARD-HISTORY.md#6-theo-dõi-tiến-độ-implement) | 🟡 6/7 (SCR-02, SCR-08 xong; còn T10-05 chế độ chi tiết lịch sử trên SCR-04) |
 | T11-01…T11-08 | Cài đặt, sao lưu/khôi phục | [DD-11](../detail-design/DD-11-SETTINGS-BACKUP.md#7-theo-dõi-tiến-độ-implement) | 🟡 (khung SCR-09 + lối vào Bản quyền; sao lưu chờ DD-06) |
 
 ### Phase 6 — Hardening, UAT và phát hành
@@ -148,7 +148,7 @@ Số task lấy từ bảng theo dõi trong từng DD (cập nhật khi đổi t
 | FT-08 Kho hóa đơn | [DD-07](../detail-design/DD-07-INVOICE-ARCHIVE.md) | 4 | 9 | 6 | 0 | 0 | SCR-05 chạy trên kho bộ nhớ; còn SQLite, chọn nhiều |
 | FT-09 Chi tiết/viewer | [DD-08](../detail-design/DD-08-INVOICE-DETAIL-VIEWER.md) | 4 | 8 | 0 | 0 | 1 | Chờ G-03, G-09 |
 | FT-10 Xuất | [DD-09](../detail-design/DD-09-EXPORT.md) | 5 | 7 | 1 | 0 | 1 | Mẫu Excel đã đối chiếu (T09-02); T09-03 chờ G-09 |
-| FT-11 Tổng quan/lịch sử | [DD-10](../detail-design/DD-10-DASHBOARD-HISTORY.md) | 5 | 7 | 2 | 1 | 0 | SCR-08 chạy trên kho bộ nhớ; còn SCR-02, điều hướng có bộ lọc |
+| FT-11 Tổng quan/lịch sử | [DD-10](../detail-design/DD-10-DASHBOARD-HISTORY.md) | 5 | 7 | 6 | 0 | 0 | SCR-02/SCR-08 chạy trên dữ liệu bộ nhớ; còn T10-05 |
 | FT-12 Cài đặt/sao lưu | [DD-11](../detail-design/DD-11-SETTINGS-BACKUP.md) | 5 | 8 | 0 | 0 | 0 | |
 | **Tổng** | | | **112** | **22** | **3** | **9** | DD-01 (dev adapter) + client cổng Thuế theo cấu hình/cổng giả + SCR-03 |
 

@@ -60,6 +60,7 @@ namespace HoaDonDienTu.WinForms.Archive
         private readonly IUiOperationRunner _runner;
         private readonly IUserErrorPresenter _errors;
         private readonly DateTime _today;
+        private readonly ArchiveNavigationRequest _request;
         private ArchiveQuery _query = new ArchiveQuery();
         private InvoiceDirection? _yearsFor;
         private bool _initialized;
@@ -79,7 +80,8 @@ namespace HoaDonDienTu.WinForms.Archive
             ArchiveViewStateStore store,
             IUiOperationRunner runner,
             IUserErrorPresenter errors,
-            DateTime today)
+            DateTime today,
+            ArchiveNavigationRequest request = null)
         {
             if (view == null) throw new ArgumentNullException("view");
             if (service == null) throw new ArgumentNullException("service");
@@ -94,6 +96,7 @@ namespace HoaDonDienTu.WinForms.Archive
             _runner = runner;
             _errors = errors;
             _today = today;
+            _request = request;
         }
 
         public void Initialize()
@@ -119,7 +122,15 @@ namespace HoaDonDienTu.WinForms.Archive
 
                     ArchiveFilterInput filter;
                     ArchiveQuery saved;
-                    if (_store.TryGet(_context.Current.CompanyId, out filter, out saved))
+                    if (_request != null)
+                    {
+                        // Mở từ màn hình khác với bộ lọc cho sẵn: bắt đầu mới, xem mọi năm của chiều được yêu cầu.
+                        _query = new ArchiveQuery();
+                        filter = new ArchiveFilterInput { Direction = _request.Direction, FileFilter = _request.FileFilter };
+                        await ShowYearsAsync(filter.Direction, 0, token);
+                        _view.ShowFilter(filter);
+                    }
+                    else if (_store.TryGet(_context.Current.CompanyId, out filter, out saved))
                     {
                         _query = saved;
                         await ShowYearsAsync(filter.Direction, filter.Year, token);

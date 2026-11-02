@@ -82,6 +82,16 @@
     <Compile Include="History\HistoryPresenter.cs" />
     <Compile Include="History\HistoryScreen.cs" />
     <Compile Include="History\IHistoryView.cs" />
+    <Compile Include="Dashboard\DashboardControl.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Dashboard\DashboardControl.Designer.cs">
+      <DependentUpon>DashboardControl.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Dashboard\DashboardPresenter.cs" />
+    <Compile Include="Dashboard\DashboardScreen.cs" />
+    <Compile Include="Dashboard\IDashboardView.cs" />
+    <Compile Include="Archive\ArchiveNavigationRequest.cs" />
     <Compile Include="Companies\CompanyEditControl.cs">
       <SubType>Component</SubType>
     </Compile>
