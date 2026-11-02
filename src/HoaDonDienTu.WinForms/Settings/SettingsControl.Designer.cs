@@ -31,6 +31,8 @@ namespace HoaDonDienTu.WinForms.Settings
             this.pnlRight = new ComponentFactory.Krypton.Toolkit.KryptonPanel();
             this.pnlCard = new ComponentFactory.Krypton.Toolkit.KryptonPanel();
             this.lblNote = new ComponentFactory.Krypton.Toolkit.KryptonWrapLabel();
+            this.lblMessage = new ComponentFactory.Krypton.Toolkit.KryptonWrapLabel();
+            this.flowActions = new System.Windows.Forms.FlowLayoutPanel();
             this.tlpRows = new System.Windows.Forms.TableLayoutPanel();
             this.lblCap1 = new ComponentFactory.Krypton.Toolkit.KryptonLabel();
             this.lblVal1 = new ComponentFactory.Krypton.Toolkit.KryptonLabel();
@@ -74,6 +76,8 @@ namespace HoaDonDienTu.WinForms.Settings
             // pnlCard
             //
             this.pnlCard.Controls.Add(this.lblNote);
+            this.pnlCard.Controls.Add(this.lblMessage);
+            this.pnlCard.Controls.Add(this.flowActions);
             this.pnlCard.Controls.Add(this.tlpRows);
             this.pnlCard.Controls.Add(this.lblCardTitle);
             this.pnlCard.Dock = System.Windows.Forms.DockStyle.Top;
@@ -110,6 +114,20 @@ namespace HoaDonDienTu.WinForms.Settings
             this.tlpRows.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 30F));
             this.tlpRows.Size = new System.Drawing.Size(536, 90);
             this.tlpRows.TabIndex = 1;
+            //
+            // flowActions / lblMessage
+            //
+            this.flowActions.BackColor = System.Drawing.Color.Transparent;
+            this.flowActions.Dock = System.Windows.Forms.DockStyle.Top;
+            this.flowActions.Name = "flowActions";
+            this.flowActions.Padding = new System.Windows.Forms.Padding(0, 8, 0, 0);
+            this.flowActions.Size = new System.Drawing.Size(536, 54);
+            this.lblMessage.AutoSize = false;
+            this.lblMessage.Dock = System.Windows.Forms.DockStyle.Top;
+            this.lblMessage.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.lblMessage.Name = "lblMessage";
+            this.lblMessage.Size = new System.Drawing.Size(536, 44);
+            this.lblMessage.Text = "";
             //
             // lblCap1 .. lblVal3
             //
@@ -221,6 +239,8 @@ namespace HoaDonDienTu.WinForms.Settings
         private ComponentFactory.Krypton.Toolkit.KryptonPanel pnlRight;
         private ComponentFactory.Krypton.Toolkit.KryptonPanel pnlCard;
         private ComponentFactory.Krypton.Toolkit.KryptonWrapLabel lblNote;
+        private ComponentFactory.Krypton.Toolkit.KryptonWrapLabel lblMessage;
+        private System.Windows.Forms.FlowLayoutPanel flowActions;
         private System.Windows.Forms.TableLayoutPanel tlpRows;
         private ComponentFactory.Krypton.Toolkit.KryptonLabel lblCap1;
         private ComponentFactory.Krypton.Toolkit.KryptonLabel lblVal1;

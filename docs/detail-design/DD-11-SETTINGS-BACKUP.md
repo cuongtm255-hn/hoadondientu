@@ -42,6 +42,8 @@ public interface IBackupService
 }
 ```
 
+> **Hiện trạng (ADR 0004):** chưa có `company.db` nên gói chỉ gồm XML/PDF dưới `data/` và `manifest.json` (`includesDatabase: false`); sau khi khôi phục, chỉ mục trong bộ nhớ chưa tự dựng lại. Khi có SQLite, thêm bản chụp database vào gói và tăng `formatVersion`.
+
 Gói sao lưu: `company.db` (bản chụp nhất quán), XML, PDF đã tạo, `manifest.json` (MST, schema version, ngày tạo, danh sách file + SHA-256) (FR-SET-006).
 
 Tạo gói:
@@ -84,14 +86,14 @@ Trạng thái: ⬜ Chưa bắt đầu · 🟡 Đang làm · ✅ Hoàn thành · 
 
 | ID | Công việc | Lớp | Phụ thuộc | Trạng thái | PR/Commit | Ghi chú |
 |---|---|---|---|---|---|---|
-| T11-01 | `SettingsControl` + presenter (SCR-09): thông tin kho, đổi thư mục, mở thư mục | WinForms | T02-03, T01-05 | 🟡 | | Khung SCR-09 (6 mục, doanh nghiệp đang mở, thông tin ứng dụng); các mục lưu trữ/sao lưu/kết nối/nhật ký mới có ghi chú, chưa có thao tác (chờ DD-06) |
-| T11-02 | `IStorageStatisticsService` (dung lượng DB/XML/PDF/Exports) | Application/Infra | T06-03 | ⬜ | | |
-| T11-03 | Kiểm tra kết nối (cổng Thuế, licence) | Application | T01-09 | ⬜ | | |
-| T11-04 | `BackupManifest` + `IBackupService.CreateAsync` | Application/Infra | T06-02 | ⬜ | | |
-| T11-05 | `RestoreAsync` + điểm sao lưu an toàn + rollback | Application/Infra | T11-04, T01-07 | ⬜ | | |
-| T11-06 | Hộp thoại sao lưu/khôi phục (tên + MST, tiến độ, hủy) | WinForms | T11-05 | ⬜ | | |
+| T11-01 | `SettingsControl` + presenter (SCR-09): thông tin kho, đổi thư mục, mở thư mục | WinForms | T02-03, T01-05 | 🟡 | | SCR-09 có thao tác thật ở mục Lưu trữ và Kết nối: thông tin kho, mở thư mục kho, dung lượng, sao lưu/khôi phục, kiểm tra kết nối. Chưa có đổi thư mục kho (di chuyển kho) |
+| T11-02 | `IStorageStatisticsService` (dung lượng DB/XML/PDF/Exports) | Application/Infra | T06-03 | ✅ | | IStorageStatisticsService/StorageStatisticsService: XML, PDF, file xuất, bản sao lưu, chỗ trống trên ổ, sao lưu gần nhất; tính ở luồng nền. Chưa có mục Database vì chưa có SQLite (ADR 0004) |
+| T11-03 | Kiểm tra kết nối (cổng Thuế, licence) | Application | T01-09 | 🟡 | | IConnectivityChecker: bản Release gửi HEAD tới cổng Thuế và máy chủ licence (không đăng nhập, không gọi API hóa đơn); bản Debug trả kết quả mô phỏng (ADR 0005). Chưa thử trên cổng thật |
+| T11-04 | `BackupManifest` + `IBackupService.CreateAsync` | Application/Infra | T06-02 | ✅ | | BackupService.CreateAsync: zip gồm data/ (XML, PDF) + manifest.json (MST, định dạng, ngày, SHA-256 từng file); ghi qua file tạm; chặn khi đang tải; không có company.db vì chưa có SQLite |
+| T11-05 | `RestoreAsync` + điểm sao lưu an toàn + rollback | Application/Infra | T11-04, T01-07 | ✅ | | RestoreAsync: kiểm manifest, MST, SHA-256 và đường dẫn TRƯỚC khi ghi; tự tạo điểm sao lưu an toàn; ghi từng file qua file tạm; lỗi hoặc hủy thì trả về trạng thái trước; không xóa file ngoài gói; cần quyền ManageSettings |
+| T11-06 | Hộp thoại sao lưu/khôi phục (tên + MST, tiến độ, hủy) | WinForms | T11-05 | 🟡 | | Chọn nơi lưu/gói, hộp xác nhận nêu tên + MST, tiến độ "x/y file"; chưa có nút hủy giữa chừng trên giao diện |
 | T11-07 | Lối vào `Bản quyền` trong SCR-09 | WinForms | T03-06 | ✅ | | `SettingsControl`: mục "Bản quyền ứng dụng →" mở SCR-12, hiện tóm tắt trạng thái; smoke test mở và quay lại |
-| T11-08 | Unit + integration + UI smoke (mục 6) | Tests | T11-05 | ⬜ | | AC-11 |
+| T11-08 | Unit + integration + UI smoke (mục 6) | Tests | T11-05 | 🟡 | | 33 test sao lưu/dung lượng + 29 test presenter (gồm 8 ca định dạng) + 1 smoke; còn integration với company.db (chờ SQLite), hết dung lượng, file khóa |
 
 ### 7.2 Nhật ký tiến độ
 

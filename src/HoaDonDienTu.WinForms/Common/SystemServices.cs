@@ -26,6 +26,13 @@ namespace HoaDonDienTu.WinForms.Common
         string Pick(string suggestedFileName, string extension, string filterDescription, string title, string initialDirectory);
     }
 
+    /// <summary>Chọn một file có sẵn để mở (ví dụ gói sao lưu).</summary>
+    public interface IOpenFilePicker
+    {
+        /// <summary>Trả về đường dẫn đã chọn, hoặc null nếu người dùng hủy.</summary>
+        string Pick(string title, string extension, string filterDescription, string initialDirectory);
+    }
+
     public interface IFolderLauncher
     {
         /// <exception cref="DirectoryNotFoundException"/>
@@ -73,6 +80,24 @@ namespace HoaDonDienTu.WinForms.Common
                 DefaultExt = extension,
                 OverwritePrompt = true,
                 Title = title
+            })
+            {
+                if (!string.IsNullOrEmpty(initialDirectory) && Directory.Exists(initialDirectory)) dialog.InitialDirectory = initialDirectory;
+                return dialog.ShowDialog(Form.ActiveForm) == DialogResult.OK ? dialog.FileName : null;
+            }
+        }
+    }
+
+    public sealed class OpenFilePicker : IOpenFilePicker
+    {
+        public string Pick(string title, string extension, string filterDescription, string initialDirectory)
+        {
+            using (var dialog = new OpenFileDialog
+            {
+                Title = title,
+                Filter = filterDescription + " (*." + extension + ")|*." + extension,
+                CheckFileExists = true,
+                Multiselect = false
             })
             {
                 if (!string.IsNullOrEmpty(initialDirectory) && Directory.Exists(initialDirectory)) dialog.InitialDirectory = initialDirectory;

@@ -164,6 +164,11 @@ namespace HoaDonDienTu.WinForms.Tests
             public string LicenseSummary;
 
             public event EventHandler<SettingsSectionEventArgs> SectionSelected;
+            public event EventHandler<SettingsActionEventArgs> ActionRequested;
+
+            public void ShowActions(IList<SettingsAction> actions) { }
+            public void ShowMessage(string text, bool isError) { }
+            public void RaiseAction(string id) { ActionRequested(this, new SettingsActionEventArgs(id)); }
 
             public void ShowSection(SettingsSection section, string title, IList<KeyValuePair<string, string>> rows, string note)
             {

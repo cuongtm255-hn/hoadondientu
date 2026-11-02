@@ -753,6 +753,29 @@ namespace HoaDonDienTu.WinForms.Tests
         }
 
         [Test]
+        public void Settings_StorageSection_ShowsBackupActions_AndTheConnectionCheckIsMocked()
+        {
+            Start("Standard");
+            _root.NavigationService.NavigateAsync(HoaDonDienTu.Application.Navigation.ScreenId.Settings, null, System.Threading.CancellationToken.None);
+            Assert.That(WaitFor(() => ContentTitle() == "Cài đặt"), Is.True);
+
+            Click("btnSecStorage");
+
+            Assert.That(WaitFor(() => _form.Controls.Find("btnAction_backup", true).Length == 1), Is.True, "Mục Lưu trữ phải có nút Tạo bản sao lưu");
+            Assert.That(_form.Controls.Find("btnAction_restore", true).Length, Is.EqualTo(1));
+            Assert.That(_form.Controls.Find("btnAction_open-folder", true).Length, Is.EqualTo(1));
+
+            Click("btnSecPortal");
+            Assert.That(WaitFor(() => _form.Controls.Find("btnAction_check-connection", true).Length == 1), Is.True);
+            Click("btnAction_check-connection");
+
+            // Bản Debug không gọi cổng thật: kết quả là mô phỏng và được ghi rõ.
+            Assert.That(WaitFor(() => _form.Controls.Find("pnlCard", true).FirstOrDefault() != null
+                && _form.Controls.Find("pnlCard", true)[0].Controls.Find("tlpRows", true).FirstOrDefault() != null
+                && _form.Controls.Find("tlpRows", true)[0].Controls.OfType<System.Windows.Forms.Label>().Any(l => l.Text.Contains("mô phỏng"))), Is.True);
+        }
+
+        [Test]
         public void ReadOnly_License_ShowsExpiredLabel_AndNoDownloadAction()
         {
             Start("ReadOnly");

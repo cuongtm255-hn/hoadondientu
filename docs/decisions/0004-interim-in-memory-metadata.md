@@ -26,3 +26,4 @@ DD-06 thiết kế metadata và phiên tải trong SQLite (`company.db`), nhưng
 - (−) **Sau khi tắt ứng dụng, Kho hóa đơn, lịch sử và tổng quan trống** dù file XML vẫn còn trên đĩa; phiên dở dang không khôi phục được (T05-09 chưa làm).
 - (−) Lọc, sắp xếp, phân trang, đếm đều làm trong bộ nhớ và sao chép toàn bộ danh sách mỗi truy vấn; chưa đạt NFR-PERF-002 (100.000 hóa đơn). Chưa có `ExportRecord` (T09-01), `FileAsset` PDF (T08-04).
 - (−) Khôi phục chỉ mục từ thư mục kho (quét file, T06-06) cần có thể làm được độc lập với SQLite nếu muốn bản Release dùng được sớm; chưa quyết định.
+- (−) Gói sao lưu (DD-11) chỉ chứa file XML/PDF và `manifest.json`; không có bản chụp database. Khôi phục đưa file trở lại thư mục kho nhưng chỉ mục Kho hóa đơn chưa tự dựng lại.

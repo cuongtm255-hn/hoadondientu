@@ -1,8 +1,10 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using HoaDonDienTu.Application.Abstractions;
 using HoaDonDienTu.Application.Authentication;
+using HoaDonDienTu.Application.Backup;
 using HoaDonDienTu.Application.Common;
 using HoaDonDienTu.Application.Companies;
 using HoaDonDienTu.Application.Dashboard;
@@ -149,6 +151,7 @@ namespace HoaDonDienTu.WinForms.Bootstrap
             var developmentJobs = false;
             ILicenseServer licenseServer;
             ILicenseSignatureVerifier licenseVerifier;
+            IConnectivityChecker connectivity;
             PortalApiConfig portalConfig;
             try
             {
@@ -197,6 +200,7 @@ namespace HoaDonDienTu.WinForms.Bootstrap
                 Path.Combine(dataDirectory, "dev-license-key.xml"));
             licenseServer = developmentServer;
             licenseVerifier = new RsaLicenseSignatureVerifier(developmentServer.PublicKeyXml);
+            connectivity = new DevelopmentConnectivityChecker();
 #else
             dataDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "HoaDonDienTu", "data");
             jobs = new IdleActiveJobService();
@@ -214,6 +218,12 @@ namespace HoaDonDienTu.WinForms.Bootstrap
                 licenseServer = new LicenseApiClient(licenseSettings.ToConfig(), null);
                 licenseVerifier = new RsaLicenseSignatureVerifier(licenseSettings.PublicKeyXml);
             }
+
+            connectivity = new HttpConnectivityChecker(new List<ConnectivityTarget>
+            {
+                new ConnectivityTarget("Cổng Thuế", portalConfig.BaseUrl),
+                new ConnectivityTarget("Máy chủ licence", licenseSettings == null ? null : licenseSettings.BaseUrl)
+            });
 #endif
 
             var registry = new JsonCompanyCatalog(Path.Combine(dataDirectory, "companies.json"));
@@ -287,6 +297,11 @@ namespace HoaDonDienTu.WinForms.Bootstrap
             var folderLauncher = new ExplorerFolderLauncher();
             System.Func<string, string> suggestFolder = taxCode => Path.Combine(dataDirectory, "Companies", taxCode);
 
+            var settingsServices = new SettingsServices(
+                new StorageStatisticsService(contextManager),
+                new BackupService(contextManager, jobs, entitlement, AppVersion),
+                connectivity, folderLauncher, new ExportSavePicker(), new OpenFilePicker(), Confirmation);
+
             var splitter = new PeriodSplitter();
             var startPolicy = new DownloadStartPolicy(contextManager, SessionStore, entitlement);
             var storageProbe = new FileSystemStorageProbe();
@@ -343,7 +358,7 @@ namespace HoaDonDienTu.WinForms.Bootstrap
                         new SettingsControl(),
                         view => new SettingsPresenter(
                             view, licenseService, entitlement, contextManager, () => NavigationService, OperationRunner, ErrorPresenter,
-                            AppVersion + " · Schema v1"))),
+                            AppVersion + " · Schema v1", settingsServices))),
                 new ScreenDescriptor(
                     HoaDonDienTu.Application.Navigation.ScreenId.License, "Bản quyền", "SCR-12",
                     parameter => new LicenseScreen(

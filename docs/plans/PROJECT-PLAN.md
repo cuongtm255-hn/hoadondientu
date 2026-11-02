@@ -32,7 +32,7 @@ Ký hiệu: ⬜ Chưa bắt đầu · 🟡 Đang làm · ✅ Hoàn thành · ⛔
 | 2 | Khung chương trình, doanh nghiệp, licence và đăng nhập | Chạy 3 chế độ bằng development adapter | FT-01, FT-02, FT-03, FT-04 | 🟡 DD-01 16/18 task xong; DD-02 6/10; DD-03 5/8 (khóa/hợp đồng licence thật chờ G-06) |
 | 3 | Tải hóa đơn end-to-end | Chọn kỳ → tải → lưu XML trên cổng thật | FT-05, FT-06, FT-07, FT-02 (production) | 🟡 DD-04 xong; DD-05 7/11 và DD-06 2/9 chạy trên cổng giả; còn SQLite (G-08), đăng nhập WebView thật (G-01), UAT cổng thật |
 | 4 | Kho hóa đơn, chi tiết và trình xem | Tra cứu, xem XML/PDF | FT-08, FT-09 | 🟡 DD-07 7/9 (còn SQLite); DD-08 3/8 (XML xong, PDF/in chờ G-03, G-09) |
-| 5 | Xuất dữ liệu, tổng quan, lịch sử, cài đặt và sao lưu | Hoàn thiện tính năng còn lại | FT-10, FT-11, FT-12 | 🟡 DD-09 4/7; DD-10 6/7; DD-11 1/8 (sao lưu/khôi phục chưa làm) |
+| 5 | Xuất dữ liệu, tổng quan, lịch sử, cài đặt và sao lưu | Hoàn thiện tính năng còn lại | FT-10, FT-11, FT-12 | 🟡 DD-09 4/7; DD-10 6/7; DD-11 4/8 (sao lưu/khôi phục XML/PDF, dung lượng, kiểm tra kết nối; còn đổi thư mục kho, database trong gói chờ SQLite) |
 | 6 | Hardening, UAT và phát hành | Nghiệm thu AC-01…AC-17, đóng gói | Xuyên suốt | ⬜ |
 
 Mỗi phase kết thúc khi đạt đủ **tiêu chí thoát**; không bắt đầu code phụ thuộc vào gate chưa có ADR.
@@ -116,7 +116,7 @@ Mỗi phase kết thúc khi đạt đủ **tiêu chí thoát**; không bắt đ�
 |---|---|---|---|
 | T09-01…T09-07 | Xuất Excel/ZIP | [DD-09](../detail-design/DD-09-EXPORT.md#7-theo-dõi-tiến-độ-implement) | 🟡 4 ✅ (T09-02..05) · 3 🟡 (T09-01 ExportRecord chờ SQLite, T09-06 chưa có xuất ZIP một hóa đơn ở SCR-06/07, T09-07 chưa có test 100.000 dòng) |
 | T10-01…T10-07 | Tổng quan, lịch sử | [DD-10](../detail-design/DD-10-DASHBOARD-HISTORY.md#6-theo-dõi-tiến-độ-implement) | 🟡 6 ✅ · 1 ⬜ (T10-05 chế độ chi tiết lịch sử trên SCR-04) |
-| T11-01…T11-08 | Cài đặt, sao lưu/khôi phục | [DD-11](../detail-design/DD-11-SETTINGS-BACKUP.md#7-theo-dõi-tiến-độ-implement) | 🟡 1 ✅ (T11-07) · 1 🟡 (T11-01 khung SCR-09) · 6 ⬜ (thống kê, kiểm tra kết nối, sao lưu/khôi phục, test) |
+| T11-01…T11-08 | Cài đặt, sao lưu/khôi phục | [DD-11](../detail-design/DD-11-SETTINGS-BACKUP.md#7-theo-dõi-tiến-độ-implement) | 🟡 4 ✅ (T11-02, 04, 05, 07) · 4 🟡 (T11-01 chưa đổi thư mục kho, T11-03 chưa thử cổng thật, T11-06 chưa có nút hủy, T11-08 chờ SQLite) |
 
 ### Phase 6 — Hardening, UAT và phát hành
 
@@ -149,8 +149,8 @@ Số task lấy từ bảng theo dõi trong từng DD (cập nhật khi đổi t
 | FT-09 Chi tiết/viewer | [DD-08](../detail-design/DD-08-INVOICE-DETAIL-VIEWER.md) | 4 | 8 | 3 | 3 | 1 | SCR-06 và XML SCR-07 xong; PDF/in chờ G-03, G-09 |
 | FT-10 Xuất | [DD-09](../detail-design/DD-09-EXPORT.md) | 5 | 7 | 4 | 3 | 0 | Excel (bộ ghi xlsx tự viết, đã mở thử bằng Excel) và ZIP chạy từ SCR-05; hỗ trợ xuất theo dòng chọn; còn ExportRecord (chờ SQLite) và xuất từ SCR-06/07 |
 | FT-11 Tổng quan/lịch sử | [DD-10](../detail-design/DD-10-DASHBOARD-HISTORY.md) | 5 | 7 | 6 | 0 | 0 | SCR-02/SCR-08 chạy trên dữ liệu bộ nhớ; còn T10-05 |
-| FT-12 Cài đặt/sao lưu | [DD-11](../detail-design/DD-11-SETTINGS-BACKUP.md) | 5 | 8 | 1 | 1 | 0 | Khung SCR-09 + lối vào Bản quyền; sao lưu/khôi phục chưa làm |
-| **Tổng** | | | **114** | **67** | **23** | **3** | Còn 21 task chưa bắt đầu; số liệu đếm tự động từ các bảng DD ngày 02/11/2026 |
+| FT-12 Cài đặt/sao lưu | [DD-11](../detail-design/DD-11-SETTINGS-BACKUP.md) | 5 | 8 | 4 | 4 | 0 | Sao lưu/khôi phục XML/PDF (có điểm an toàn + rollback), dung lượng, kiểm tra kết nối; gói chưa có database (ADR 0004) |
+| **Tổng** | | | **114** | **70** | **26** | **3** | Còn 15 task chưa bắt đầu; số liệu đếm tự động từ các bảng DD ngày 02/11/2026 |
 
 ## 5. Phụ thuộc quan trọng
 
@@ -192,3 +192,4 @@ G-03/G-09 (PDF) chặn T08-04/05; Excel và ZIP (T09-03/04) không cần thư vi
 | 02/11/2026 | DD-09: xuất Excel (bộ ghi xlsx tự viết, đã mở thử bằng Excel) và ZIP XML kèm manifest từ SCR-05, hỗ trợ xuất theo dòng chọn; còn ExportRecord và xuất từ SCR-06/07 |
 | 02/11/2026 | Đồng bộ lại toàn bộ trạng thái task trong file này theo bảng từng DD (đếm tự động): 114 task, 66 ✅, 24 🟡, 3 ⛔, 21 ⬜ (sau khi bổ sung ADR: 67 ✅, 23 🟡); sửa tổng số task trước đó sai (112) |
 | 02/11/2026 | Bổ sung ADR 0002 (độ khớp Excel, đóng G-04), 0003 (xlsx/zip tự dựng, G-09 phần Excel/ZIP), 0004 (metadata trong bộ nhớ, tạm cho G-08), 0005 (chính sách chỉ kiểm thử trên dữ liệu giả); thêm chỉ mục `docs/decisions/README.md`; T00-06 ✅, T00-10 🟡 |
+| 02/11/2026 | DD-11: SCR-09 có thống kê dung lượng, sao lưu/khôi phục (manifest + SHA-256, điểm an toàn, rollback, chặn gói khác MST) và kiểm tra kết nối (Debug mô phỏng); gói chưa chứa database vì chưa có SQLite |
