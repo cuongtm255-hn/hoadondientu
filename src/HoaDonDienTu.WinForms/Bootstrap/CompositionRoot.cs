@@ -21,6 +21,7 @@ using HoaDonDienTu.Infrastructure.Portal;
 using HoaDonDienTu.Infrastructure.Portal.Config;
 using HoaDonDienTu.WinForms.Archive;
 using HoaDonDienTu.WinForms.Common;
+using HoaDonDienTu.WinForms.History;
 using HoaDonDienTu.WinForms.Companies;
 using HoaDonDienTu.WinForms.Download;
 using HoaDonDienTu.WinForms.Licensing;
@@ -242,6 +243,8 @@ namespace HoaDonDienTu.WinForms.Bootstrap
             var invoiceFiles = new FileSystemInvoiceFileStore();
             var archive = new InvoiceArchiveService(invoiceRepository, invoiceFiles, contextManager);
             var archiveState = new ArchiveViewStateStore();
+            var history = new DownloadHistoryService(downloadRepository, contextManager);
+            var historyState = new HistoryViewStateStore();
             IDownloadOrchestrator orchestrator = null;
             if (downloadsEnabled)
             {
@@ -293,6 +296,11 @@ namespace HoaDonDienTu.WinForms.Bootstrap
                     parameter => new ArchiveScreen(
                         new ArchiveControl(),
                         view => new ArchivePresenter(view, archive, contextManager, archiveState, OperationRunner, ErrorPresenter, DateTime.Today))),
+                new ScreenDescriptor(
+                    HoaDonDienTu.Application.Navigation.ScreenId.DownloadHistory, "Lịch sử tải", "SCR-08",
+                    parameter => new HistoryScreen(
+                        new HistoryControl(),
+                        view => new HistoryPresenter(view, history, contextManager, NavigationService, historyState, OperationRunner, ErrorPresenter))),
                 new ScreenDescriptor(
                     HoaDonDienTu.Application.Navigation.ScreenId.DownloadProgress, "Tiến độ tải", "SCR-04",
                     parameter => new DownloadProgressScreen(

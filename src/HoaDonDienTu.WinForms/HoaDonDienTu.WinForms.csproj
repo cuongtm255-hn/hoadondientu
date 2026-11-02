@@ -73,6 +73,15 @@
     <Compile Include="Archive\ArchivePresenter.cs" />
     <Compile Include="Archive\ArchiveScreen.cs" />
     <Compile Include="Archive\IArchiveView.cs" />
+    <Compile Include="History\HistoryControl.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="History\HistoryControl.Designer.cs">
+      <DependentUpon>HistoryControl.cs</DependentUpon>
+    </Compile>
+    <Compile Include="History\HistoryPresenter.cs" />
+    <Compile Include="History\HistoryScreen.cs" />
+    <Compile Include="History\IHistoryView.cs" />
     <Compile Include="Companies\CompanyEditControl.cs">
       <SubType>Component</SubType>
     </Compile>

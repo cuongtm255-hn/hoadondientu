@@ -216,6 +216,21 @@ namespace HoaDonDienTu.WinForms.Tests
         }
 
         [Test]
+        public void History_Opens_WithEmptyMockStore_AndNewSessionGoesToDownload()
+        {
+            Start("Standard");
+
+            Click("navDownloadHistory");
+            Assert.That(WaitFor(() => ContentTitle() == "Lịch sử tải"), Is.True);
+            Assert.That(WaitFor(() => Control<KryptonLabel>("lblStat1Value").Values.Text == "0"), Is.True);
+            Assert.That(Control<DataGridView>("gridSessions").Rows.Count, Is.EqualTo(0));
+
+            Click("btnNewSession");
+
+            Assert.That(WaitFor(() => ContentTitle() == "Tải hóa đơn"), Is.True);
+        }
+
+        [Test]
         public void Login_Cancel_ReturnsToSameScreen_StillLoggedOut()
         {
             Start("Standard");

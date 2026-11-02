@@ -25,6 +25,9 @@ namespace HoaDonDienTu.Application.Downloads
 
         /// <summary>Phiên của doanh nghiệp chưa kết thúc (Running do bị ngắt, PausedByUser, WaitingForLogin, Draft).</summary>
         Task<IList<DownloadSession>> GetUnfinishedAsync(CompanyId companyId, CancellationToken cancellationToken);
+
+        /// <summary>Mọi phiên của doanh nghiệp (cho lịch sử SCR-08), mới nhất trước.</summary>
+        Task<IList<DownloadSession>> GetSessionsAsync(CompanyId companyId, CancellationToken cancellationToken);
     }
 
     public enum InvoiceSaveResult
@@ -166,6 +169,19 @@ namespace HoaDonDienTu.Application.Downloads
                 IList<DownloadSession> result = _sessions.Values
                     .Where(s => s.CompanyId.Equals(companyId) && !DownloadStateMachine.IsFinished(s.State))
                     .OrderBy(s => s.CreatedAtUtc)
+                    .Select(s => s.Clone())
+                    .ToList();
+                return Task.FromResult(result);
+            }
+        }
+
+        public Task<IList<DownloadSession>> GetSessionsAsync(CompanyId companyId, CancellationToken cancellationToken)
+        {
+            lock (_gate)
+            {
+                IList<DownloadSession> result = _sessions.Values
+                    .Where(s => s.CompanyId.Equals(companyId))
+                    .OrderByDescending(s => s.CreatedAtUtc)
                     .Select(s => s.Clone())
                     .ToList();
                 return Task.FromResult(result);
