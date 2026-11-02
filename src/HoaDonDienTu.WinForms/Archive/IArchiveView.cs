@@ -19,8 +19,19 @@ namespace HoaDonDienTu.WinForms.Archive
         public FileIntegrityFilter FileFilter { get; set; }
     }
 
+    public sealed class InvoiceRequestedEventArgs : EventArgs
+    {
+        public InvoiceRequestedEventArgs(Guid invoiceId)
+        {
+            InvoiceId = invoiceId;
+        }
+
+        public Guid InvoiceId { get; private set; }
+    }
+
     public sealed class ArchiveRowViewModel
     {
+        public Guid InvoiceId { get; set; }
         public string Number { get; set; }
         public string IssueDate { get; set; }
         public string CounterpartyId { get; set; }
@@ -84,6 +95,9 @@ namespace HoaDonDienTu.WinForms.Archive
         event EventHandler CheckFilesRequested;
         event EventHandler<PageRequestedEventArgs> PageRequested;
         event EventHandler<SortRequestedEventArgs> SortRequested;
+
+        /// <summary>Người dùng nhấp đôi một dòng để xem chi tiết hóa đơn.</summary>
+        event EventHandler<InvoiceRequestedEventArgs> InvoiceRequested;
 
         ArchiveFilterInput ReadFilter();
 

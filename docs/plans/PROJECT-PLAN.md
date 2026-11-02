@@ -106,7 +106,7 @@ Mỗi phase kết thúc khi đạt đủ **tiêu chí thoát**; không bắt đ�
 | Nhóm task | Mô tả | DD | Trạng thái |
 |---|---|---|---|
 | T07-01…T07-09 | Kho hóa đơn SCR-05 | [DD-07](../detail-design/DD-07-INVOICE-ARCHIVE.md#6-theo-dõi-tiến-độ-implement) | 🟡 6/9 |
-| T08-01…T08-08 | Chi tiết, trình xem XML, PDF, in | [DD-08](../detail-design/DD-08-INVOICE-DETAIL-VIEWER.md#7-theo-dõi-tiến-độ-implement) | ⬜ |
+| T08-01…T08-08 | Chi tiết, trình xem XML, PDF, in | [DD-08](../detail-design/DD-08-INVOICE-DETAIL-VIEWER.md#7-theo-dõi-tiến-độ-implement) | 🟡 (SCR-06 và SCR-07 phần XML xong; PDF/in chờ G-03, G-09) |
 
 ### Phase 5 — Xuất dữ liệu, tổng quan, lịch sử, cài đặt và sao lưu
 
@@ -146,7 +146,7 @@ Số task lấy từ bảng theo dõi trong từng DD (cập nhật khi đổi t
 | FT-06 Hàng đợi tải | [DD-05](../detail-design/DD-05-DOWNLOAD-ENGINE.md) | 3 | 11 | 7 | 3 | 1 | Chạy toàn tuyến trên cổng giả (SCR-03 → engine → kho file → SCR-04); còn SQLite (G-08), khôi phục lúc khởi động, T05-04 chờ G-05, UAT cổng thật |
 | FT-07 Lưu trữ | [DD-06](../detail-design/DD-06-INVOICE-STORAGE.md) | 3 (T06-02 sớm ở 2) | 9 | 2 | 3 | 1 | Lõi lưu trữ + kho file thật xong; metadata trong bộ nhớ, chờ G-08 (SQLite) |
 | FT-08 Kho hóa đơn | [DD-07](../detail-design/DD-07-INVOICE-ARCHIVE.md) | 4 | 9 | 6 | 0 | 0 | SCR-05 chạy trên kho bộ nhớ; còn SQLite, chọn nhiều |
-| FT-09 Chi tiết/viewer | [DD-08](../detail-design/DD-08-INVOICE-DETAIL-VIEWER.md) | 4 | 8 | 0 | 0 | 1 | Chờ G-03, G-09 |
+| FT-09 Chi tiết/viewer | [DD-08](../detail-design/DD-08-INVOICE-DETAIL-VIEWER.md) | 4 | 8 | 3 | 3 | 1 | SCR-06 và XML SCR-07 xong; PDF/in chờ G-03, G-09 |
 | FT-10 Xuất | [DD-09](../detail-design/DD-09-EXPORT.md) | 5 | 7 | 1 | 0 | 1 | Mẫu Excel đã đối chiếu (T09-02); T09-03 chờ G-09 |
 | FT-11 Tổng quan/lịch sử | [DD-10](../detail-design/DD-10-DASHBOARD-HISTORY.md) | 5 | 7 | 6 | 0 | 0 | SCR-02/SCR-08 chạy trên dữ liệu bộ nhớ; còn T10-05 |
 | FT-12 Cài đặt/sao lưu | [DD-11](../detail-design/DD-11-SETTINGS-BACKUP.md) | 5 | 8 | 0 | 0 | 0 | |

@@ -341,6 +341,7 @@ namespace HoaDonDienTu.Application.Tests
         private sealed class FailingRepo : IInvoiceRepository
         {
             public Task<StoredInvoice> FindAsync(string businessKey, CancellationToken cancellationToken) { return Task.FromResult<StoredInvoice>(null); }
+            public Task<StoredInvoice> FindByIdAsync(Guid invoiceId, CancellationToken cancellationToken) { return Task.FromResult<StoredInvoice>(null); }
             public Task AddAsync(StoredInvoice invoice, CancellationToken cancellationToken) { throw new InvalidOperationException("db"); }
             public Task AddVersionAsync(Guid invoiceId, InvoiceVersionRecord version, NormalizedInvoice latest, DateTime nowUtc, CancellationToken cancellationToken) { throw new InvalidOperationException("db"); }
             public Task TouchAsync(Guid invoiceId, DateTime nowUtc, NormalizedInvoice latest, string restoredRelativePath, CancellationToken cancellationToken) { return Task.FromResult(0); }

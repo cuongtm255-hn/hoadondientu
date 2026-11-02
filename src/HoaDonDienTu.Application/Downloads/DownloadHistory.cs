@@ -102,6 +102,9 @@ namespace HoaDonDienTu.Application.Downloads
     {
         /// <summary>Lịch sử của doanh nghiệp đang mở, mới nhất trước. Không có doanh nghiệp thì trả trang rỗng.</summary>
         Task<HistoryPage> QueryAsync(HistoryQuery query, CancellationToken cancellationToken);
+
+        /// <summary>Một phiên của doanh nghiệp đang mở (mã dễ đọc nhất quán với danh sách); null khi không có.</summary>
+        Task<HistoryRow> FindAsync(Guid sessionId, CancellationToken cancellationToken);
     }
 
     public sealed class DownloadHistoryService : IDownloadHistoryService
@@ -144,6 +147,12 @@ namespace HoaDonDienTu.Application.Downloads
                 PageCount = pageCount,
                 Summary = summary
             };
+        }
+
+        public async Task<HistoryRow> FindAsync(Guid sessionId, CancellationToken cancellationToken)
+        {
+            var all = await LoadAsync(cancellationToken).ConfigureAwait(false);
+            return all.FirstOrDefault(r => r.SessionId == sessionId);
         }
 
         public static HistoryStatusFilter Group(DownloadSessionState state)

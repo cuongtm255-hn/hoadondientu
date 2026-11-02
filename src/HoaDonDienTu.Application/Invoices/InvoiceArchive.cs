@@ -360,6 +360,11 @@ namespace HoaDonDienTu.Application.Invoices
             return Current().FindAsync(businessKey, cancellationToken);
         }
 
+        public Task<StoredInvoice> FindByIdAsync(Guid invoiceId, CancellationToken cancellationToken)
+        {
+            return Current().FindByIdAsync(invoiceId, cancellationToken);
+        }
+
         public Task AddAsync(StoredInvoice invoice, CancellationToken cancellationToken)
         {
             return Current().AddAsync(invoice, cancellationToken);

@@ -23,6 +23,7 @@ using HoaDonDienTu.Infrastructure.Portal.Config;
 using HoaDonDienTu.WinForms.Archive;
 using HoaDonDienTu.WinForms.Common;
 using HoaDonDienTu.WinForms.Dashboard;
+using HoaDonDienTu.WinForms.Detail;
 using HoaDonDienTu.WinForms.History;
 using HoaDonDienTu.WinForms.Companies;
 using HoaDonDienTu.WinForms.Download;
@@ -247,6 +248,7 @@ namespace HoaDonDienTu.WinForms.Bootstrap
             var archiveState = new ArchiveViewStateStore();
             var history = new DownloadHistoryService(downloadRepository, contextManager);
             var historyState = new HistoryViewStateStore();
+            var detail = new InvoiceDetailService(invoiceRepository, invoiceFiles, invoiceFiles, history, contextManager);
             var dashboard = new DashboardService(invoiceRepository, invoiceFiles, archive, history, contextManager, Clock);
             IDownloadOrchestrator orchestrator = null;
             if (downloadsEnabled)
@@ -299,8 +301,22 @@ namespace HoaDonDienTu.WinForms.Bootstrap
                     parameter => new ArchiveScreen(
                         new ArchiveControl(),
                         view => new ArchivePresenter(
-                            view, archive, contextManager, archiveState, OperationRunner, ErrorPresenter, DateTime.Today,
+                            view, archive, contextManager, NavigationService, archiveState, OperationRunner, ErrorPresenter, DateTime.Today,
                             parameter as ArchiveNavigationRequest))),
+                new ScreenDescriptor(
+                    HoaDonDienTu.Application.Navigation.ScreenId.InvoiceDetail, "Chi tiết hóa đơn", "SCR-06",
+                    parameter => new InvoiceDetailScreen(
+                        new InvoiceDetailControl(),
+                        view => new InvoiceDetailPresenter(
+                            view, detail, contextManager, NavigationService, OperationRunner, ErrorPresenter,
+                            ((InvoiceDetailRequest)parameter).InvoiceId))),
+                new ScreenDescriptor(
+                    HoaDonDienTu.Application.Navigation.ScreenId.InvoiceViewer, "Xem chứng từ", "SCR-07",
+                    parameter => new InvoiceViewerScreen(
+                        new InvoiceViewerControl(),
+                        view => new InvoiceViewerPresenter(
+                            view, detail, contextManager, NavigationService, new XmlSaveFilePicker(), OperationRunner, ErrorPresenter,
+                            ((InvoiceViewerRequest)parameter).InvoiceId, ((InvoiceViewerRequest)parameter).VersionNo))),
                 new ScreenDescriptor(
                     HoaDonDienTu.Application.Navigation.ScreenId.Dashboard, "Tổng quan", "SCR-02",
                     parameter => new DashboardScreen(

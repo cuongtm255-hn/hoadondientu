@@ -93,14 +93,14 @@ Trạng thái: ⬜ Chưa bắt đầu · 🟡 Đang làm · ✅ Hoàn thành · 
 
 | ID | Công việc | Lớp | Phụ thuộc | Trạng thái | PR/Commit | Ghi chú |
 |---|---|---|---|---|---|---|
-| T08-01 | `IInvoiceDetailService` + `InvoiceDetail` | Application | T06-03 | ⬜ | | |
-| T08-02 | `InvoiceDetailControl` + presenter (SCR-06) | WinForms | T08-01, T07-04 | ⬜ | | |
-| T08-03 | Trình xem XML an toàn (cây/thô) | WinForms | T06-05 | ⬜ | | NFR-SEC-003 |
-| T08-04 | `IInvoicePdfService`, lưu `FileAsset` PDF theo phiên bản | Application | T06-03 | ⬜ | | |
+| T08-01 | `IInvoiceDetailService` + `InvoiceDetail` | Application | T06-03 | ✅ | | IInvoiceDetailService/InvoiceDetailService: metadata, phiên bản (mới nhất trước), trạng thái file từng phiên, phiên nguồn; OpenXmlAsync cảnh báo file mất/quá lớn/hỏng/sai SHA-256; IInvoiceFileReader đọc chỉ trong thư mục kho |
+| T08-02 | `InvoiceDetailControl` + presenter (SCR-06) | WinForms | T08-01, T07-04 | ✅ | | InvoiceDetailControl + InvoiceDetailPresenter (SCR-06): thông tin, bên bán/mua, giá trị, thẻ file XML/PDF, lịch sử phiên bản, nguồn tải; Quay lại giữ bộ lọc SCR-05 |
+| T08-03 | Trình xem XML an toàn (cây/thô) | WinForms | T06-05 | ✅ | | XmlTreeBuilder (DtdProcessing.Prohibit, XmlResolver=null, giới hạn độ sâu 64 và 50.000 nút) + TreeView và TextBox chỉ đọc; XML hỏng vẫn xem được nội dung thô |
+| T08-04 | `IInvoicePdfService`, lưu `FileAsset` PDF theo phiên bản | Application | T06-03 | ⬜ | | Chờ G-03/G-09; chưa có IInvoicePdfService |
 | T08-05 | `IPdfRenderer` thật theo ADR | Infra | G-03, G-09 | ⛔ | | Chờ ADR |
-| T08-06 | `InvoiceViewerControl` (SCR-07): tab XML/PDF, in, lưu bản sao | WinForms | T08-03, T08-04 | ⬜ | | |
-| T08-07 | Cảnh báo PDF khác phiên bản; chuyển phiên bản | WinForms | T08-06 | ⬜ | | FR-DETAIL-007 |
-| T08-08 | Unit + integration + UI smoke (mục 6) | Tests | T08-02..T08-06 | ⬜ | | |
+| T08-06 | `InvoiceViewerControl` (SCR-07): tab XML/PDF, in, lưu bản sao | WinForms | T08-03, T08-04 | 🟡 | | InvoiceViewerControl + InvoiceViewerPresenter (SCR-07): tab XML cây/thô, đổi phiên bản, Lưu bản sao XML nguyên byte; tab PDF và nút In chờ G-03/G-09 |
+| T08-07 | Cảnh báo PDF khác phiên bản; chuyển phiên bản | WinForms | T08-06 | 🟡 | | Đổi phiên bản XML đã có; cảnh báo PDF khác phiên bản chờ có PDF |
+| T08-08 | Unit + integration + UI smoke (mục 6) | Tests | T08-02..T08-06 | 🟡 | | 19 test service, 6 test đọc file, 24 test presenter, 1 test điều hướng từ SCR-05; còn integration hóa đơn mẫu và smoke 05→06→07 |
 
 ### 7.2 Nhật ký tiến độ
 

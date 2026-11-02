@@ -340,6 +340,11 @@ namespace HoaDonDienTu.WinForms.Tests
                 lock (_gate) { _block.TrySetResult(true); }
             }
 
+            public Task<HistoryRow> FindAsync(Guid sessionId, CancellationToken cancellationToken)
+            {
+                return _inner.FindAsync(sessionId, cancellationToken);
+            }
+
             public async Task<HistoryPage> QueryAsync(HistoryQuery query, CancellationToken cancellationToken)
             {
                 TaskCompletionSource<bool> wait;

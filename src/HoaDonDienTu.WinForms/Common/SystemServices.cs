@@ -12,6 +12,13 @@ namespace HoaDonDienTu.WinForms.Common
         string Pick(string initialPath);
     }
 
+    /// <summary>Chọn nơi lưu một file XML; hộp thoại hỏi xác nhận trước khi ghi đè (FR-DETAIL-006).</summary>
+    public interface ISaveFilePicker
+    {
+        /// <summary>Trả về đường dẫn đã chọn, hoặc null nếu người dùng hủy.</summary>
+        string Pick(string suggestedFileName);
+    }
+
     public interface IFolderLauncher
     {
         /// <exception cref="DirectoryNotFoundException"/>
@@ -26,6 +33,24 @@ namespace HoaDonDienTu.WinForms.Common
             {
                 if (!string.IsNullOrEmpty(initialPath) && Directory.Exists(initialPath)) dialog.SelectedPath = initialPath;
                 return dialog.ShowDialog(Form.ActiveForm) == DialogResult.OK ? dialog.SelectedPath : null;
+            }
+        }
+    }
+
+    public sealed class XmlSaveFilePicker : ISaveFilePicker
+    {
+        public string Pick(string suggestedFileName)
+        {
+            using (var dialog = new SaveFileDialog
+            {
+                FileName = suggestedFileName,
+                Filter = "Hóa đơn XML (*.xml)|*.xml",
+                DefaultExt = "xml",
+                OverwritePrompt = true,
+                Title = "Lưu bản sao XML"
+            })
+            {
+                return dialog.ShowDialog(Form.ActiveForm) == DialogResult.OK ? dialog.FileName : null;
             }
         }
     }

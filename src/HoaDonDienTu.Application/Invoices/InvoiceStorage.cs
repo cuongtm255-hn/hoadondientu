@@ -60,6 +60,9 @@ namespace HoaDonDienTu.Application.Invoices
     {
         Task<StoredInvoice> FindAsync(string businessKey, CancellationToken cancellationToken);
 
+        /// <summary>null khi không có hóa đơn nào mang mã này.</summary>
+        Task<StoredInvoice> FindByIdAsync(Guid invoiceId, CancellationToken cancellationToken);
+
         /// <summary>Tạo hóa đơn mới cùng phiên bản đầu tiên.</summary>
         Task AddAsync(StoredInvoice invoice, CancellationToken cancellationToken);
 

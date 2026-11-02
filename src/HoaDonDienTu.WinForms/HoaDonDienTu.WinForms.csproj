@@ -92,6 +92,23 @@
     <Compile Include="Dashboard\DashboardScreen.cs" />
     <Compile Include="Dashboard\IDashboardView.cs" />
     <Compile Include="Archive\ArchiveNavigationRequest.cs" />
+    <Compile Include="Detail\InvoiceDetailControl.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Detail\InvoiceDetailControl.Designer.cs">
+      <DependentUpon>InvoiceDetailControl.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Detail\InvoiceViewerControl.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Detail\InvoiceViewerControl.Designer.cs">
+      <DependentUpon>InvoiceViewerControl.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Detail\InvoiceDetailPresenter.cs" />
+    <Compile Include="Detail\InvoiceViewerPresenter.cs" />
+    <Compile Include="Detail\InvoiceDetailScreens.cs" />
+    <Compile Include="Detail\IInvoiceDetailView.cs" />
+    <Compile Include="Detail\IInvoiceViewerView.cs" />
     <Compile Include="Companies\CompanyEditControl.cs">
       <SubType>Component</SubType>
     </Compile>

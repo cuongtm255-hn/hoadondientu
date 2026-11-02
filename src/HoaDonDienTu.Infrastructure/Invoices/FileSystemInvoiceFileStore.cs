@@ -11,7 +11,7 @@ namespace HoaDonDienTu.Infrastructure.Invoices
     /// Ghi file XML vào thư mục kho của MST: ghi file tạm cùng thư mục đích rồi đổi tên (atomic trên cùng volume), nên file chính thức
     /// không bao giờ ở trạng thái ghi dở. Nếu tên đã tồn tại thì thêm hậu tố, không ghi đè file nào (DD-06 mục 3, 6).
     /// </summary>
-    public sealed class FileSystemInvoiceFileStore : IInvoiceFileStore
+    public sealed class FileSystemInvoiceFileStore : IInvoiceFileStore, IInvoiceFileReader
     {
         public const string TempSuffix = ".tmp";
 
@@ -60,6 +60,24 @@ namespace HoaDonDienTu.Infrastructure.Invoices
                 if (attempt > 99) throw new IOException("Không tìm được tên file trống cho hóa đơn.");
                 name = InvoiceFileNamer.WithCollisionSuffix(fileName, attempt);
             }
+        }
+
+        public byte[] Read(string storageRoot, string relativePath, long maxBytes)
+        {
+            var path = ResolveInsideRoot(storageRoot, relativePath);
+            var info = new FileInfo(path);
+            if (!info.Exists) throw new FileNotFoundException("File không còn trong kho.", relativePath);
+            if (info.Length > maxBytes) throw new InvoiceFileTooLargeException(info.Length, maxBytes);
+            return File.ReadAllBytes(path);
+        }
+
+        /// <summary>Đường dẫn lấy từ metadata không được trỏ ra ngoài thư mục kho (NFR-SEC-006).</summary>
+        private static string ResolveInsideRoot(string storageRoot, string relativePath)
+        {
+            var root = Path.GetFullPath(storageRoot).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+            var full = Path.GetFullPath(Path.Combine(storageRoot, relativePath ?? string.Empty));
+            if (!full.StartsWith(root, StringComparison.OrdinalIgnoreCase)) throw new FileNotFoundException("Đường dẫn nằm ngoài thư mục kho.", relativePath);
+            return full;
         }
 
         public bool Exists(string storageRoot, string relativePath)

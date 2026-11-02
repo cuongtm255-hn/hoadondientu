@@ -201,6 +201,15 @@ namespace HoaDonDienTu.Application.Invoices
             }
         }
 
+        public Task<StoredInvoice> FindByIdAsync(Guid invoiceId, CancellationToken cancellationToken)
+        {
+            lock (_gate)
+            {
+                var found = _byKey.Values.FirstOrDefault(i => i.InvoiceId == invoiceId);
+                return Task.FromResult(found == null ? null : Copy(found));
+            }
+        }
+
         public Task AddAsync(StoredInvoice invoice, CancellationToken cancellationToken)
         {
             lock (_gate)

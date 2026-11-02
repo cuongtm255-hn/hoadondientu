@@ -6,9 +6,11 @@ using System.Threading.Tasks;
 using HoaDonDienTu.Application.Common;
 using HoaDonDienTu.Application.Companies;
 using HoaDonDienTu.Application.Invoices;
+using HoaDonDienTu.Application.Navigation;
 using HoaDonDienTu.Domain.Companies;
 using HoaDonDienTu.Domain.Invoices;
 using HoaDonDienTu.WinForms.Archive;
+using HoaDonDienTu.WinForms.Detail;
 using NUnit.Framework;
 
 namespace HoaDonDienTu.WinForms.Tests
@@ -71,7 +73,7 @@ namespace HoaDonDienTu.WinForms.Tests
 
         private ArchivePresenter Open()
         {
-            _presenter = new ArchivePresenter(_view, _service, Context, _state, Runner, Errors, new DateTime(2026, 11, 2));
+            _presenter = new ArchivePresenter(_view, _service, Context, Nav, _state, Runner, Errors, new DateTime(2026, 11, 2));
             _presenter.Initialize();
             return _presenter;
         }
@@ -333,7 +335,7 @@ namespace HoaDonDienTu.WinForms.Tests
 
             var back = new FakeArchiveView();
             _view = back;
-            _presenter = new ArchivePresenter(back, _service, Context, _state, Runner, Errors, new DateTime(2026, 11, 2));
+            _presenter = new ArchivePresenter(back, _service, Context, Nav, _state, Runner, Errors, new DateTime(2026, 11, 2));
             _presenter.Initialize();
 
             Assert.That(WaitFor(() => back.Result != null), Is.True);
@@ -357,7 +359,7 @@ namespace HoaDonDienTu.WinForms.Tests
             Context.Current = new CompanyContext(CompanyId.NewId(), TaxCode.Parse("0109999999"), "Khác", @"C:\Kho\0109999999", null);
             var other = new FakeArchiveView();
             _view = other;
-            _presenter = new ArchivePresenter(other, _service, Context, _state, Runner, Errors, new DateTime(2026, 11, 2));
+            _presenter = new ArchivePresenter(other, _service, Context, Nav, _state, Runner, Errors, new DateTime(2026, 11, 2));
             _presenter.Initialize();
 
             Assert.That(WaitFor(() => other.Result != null), Is.True);
@@ -387,7 +389,7 @@ namespace HoaDonDienTu.WinForms.Tests
             await AddAsync(InvoiceDirection.Purchase, "1", new DateTime(2026, 1, 5), name: "Alpha");
             await AddAsync(InvoiceDirection.Purchase, "2", new DateTime(2026, 1, 6), name: "Beta");
             var gated = new GatedService(_service);
-            _presenter = new ArchivePresenter(_view, gated, Context, _state, Runner, Errors, new DateTime(2026, 11, 2));
+            _presenter = new ArchivePresenter(_view, gated, Context, Nav, _state, Runner, Errors, new DateTime(2026, 11, 2));
             _presenter.Initialize();
             Assert.That(WaitFor(() => _view.Result != null), Is.True);
 
@@ -401,6 +403,31 @@ namespace HoaDonDienTu.WinForms.Tests
 
             Assert.That(WaitFor(() => _view.Result.Rows.Count == 1 && _view.Result.Rows[0].CounterpartyName == "Beta"), Is.True, "Bộ lọc mới nhất phải được áp dụng");
             Assert.That(gated.Searches.Last(), Is.EqualTo("beta"));
+        }
+
+        [Test]
+        public async Task OpeningARow_NavigatesToTheDetailOfThatInvoice_AndTheFilterIsRememberedForComingBack()
+        {
+            await AddAsync(InvoiceDirection.Purchase, "1", new DateTime(2026, 1, 5), name: "Alpha");
+            await AddAsync(InvoiceDirection.Purchase, "2", new DateTime(2026, 1, 6), name: "Beta");
+            Open();
+            Assert.That(WaitFor(() => _view.Result != null), Is.True);
+            _view.Filter.QuickSearch = "beta";
+            _view.RaiseFilterChanged();
+            Assert.That(WaitFor(() => _view.Result.Rows.Count == 1), Is.True);
+            var row = _view.Result.Rows.Single();
+
+            _view.RaiseInvoice(row.InvoiceId);
+
+            Assert.That(WaitFor(() => Nav.Targets.Count == 1), Is.True);
+            Assert.That(Nav.Targets[0], Is.EqualTo(ScreenId.InvoiceDetail));
+            Assert.That(((InvoiceDetailRequest)Nav.Parameters[0]).InvoiceId, Is.EqualTo(row.InvoiceId));
+            Assert.That(row.InvoiceId, Is.Not.EqualTo(Guid.Empty));
+
+            ArchiveFilterInput remembered;
+            ArchiveQuery query;
+            Assert.That(_state.TryGet(_company.CompanyId, out remembered, out query), Is.True);
+            Assert.That(remembered.QuickSearch, Is.EqualTo("beta"));
         }
 
         [Test]
@@ -442,7 +469,7 @@ namespace HoaDonDienTu.WinForms.Tests
             _state.Save(_company.CompanyId, new ArchiveFilterInput { Direction = InvoiceDirection.Purchase, StatusCode = "6" }, new ArchiveQuery { Direction = InvoiceDirection.Purchase });
 
             _presenter = new ArchivePresenter(
-                _view, _service, Context, _state, Runner, Errors, new DateTime(2026, 11, 2),
+                _view, _service, Context, Nav, _state, Runner, Errors, new DateTime(2026, 11, 2),
                 new ArchiveNavigationRequest(InvoiceDirection.Sold, FileIntegrityFilter.Problems));
             _presenter.Initialize();
 
@@ -534,6 +561,7 @@ namespace HoaDonDienTu.WinForms.Tests
             public event EventHandler CheckFilesRequested;
             public event EventHandler<PageRequestedEventArgs> PageRequested;
             public event EventHandler<SortRequestedEventArgs> SortRequested;
+            public event EventHandler<InvoiceRequestedEventArgs> InvoiceRequested;
 
             public ArchiveFilterInput Filter { get; private set; }
             public IList<int> Years { get; private set; }
@@ -586,6 +614,7 @@ namespace HoaDonDienTu.WinForms.Tests
             public void RaiseCheckFiles() { CheckFilesRequested(this, EventArgs.Empty); }
             public void RaisePage(int delta) { PageRequested(this, new PageRequestedEventArgs(delta)); }
             public void RaiseSort(ArchiveSortKey key) { SortRequested(this, new SortRequestedEventArgs(key)); }
+            public void RaiseInvoice(Guid id) { InvoiceRequested(this, new InvoiceRequestedEventArgs(id)); }
         }
     }
 }

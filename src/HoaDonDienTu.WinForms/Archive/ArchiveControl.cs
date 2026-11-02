@@ -62,6 +62,7 @@ namespace HoaDonDienTu.WinForms.Archive
         public event EventHandler CheckFilesRequested;
         public event EventHandler<PageRequestedEventArgs> PageRequested;
         public event EventHandler<SortRequestedEventArgs> SortRequested;
+        public event EventHandler<InvoiceRequestedEventArgs> InvoiceRequested;
 
         public ArchiveFilterInput ReadFilter()
         {
@@ -240,6 +241,14 @@ namespace HoaDonDienTu.WinForms.Archive
             var row = gridInvoices.Rows[e.RowIndex].Tag as ArchiveRowViewModel;
             if (row == null) return;
             e.CellStyle.ForeColor = row.FileState == ArchiveFileState.Missing ? Missing : row.FileState == ArchiveFileState.MultiVersion ? Multi : Good;
+        }
+
+        private void OnCellDoubleClick(object sender, DataGridViewCellEventArgs e)
+        {
+            if (e.RowIndex < 0 || e.RowIndex >= gridInvoices.Rows.Count) return;
+            var row = gridInvoices.Rows[e.RowIndex].Tag as ArchiveRowViewModel;
+            var handler = InvoiceRequested;
+            if (row != null && handler != null) handler(this, new InvoiceRequestedEventArgs(row.InvoiceId));
         }
 
         private void OnHeaderClick(object sender, DataGridViewCellMouseEventArgs e)

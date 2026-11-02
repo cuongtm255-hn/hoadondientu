@@ -7,9 +7,11 @@ using System.Threading.Tasks;
 using HoaDonDienTu.Application.Common;
 using HoaDonDienTu.Application.Companies;
 using HoaDonDienTu.Application.Invoices;
+using HoaDonDienTu.Application.Navigation;
 using HoaDonDienTu.Application.Portal;
 using HoaDonDienTu.Domain.Companies;
 using HoaDonDienTu.Domain.Invoices;
+using HoaDonDienTu.WinForms.Detail;
 
 namespace HoaDonDienTu.WinForms.Archive
 {
@@ -56,6 +58,7 @@ namespace HoaDonDienTu.WinForms.Archive
         private readonly IArchiveView _view;
         private readonly IInvoiceArchiveService _service;
         private readonly ICompanyContextAccessor _context;
+        private readonly INavigationService _navigation;
         private readonly ArchiveViewStateStore _store;
         private readonly IUiOperationRunner _runner;
         private readonly IUserErrorPresenter _errors;
@@ -77,6 +80,7 @@ namespace HoaDonDienTu.WinForms.Archive
             IArchiveView view,
             IInvoiceArchiveService service,
             ICompanyContextAccessor context,
+            INavigationService navigation,
             ArchiveViewStateStore store,
             IUiOperationRunner runner,
             IUserErrorPresenter errors,
@@ -86,12 +90,14 @@ namespace HoaDonDienTu.WinForms.Archive
             if (view == null) throw new ArgumentNullException("view");
             if (service == null) throw new ArgumentNullException("service");
             if (context == null) throw new ArgumentNullException("context");
+            if (navigation == null) throw new ArgumentNullException("navigation");
             if (store == null) throw new ArgumentNullException("store");
             if (runner == null) throw new ArgumentNullException("runner");
             if (errors == null) throw new ArgumentNullException("errors");
             _view = view;
             _service = service;
             _context = context;
+            _navigation = navigation;
             _store = store;
             _runner = runner;
             _errors = errors;
@@ -108,6 +114,7 @@ namespace HoaDonDienTu.WinForms.Archive
             _view.CheckFilesRequested += OnCheckFiles;
             _view.PageRequested += OnPage;
             _view.SortRequested += OnSort;
+            _view.InvoiceRequested += OnInvoice;
 
             _refreshing = true;
             Run("Mở kho hóa đơn", async token =>
@@ -164,6 +171,7 @@ namespace HoaDonDienTu.WinForms.Archive
             _view.CheckFilesRequested -= OnCheckFiles;
             _view.PageRequested -= OnPage;
             _view.SortRequested -= OnSort;
+            _view.InvoiceRequested -= OnInvoice;
         }
 
         // ---- Sự kiện ----
@@ -201,6 +209,12 @@ namespace HoaDonDienTu.WinForms.Archive
 
             _resetPage = true;
             Refresh();
+        }
+
+        private void OnInvoice(object sender, InvoiceRequestedEventArgs e)
+        {
+            // Bộ lọc, sắp xếp và trang đã được lưu sau mỗi lần làm mới nên quay lại từ SCR-06 thấy đúng chỗ cũ.
+            Run("Mở chi tiết hóa đơn", token => _navigation.NavigateAsync(ScreenId.InvoiceDetail, new InvoiceDetailRequest(e.InvoiceId), token));
         }
 
         private void OnCheckFiles(object sender, EventArgs e)
@@ -369,6 +383,7 @@ namespace HoaDonDienTu.WinForms.Archive
             var i = row.Invoice;
             return new ArchiveRowViewModel
             {
+                InvoiceId = row.InvoiceId,
                 Number = row.Number.ToString(CultureInfo.InvariantCulture),
                 IssueDate = i.IssueDate.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture),
                 CounterpartyId = i.CounterpartyIdentifier ?? string.Empty,

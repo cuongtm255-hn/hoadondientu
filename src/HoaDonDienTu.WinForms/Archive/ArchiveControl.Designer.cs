@@ -398,6 +398,7 @@ namespace HoaDonDienTu.WinForms.Archive
             this.gridInvoices.RowHeadersVisible = false;
             this.gridInvoices.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
             this.gridInvoices.ColumnHeaderMouseClick += new System.Windows.Forms.DataGridViewCellMouseEventHandler(this.OnHeaderClick);
+            this.gridInvoices.CellDoubleClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.OnCellDoubleClick);
             this.gridInvoices.CellFormatting += new System.Windows.Forms.DataGridViewCellFormattingEventHandler(this.OnCellFormatting);
             //
             // columns
