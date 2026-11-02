@@ -120,7 +120,8 @@ namespace HoaDonDienTu.Domain.Invoices
                 NormalizeNumber(invoiceNumber));
         }
 
-        private static string NormalizeNumber(string number)
+        /// <summary>Số hóa đơn thuần chữ số bỏ số 0 đầu; dùng chung cho khóa chống trùng và tra cứu kho.</summary>
+        public static string NormalizeNumber(string number)
         {
             var text = (number ?? string.Empty).Trim();
             if (text.Length > 0 && text.All(char.IsDigit))

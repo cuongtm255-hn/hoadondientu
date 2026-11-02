@@ -93,15 +93,15 @@ Trạng thái: ⬜ Chưa bắt đầu · 🟡 Đang làm · ✅ Hoàn thành · 
 
 | ID | Công việc | Lớp | Phụ thuộc | Trạng thái | PR/Commit | Ghi chú |
 |---|---|---|---|---|---|---|
-| T07-01 | `ArchiveQuery`, `ArchivePage`, `ArchiveSummary`, `ArchiveViewState` | Application | T06-01 | ⬜ | | |
-| T07-02 | `InvoiceArchiveRepository` (SQL lọc/sắp xếp/phân trang, index) | Infra | T06-03 | ⬜ | | |
-| T07-03 | `InvoiceArchiveService` (query, summary, resolve selection) | Application | T07-02 | ⬜ | | |
-| T07-04 | `InvoiceArchiveControl` + presenter (SCR-05): lưới, lọc, tìm nhanh, tóm tắt | WinForms | T07-03, T01-05 | ⬜ | | |
-| T07-05 | Chọn nhiều, ẩn/hiện cột, sao chép, phím tắt | WinForms | T07-04 | ⬜ | | |
-| T07-06 | Chỉ báo + bộ lọc file lỗi, hành động `Kiểm tra file` | WinForms | T06-06 | ⬜ | | |
-| T07-07 | Giữ trạng thái khi vào/ra SCR-06 | WinForms | T07-04 | ⬜ | | |
-| T07-08 | Test hiệu năng 100.000 bản ghi | Tests | T07-02 | ⬜ | | NFR-PERF-002 |
-| T07-09 | Unit + UI smoke test (mục 5.1, 5.3) | Tests | T07-04 | ⬜ | | |
+| T07-01 | `ArchiveQuery`, `ArchivePage`, `ArchiveSummary`, `ArchiveViewState` | Application | T06-01 | ✅ | ArchiveQuery/ArchivePage/ArchiveSummary; trạng thái view lưu bằng ArchiveViewStateStore | |
+| T07-02 | `InvoiceArchiveRepository` (SQL lọc/sắp xếp/phân trang, index) | Infra | T06-03 | ⬜ | chờ SQLite (G-08); hiện lọc trong bộ nhớ | |
+| T07-03 | `InvoiceArchiveService` (query, summary, resolve selection) | Application | T07-02 | ✅ | InvoiceArchiveService (lọc, sắp xếp, phân trang, tóm tắt) trên IInvoiceRepository | |
+| T07-04 | `InvoiceArchiveControl` + presenter (SCR-05): lưới, lọc, tìm nhanh, tóm tắt | WinForms | T07-03, T01-05 | ✅ | ArchiveControl + ArchivePresenter; lưới, lọc, tìm nhanh, thẻ tóm tắt | |
+| T07-05 | Chọn nhiều, ẩn/hiện cột, sao chép, phím tắt | WinForms | T07-04 | ⬜ | chọn nhiều/cột/phím tắt chưa làm | |
+| T07-06 | Chỉ báo + bộ lọc file lỗi, hành động `Kiểm tra file` | WinForms | T06-06 | ✅ | cột + bộ lọc file lỗi, nút Kiểm tra file | |
+| T07-07 | Giữ trạng thái khi vào/ra SCR-06 | WinForms | T07-04 | ✅ | giữ lọc/sắp xếp/trang theo doanh nghiệp; điều hướng SCR-06 chờ DD-08 | |
+| T07-08 | Test hiệu năng 100.000 bản ghi | Tests | T07-02 | ⬜ | chờ SQLite | NFR-PERF-002 |
+| T07-09 | Unit + UI smoke test (mục 5.1, 5.3) | Tests | T07-04 | ✅ | 20 test service, 21 test presenter, 1 smoke test | |
 
 ### 6.2 Nhật ký tiến độ
 

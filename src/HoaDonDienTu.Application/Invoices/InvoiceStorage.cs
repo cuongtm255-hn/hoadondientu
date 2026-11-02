@@ -83,6 +83,9 @@ namespace HoaDonDienTu.Application.Invoices
 
         void DiscardTemp(string tempPath);
 
+        /// <summary>File đã commit còn trên đĩa không (kiểm tra tình trạng file của kho, không đọc nội dung).</summary>
+        bool Exists(string storageRoot, string relativePath);
+
         /// <summary>Xóa một file đã commit (khi ghi metadata thất bại ngay sau đó).</summary>
         void Delete(string storageRoot, string relativePath);
     }

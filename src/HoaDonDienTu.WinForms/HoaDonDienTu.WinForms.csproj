@@ -64,6 +64,15 @@
     <Compile Include="Licensing\ILicenseView.cs" />
     <Compile Include="Licensing\LicensePresenter.cs" />
     <Compile Include="Licensing\LicenseScreen.cs" />
+    <Compile Include="Archive\ArchiveControl.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Archive\ArchiveControl.Designer.cs">
+      <DependentUpon>ArchiveControl.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Archive\ArchivePresenter.cs" />
+    <Compile Include="Archive\ArchiveScreen.cs" />
+    <Compile Include="Archive\IArchiveView.cs" />
     <Compile Include="Companies\CompanyEditControl.cs">
       <SubType>Component</SubType>
     </Compile>

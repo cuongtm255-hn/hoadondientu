@@ -62,6 +62,18 @@ namespace HoaDonDienTu.Infrastructure.Invoices
             }
         }
 
+        public bool Exists(string storageRoot, string relativePath)
+        {
+            try
+            {
+                return !string.IsNullOrEmpty(relativePath) && File.Exists(Path.Combine(storageRoot, relativePath));
+            }
+            catch (ArgumentException)
+            {
+                return false;
+            }
+        }
+
         public void DiscardTemp(string tempPath)
         {
             try

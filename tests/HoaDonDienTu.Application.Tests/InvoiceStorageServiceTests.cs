@@ -292,6 +292,11 @@ namespace HoaDonDienTu.Application.Tests
                 _temps.Remove(tempPath);
             }
 
+            public bool Exists(string storageRoot, string relativePath)
+            {
+                return Committed.Contains(relativePath);
+            }
+
             public void Delete(string storageRoot, string relativePath)
             {
                 Committed.Remove(relativePath);

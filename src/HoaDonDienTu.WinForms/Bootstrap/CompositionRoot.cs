@@ -19,6 +19,7 @@ using HoaDonDienTu.Infrastructure.Licensing;
 using HoaDonDienTu.Infrastructure.Logging;
 using HoaDonDienTu.Infrastructure.Portal;
 using HoaDonDienTu.Infrastructure.Portal.Config;
+using HoaDonDienTu.WinForms.Archive;
 using HoaDonDienTu.WinForms.Common;
 using HoaDonDienTu.WinForms.Companies;
 using HoaDonDienTu.WinForms.Download;
@@ -237,11 +238,15 @@ namespace HoaDonDienTu.WinForms.Bootstrap
             // Engine tải: chạy tuần tự theo tháng, ghi XML vào thư mục kho của MST. Metadata còn trong bộ nhớ tới khi có SQLite (DD-06),
             // nên Release chưa bật tải (UnavailableDownloadSessionStarter) để không mất dấu dữ liệu đã tải.
             var downloadRepository = new InMemoryDownloadRepository();
+            var invoiceRepository = new CompanyScopedInvoiceRepository(contextManager, () => new InMemoryInvoiceRepository());
+            var invoiceFiles = new FileSystemInvoiceFileStore();
+            var archive = new InvoiceArchiveService(invoiceRepository, invoiceFiles, contextManager);
+            var archiveState = new ArchiveViewStateStore();
             IDownloadOrchestrator orchestrator = null;
             if (downloadsEnabled)
             {
                 var invoiceStore = new InvoiceStorageService(
-                    new InMemoryInvoiceRepository(), new FileSystemInvoiceFileStore(), new InvoiceNormalizer(), contextManager, Clock, Logger);
+                    invoiceRepository, invoiceFiles, new InvoiceNormalizer(), contextManager, Clock, Logger);
 #if DEBUG
                 // Cổng giả không cần giãn nhịp 500 ms như cổng thật; giữ nhỏ để thử nghiệm nhanh.
                 var interval = Math.Min(portalConfig.RateLimit.MinIntervalMs, 20);
@@ -283,6 +288,11 @@ namespace HoaDonDienTu.WinForms.Bootstrap
                         view => new DownloadConfigPresenter(
                             view, splitter, startPolicy, storageProbe, capabilities, SessionStore, contextManager,
                             entitlement, starter, Confirmation, OperationRunner, ErrorPresenter, NavigationService, Clock))),
+                new ScreenDescriptor(
+                    HoaDonDienTu.Application.Navigation.ScreenId.InvoiceArchive, "Kho hóa đơn", "SCR-05",
+                    parameter => new ArchiveScreen(
+                        new ArchiveControl(),
+                        view => new ArchivePresenter(view, archive, contextManager, archiveState, OperationRunner, ErrorPresenter, DateTime.Today))),
                 new ScreenDescriptor(
                     HoaDonDienTu.Application.Navigation.ScreenId.DownloadProgress, "Tiến độ tải", "SCR-04",
                     parameter => new DownloadProgressScreen(

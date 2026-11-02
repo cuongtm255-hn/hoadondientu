@@ -201,6 +201,21 @@ namespace HoaDonDienTu.WinForms.Tests
         }
 
         [Test]
+        public void Archive_Opens_WithEmptyMockStore_AndDirectionToggleWorks()
+        {
+            Start("Standard");
+
+            Click("navInvoiceArchive");
+            Assert.That(WaitFor(() => ContentTitle() == "Kho hóa đơn"), Is.True);
+            Assert.That(WaitFor(() => Control<KryptonLabel>("lblStat1Value").Values.Text == "0"), Is.True);
+            Assert.That(Control<DataGridView>("gridInvoices").Rows.Count, Is.EqualTo(0));
+
+            Click("btnSold");
+
+            Assert.That(WaitFor(() => Control<DataGridView>("gridInvoices").Columns["colCounterpartyId"].HeaderText == "MST người mua"), Is.True);
+        }
+
+        [Test]
         public void Login_Cancel_ReturnsToSameScreen_StillLoggedOut()
         {
             Start("Standard");
