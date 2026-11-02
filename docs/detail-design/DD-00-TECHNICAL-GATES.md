@@ -69,11 +69,11 @@ Trạng thái: ⬜ Chưa bắt đầu · 🟡 Đang làm · ✅ Hoàn thành · 
 | T00-03 | G-02 | Ghi traffic: xác minh phiên/MST, tra cứu mua vào/bán ra, phân trang, tải XML | T00-02 | 🟡 | | Đã ghi traffic thật cho đăng nhập, tra cứu bán ra, chi tiết, xuất XML/Excel (11/2026) và cập nhật cấu hình/cổng giả/mã nguồn theo đó. **Còn:** tra cứu mua vào, phân trang `state`, mã lỗi hết phiên. Bản ghi nguyên văn chứa mật khẩu/token thật nên chỉ giữ bản đã làm sạch |
 | T00-04 | G-05 | Đo giới hạn tốc độ / hành vi 429 | T00-03 | ⬜ | | |
 | T00-05 | G-03 | Quyết định chiến lược PDF | T00-03 | ⬜ | | |
-| T00-06 | G-04 | Đối chiếu Excel với workbook mẫu `DANH SÁCH HÓA ĐƠN.xlsx` | — | ⬜ | | |
+| T00-06 | G-04 | Đối chiếu Excel với workbook mẫu `DANH SÁCH HÓA ĐƠN.xlsx` | — | 🟡 | | Bố cục, ô gộp, 19 cột, kiểu ô khớp mẫu; test đọc lại từng ô và đã mở thử bằng Excel thật. Còn viết báo cáo đối chiếu/ADR G-04 |
 | T00-07 | G-06 | Chốt giao thức licence với nhà cung cấp | — | ⬜ | | |
 | T00-08 | G-07 | Spike chuyển MST/crash recovery | DD-01 T01-07 | ⬜ | | |
 | T00-09 | G-08 | Đánh giá SQLite provider net45 | — | ⬜ | | |
-| T00-10 | G-09 | Đánh giá thư viện Excel/PDF/ZIP net45 | — | ⬜ | | |
+| T00-10 | G-09 | Đánh giá thư viện Excel/PDF/ZIP net45 | — | 🟡 | | Excel: bộ ghi xlsx tự viết bằng System.IO.Compression; ZIP: System.IO.Compression. Còn chọn thư viện PDF (G-03/G-09) và SQLite (G-08), chưa có ADR |
 
 ### 6.2 Nhật ký tiến độ
 

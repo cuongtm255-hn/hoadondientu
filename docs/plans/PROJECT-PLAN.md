@@ -4,8 +4,8 @@
 |---|---|
 | Mã tài liệu | PLAN-HDDT-001 |
 | Phiên bản | 1.0 |
-| Cập nhật lần cuối | 01/11/2026 |
-| Phase hiện tại | **Phase 0 — Yêu cầu và thiết kế** (đang chờ review để đóng) |
+| Cập nhật lần cuối | 02/11/2026 |
+| Phase hiện tại | **Phase 3–5 đang triển khai trên dữ liệu giả** (Phase 0 chờ review để đóng; Phase 1 chờ ADR G-01, G-02, G-08, G-09) |
 
 Đây là file theo dõi tiến độ **chung**. Chi tiết từng công việc nằm ở mục **Theo dõi tiến độ implement** trong từng detail design (`T<DD>-<nn>`). Khi đổi trạng thái một task, cập nhật DD tương ứng trước, sau đó đồng bộ bảng tổng hợp ở mục 3 và 4 tại đây.
 
@@ -29,10 +29,10 @@ Ký hiệu: ⬜ Chưa bắt đầu · 🟡 Đang làm · ✅ Hoàn thành · ⛔
 |---|---|---|---|---|
 | 0 | Yêu cầu và thiết kế | SRS, wireframe, feature list, detail design, kế hoạch | Tất cả (tài liệu) | 🟡 Đang review |
 | 1 | Nền tảng và technical spike | Solution chạy build được; ADR chặn kiến trúc | FT-00 | 🟡 Solution xong; chưa làm spike/ADR (G-01, G-02, G-08, G-09) |
-| 2 | Khung chương trình, doanh nghiệp, licence và đăng nhập | Chạy 3 chế độ bằng development adapter | FT-01, FT-02, FT-03, FT-04 | 🟡 DD-01 xong phần dev adapter; DD-02 xong phần lõi + UI; DD-03 chưa bắt đầu |
-| 3 | Tải hóa đơn end-to-end | Chọn kỳ → tải → lưu XML trên cổng thật | FT-05, FT-06, FT-07, FT-02 (production) | ⬜ |
-| 4 | Kho hóa đơn, chi tiết và trình xem | Tra cứu, xem XML/PDF | FT-08, FT-09 | ⬜ |
-| 5 | Xuất dữ liệu, tổng quan, lịch sử, cài đặt và sao lưu | Hoàn thiện tính năng còn lại | FT-10, FT-11, FT-12 | ⬜ |
+| 2 | Khung chương trình, doanh nghiệp, licence và đăng nhập | Chạy 3 chế độ bằng development adapter | FT-01, FT-02, FT-03, FT-04 | 🟡 DD-01 16/18 task xong; DD-02 6/10; DD-03 5/8 (khóa/hợp đồng licence thật chờ G-06) |
+| 3 | Tải hóa đơn end-to-end | Chọn kỳ → tải → lưu XML trên cổng thật | FT-05, FT-06, FT-07, FT-02 (production) | 🟡 DD-04 xong; DD-05 7/11 và DD-06 2/9 chạy trên cổng giả; còn SQLite (G-08), đăng nhập WebView thật (G-01), UAT cổng thật |
+| 4 | Kho hóa đơn, chi tiết và trình xem | Tra cứu, xem XML/PDF | FT-08, FT-09 | 🟡 DD-07 7/9 (còn SQLite); DD-08 3/8 (XML xong, PDF/in chờ G-03, G-09) |
+| 5 | Xuất dữ liệu, tổng quan, lịch sử, cài đặt và sao lưu | Hoàn thiện tính năng còn lại | FT-10, FT-11, FT-12 | 🟡 DD-09 4/7; DD-10 6/7; DD-11 1/8 (sao lưu/khôi phục chưa làm) |
 | 6 | Hardening, UAT và phát hành | Nghiệm thu AC-01…AC-17, đóng gói | Xuyên suốt | ⬜ |
 
 Mỗi phase kết thúc khi đạt đủ **tiêu chí thoát**; không bắt đầu code phụ thuộc vào gate chưa có ADR.
@@ -68,10 +68,10 @@ Mỗi phase kết thúc khi đạt đủ **tiêu chí thoát**; không bắt đ�
 | T00-03 | Ghi traffic API (xác minh phiên/MST, tra cứu, phân trang, tải XML) | DD-00 | 🟡 (đăng nhập, bán ra, chi tiết, xuất XML/Excel đã có; còn mua vào, `state`, 401/429 thật) |
 | T00-04 | Giới hạn tốc độ / 429 | DD-00 | ⬜ |
 | T00-05 | Chiến lược PDF | DD-00 | ⬜ |
-| T00-06 | Đối chiếu mẫu Excel | DD-00 | 🟡 (đã có mẫu thật `DANH SÁCH HÓA ĐƠN.xlsx`, bố cục ghi ở DD-09; còn so sánh file ứng dụng xuất) |
+| T00-06 | Đối chiếu mẫu Excel | DD-00 | 🟡 (file xuất khớp bố cục mẫu và đã mở thử bằng Excel; còn báo cáo/ADR G-04) |
 | T00-07 | Chốt giao thức licence | DD-00 | ⬜ |
 | T00-09 | Chọn SQLite provider net45 | DD-00 | ⬜ |
-| T00-10 | Chọn thư viện Excel/PDF/ZIP net45 | DD-00 | ⬜ |
+| T00-10 | Chọn thư viện Excel/PDF/ZIP net45 | DD-00 | 🟡 (Excel và ZIP dùng System.IO.Compression tự viết; còn PDF và SQLite, chưa có ADR) |
 
 ### Phase 2 — Khung chương trình, doanh nghiệp, licence và đăng nhập
 
@@ -83,7 +83,7 @@ Mỗi phase kết thúc khi đạt đủ **tiêu chí thoát**; không bắt đ�
 | T01-02…T01-15 | Domain/Application nền, composition root, shell, startup, context/switch, login form, session, logging, test | [DD-01](../detail-design/DD-01-APP-SHELL-LOGIN.md#21-theo-dõi-tiến-độ-implement) | ✅ (T01-14 một phần, chờ DD-02/03/06) |
 | T02-01…T02-10 | Catalog, first-run, SCR-10/11, relink, nâng cấp Standard → Service | [DD-02](../detail-design/DD-02-COMPANY-MANAGEMENT.md#9-theo-dõi-tiến-độ-implement) | 🟡 (T02-08 chờ DD-03; T02-03/07/09 một phần) |
 | T03-01…T03-08 | Entitlement, licence dev + production, SCR-12 | [DD-03](../detail-design/DD-03-LICENSING.md#9-theo-dõi-tiến-độ-implement) | 🟡 (T03-01..03, 06, 08 xong; T03-04/05/07 một phần, chờ G-06) |
-| T06-02 (phần khởi tạo) | Khung `CompanyDatabaseInitializer` tối thiểu để DD-01/DD-02 mở kho | [DD-06](../detail-design/DD-06-INVOICE-STORAGE.md#91-công-việc) | ⬜ |
+| T06-02 (phần khởi tạo) | Khung `CompanyDatabaseInitializer` tối thiểu để DD-01/DD-02 mở kho | [DD-06](../detail-design/DD-06-INVOICE-STORAGE.md#91-công-việc) | ⛔ (chờ chọn SQLite G-08) |
 | T00-08 | Spike an toàn chuyển MST / crash recovery | DD-00 | ⬜ |
 
 ### Phase 3 — Tải hóa đơn end-to-end
@@ -97,7 +97,7 @@ Mỗi phase kết thúc khi đạt đủ **tiêu chí thoát**; không bắt đ�
 | T01-16 | Thay development adapter bằng production login adapter | [DD-01](../detail-design/DD-01-APP-SHELL-LOGIN.md#21-theo-dõi-tiến-độ-implement) | 🟡 (Release chạy được; đăng nhập cổng Thuế chờ G-01, G-02) |
 | T04-01…T04-09 | Chia kỳ, SCR-03, bộ lọc theo tham số thật của cổng | [DD-04](../detail-design/DD-04-PERIOD-DOWNLOAD-CONFIG.md#7-theo-dõi-tiến-độ-implement) | ✅ |
 | T05-01…T05-11 | Orchestrator, checkpoint, SCR-04, API client | [DD-05](../detail-design/DD-05-DOWNLOAD-ENGINE.md#8-theo-dõi-tiến-độ-implement) | 🟡 (engine, client, SCR-04 và nối vào ứng dụng xong trên cổng giả; còn SQLite, khôi phục khi khởi động, UAT cổng thật) |
-| T06-01…T06-09 | Chuẩn hóa, lưu XML, phiên bản hóa, toàn vẹn | [DD-06](../detail-design/DD-06-INVOICE-STORAGE.md#9-theo-dõi-tiến-độ-implement) | 🟡 (T06-01, 04 xong; T06-05/08/09 một phần; SQLite chờ G-08) |
+| T06-01…T06-09 | Chuẩn hóa, lưu XML, phiên bản hóa, toàn vẹn | [DD-06](../detail-design/DD-06-INVOICE-STORAGE.md#9-theo-dõi-tiến-độ-implement) | 🟡 2 ✅ (T06-01, 04) · 3 🟡 (T06-05/08/09) · 3 ⬜ (T06-03, 06, 07) · 1 ⛔ (T06-02, chờ SQLite G-08) |
 
 ### Phase 4 — Kho hóa đơn, chi tiết và trình xem
 
@@ -106,7 +106,7 @@ Mỗi phase kết thúc khi đạt đủ **tiêu chí thoát**; không bắt đ�
 | Nhóm task | Mô tả | DD | Trạng thái |
 |---|---|---|---|
 | T07-01…T07-09 | Kho hóa đơn SCR-05 | [DD-07](../detail-design/DD-07-INVOICE-ARCHIVE.md#6-theo-dõi-tiến-độ-implement) | 🟡 7/9 |
-| T08-01…T08-08 | Chi tiết, trình xem XML, PDF, in | [DD-08](../detail-design/DD-08-INVOICE-DETAIL-VIEWER.md#7-theo-dõi-tiến-độ-implement) | 🟡 (SCR-06 và SCR-07 phần XML xong; PDF/in chờ G-03, G-09) |
+| T08-01…T08-08 | Chi tiết, trình xem XML, PDF, in | [DD-08](../detail-design/DD-08-INVOICE-DETAIL-VIEWER.md#7-theo-dõi-tiến-độ-implement) | 🟡 3 ✅ (T08-01..03) · 3 🟡 (T08-06..08) · 1 ⬜ (T08-04) · 1 ⛔ (T08-05); PDF/in chờ G-03, G-09 |
 
 ### Phase 5 — Xuất dữ liệu, tổng quan, lịch sử, cài đặt và sao lưu
 
@@ -114,9 +114,9 @@ Mỗi phase kết thúc khi đạt đủ **tiêu chí thoát**; không bắt đ�
 
 | Nhóm task | Mô tả | DD | Trạng thái |
 |---|---|---|---|
-| T09-01…T09-07 | Xuất Excel/ZIP | [DD-09](../detail-design/DD-09-EXPORT.md#7-theo-dõi-tiến-độ-implement) | 🟡 (Excel và ZIP xuất được từ SCR-05; còn xuất theo dòng chọn, ExportRecord, SCR-06/07) |
-| T10-01…T10-07 | Tổng quan, lịch sử | [DD-10](../detail-design/DD-10-DASHBOARD-HISTORY.md#6-theo-dõi-tiến-độ-implement) | 🟡 6/7 (SCR-02, SCR-08 xong; còn T10-05 chế độ chi tiết lịch sử trên SCR-04) |
-| T11-01…T11-08 | Cài đặt, sao lưu/khôi phục | [DD-11](../detail-design/DD-11-SETTINGS-BACKUP.md#7-theo-dõi-tiến-độ-implement) | 🟡 (khung SCR-09 + lối vào Bản quyền; sao lưu chờ DD-06) |
+| T09-01…T09-07 | Xuất Excel/ZIP | [DD-09](../detail-design/DD-09-EXPORT.md#7-theo-dõi-tiến-độ-implement) | 🟡 4 ✅ (T09-02..05) · 3 🟡 (T09-01 ExportRecord chờ SQLite, T09-06 chưa có xuất ZIP một hóa đơn ở SCR-06/07, T09-07 chưa có test 100.000 dòng) |
+| T10-01…T10-07 | Tổng quan, lịch sử | [DD-10](../detail-design/DD-10-DASHBOARD-HISTORY.md#6-theo-dõi-tiến-độ-implement) | 🟡 6 ✅ · 1 ⬜ (T10-05 chế độ chi tiết lịch sử trên SCR-04) |
+| T11-01…T11-08 | Cài đặt, sao lưu/khôi phục | [DD-11](../detail-design/DD-11-SETTINGS-BACKUP.md#7-theo-dõi-tiến-độ-implement) | 🟡 1 ✅ (T11-07) · 1 🟡 (T11-01 khung SCR-09) · 6 ⬜ (thống kê, kiểm tra kết nối, sao lưu/khôi phục, test) |
 
 ### Phase 6 — Hardening, UAT và phát hành
 
@@ -138,7 +138,7 @@ Số task lấy từ bảng theo dõi trong từng DD (cập nhật khi đổi t
 
 | Tính năng | DD | Phase | Tổng task | ✅ | 🟡 | ⛔ | Ghi chú |
 |---|---|---|---:|---:|---:|---:|---|
-| FT-00 Cổng kỹ thuật | [DD-00](../detail-design/DD-00-TECHNICAL-GATES.md) | 1 | 10 | 0 | 0 | 0 | |
+| FT-00 Cổng kỹ thuật | [DD-00](../detail-design/DD-00-TECHNICAL-GATES.md) | 1 | 10 | 0 | 3 | 0 | T00-03 (traffic thật còn thiếu mua vào, `state`, 401/429), T00-06, T00-10 đang làm; các gate còn lại chưa có ADR |
 | FT-01/02 Khung + đăng nhập | [DD-01](../detail-design/DD-01-APP-SHELL-LOGIN.md) | 1–3 | 18 | 16 | 2 | 0 | T01-14 một phần; T01-16 Release chạy được, đăng nhập WebView chờ gate G-01; hợp đồng đăng nhập thật đã có (T01-18) |
 | FT-03 Doanh nghiệp | [DD-02](../detail-design/DD-02-COMPANY-MANAGEMENT.md) | 2 | 10 | 6 | 3 | 0 | T02-08 chờ DD-03; 486 test pass |
 | FT-04 Licence | [DD-03](../detail-design/DD-03-LICENSING.md) | 2 | 8 | 5 | 3 | 0 | Lõi + SCR-12 + HTTP client + nạp cấu hình xong; khóa/hợp đồng thật chờ G-06 |
@@ -147,10 +147,10 @@ Số task lấy từ bảng theo dõi trong từng DD (cập nhật khi đổi t
 | FT-07 Lưu trữ | [DD-06](../detail-design/DD-06-INVOICE-STORAGE.md) | 3 (T06-02 sớm ở 2) | 9 | 2 | 3 | 1 | Lõi lưu trữ + kho file thật xong; metadata trong bộ nhớ, chờ G-08 (SQLite) |
 | FT-08 Kho hóa đơn | [DD-07](../detail-design/DD-07-INVOICE-ARCHIVE.md) | 4 | 9 | 7 | 0 | 0 | SCR-05 chạy trên kho bộ nhớ; còn SQLite (T07-02, T07-08) |
 | FT-09 Chi tiết/viewer | [DD-08](../detail-design/DD-08-INVOICE-DETAIL-VIEWER.md) | 4 | 8 | 3 | 3 | 1 | SCR-06 và XML SCR-07 xong; PDF/in chờ G-03, G-09 |
-| FT-10 Xuất | [DD-09](../detail-design/DD-09-EXPORT.md) | 5 | 7 | 4 | 3 | 0 | Excel (bộ ghi xlsx tự viết, đã mở thử bằng Excel) và ZIP chạy từ SCR-05; còn ExportRecord, xuất theo dòng chọn, SCR-06/07 |
+| FT-10 Xuất | [DD-09](../detail-design/DD-09-EXPORT.md) | 5 | 7 | 4 | 3 | 0 | Excel (bộ ghi xlsx tự viết, đã mở thử bằng Excel) và ZIP chạy từ SCR-05; hỗ trợ xuất theo dòng chọn; còn ExportRecord (chờ SQLite) và xuất từ SCR-06/07 |
 | FT-11 Tổng quan/lịch sử | [DD-10](../detail-design/DD-10-DASHBOARD-HISTORY.md) | 5 | 7 | 6 | 0 | 0 | SCR-02/SCR-08 chạy trên dữ liệu bộ nhớ; còn T10-05 |
-| FT-12 Cài đặt/sao lưu | [DD-11](../detail-design/DD-11-SETTINGS-BACKUP.md) | 5 | 8 | 0 | 0 | 0 | |
-| **Tổng** | | | **112** | **22** | **3** | **9** | DD-01 (dev adapter) + client cổng Thuế theo cấu hình/cổng giả + SCR-03 |
+| FT-12 Cài đặt/sao lưu | [DD-11](../detail-design/DD-11-SETTINGS-BACKUP.md) | 5 | 8 | 1 | 1 | 0 | Khung SCR-09 + lối vào Bản quyền; sao lưu/khôi phục chưa làm |
+| **Tổng** | | | **114** | **66** | **24** | **3** | Còn 21 task chưa bắt đầu; số liệu đếm tự động từ các bảng DD ngày 02/11/2026 |
 
 ## 5. Phụ thuộc quan trọng
 
@@ -160,7 +160,7 @@ Phase 1 (G-01, G-02, G-08, G-09)
    └─> Phase 3: production login (T01-16), API client (T05-06), normalizer (T06-04)
 Phase 3 ──> Phase 4 (cần dữ liệu thật trong kho) ──> Phase 5 (xuất cần Kho/Storage)
 G-06 (licence) chặn T03-04/T03-05 nhưng không chặn Phase 2 nhờ DevelopmentLicenseService
-G-03/G-04/G-09 chặn tương ứng T08-05, T09-02/03
+G-03/G-09 (PDF) chặn T08-04/05; Excel và ZIP (T09-03/04) không cần thư viện ngoài nên đã làm xong
 ```
 
 ## 6. Câu hỏi mở và rủi ro
@@ -185,3 +185,9 @@ G-03/G-04/G-09 chặn tương ứng T08-05, T09-02/03
 | 01/11/2026 | **Đối chiếu API cổng Thuế thật** (đăng nhập, tra cứu bán ra, chi tiết, xuất XML zip, xuất Excel; `spec.xlsx`, mẫu bảng kê, `invoice.zip`): sửa cấu hình/client/cổng giả theo hình dạng thật (RSQL `search`, `datas/total/state`, khóa tổng hợp, zip, JWT), bỏ các biến thể giả định, thêm `PortalToken`/`PortalAuthCapture`, bộ lọc SCR-03 theo đúng tham số (thêm CCCD, dropdown mã thật, validator). G-02/G-04 đóng một phần; còn mua vào, `state`, 401/429 thật. Cập nhật DD-00/01/04/05/06/07/08/09, [ADR 0001](../decisions/0001-portal-api-contract.md), [api-samples](../api-samples/README.md) |
 | 02/11/2026 | DD-06: lõi lưu trữ (domain, normalizer, `InvoiceStorageService`, kho file atomic) + tích hợp engine tải trên cổng giả; metadata còn trong bộ nhớ chờ SQLite |
 | 02/11/2026 | DD-05: SCR-04 Tiến độ tải + nối engine/kho file vào ứng dụng (Debug, cổng giả); SCR-03 chỉ tạo phiên rồi mở SCR-04. Release vẫn tắt tải vì metadata chưa bền vững (chờ SQLite) |
+| 02/11/2026 | DD-07: SCR-05 Kho hóa đơn (lọc, sắp xếp, phân trang, kiểm tra file, nhớ trạng thái), sau đó chọn nhiều dòng, ẩn/hiện cột, phím tắt (T07-05) |
+| 02/11/2026 | DD-10: SCR-08 Lịch sử tải và SCR-02 Tổng quan (điều hướng có bộ lọc sang SCR-05/SCR-04) |
+| 02/11/2026 | Review `e91145c..HEAD` và sửa: kiểm tra file không báo thành công khi chưa truy vấn, tải lại cùng hash làm mới metadata và ghi lại file thiếu, bỏ `CancelAll` khi rời màn hình, thay đổi bộ lọc khi đang tải không bị mất, đọc phân đoạn một lần cho lịch sử |
+| 02/11/2026 | DD-08: SCR-06 Chi tiết hóa đơn và SCR-07 Xem chứng từ (XML cây/thô, đổi phiên bản, lưu bản sao); PDF/in chờ G-03, G-09 |
+| 02/11/2026 | DD-09: xuất Excel (bộ ghi xlsx tự viết, đã mở thử bằng Excel) và ZIP XML kèm manifest từ SCR-05, hỗ trợ xuất theo dòng chọn; còn ExportRecord và xuất từ SCR-06/07 |
+| 02/11/2026 | Đồng bộ lại toàn bộ trạng thái task trong file này theo bảng từng DD (đếm tự động): 114 task, 66 ✅, 24 🟡, 3 ⛔, 21 ⬜; sửa tổng số task trước đó sai (112) |
