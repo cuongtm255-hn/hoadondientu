@@ -19,6 +19,17 @@ namespace HoaDonDienTu.WinForms.Archive
         public FileIntegrityFilter FileFilter { get; set; }
     }
 
+    public sealed class SelectionChangedEventArgs : EventArgs
+    {
+        public SelectionChangedEventArgs(IList<Guid> invoiceIds)
+        {
+            InvoiceIds = invoiceIds;
+        }
+
+        /// <summary>Hóa đơn của các dòng đang chọn trên trang hiện tại, theo thứ tự hiển thị.</summary>
+        public IList<Guid> InvoiceIds { get; private set; }
+    }
+
     public sealed class InvoiceRequestedEventArgs : EventArgs
     {
         public InvoiceRequestedEventArgs(Guid invoiceId)
@@ -98,6 +109,21 @@ namespace HoaDonDienTu.WinForms.Archive
 
         /// <summary>Người dùng nhấp đôi một dòng để xem chi tiết hóa đơn.</summary>
         event EventHandler<InvoiceRequestedEventArgs> InvoiceRequested;
+
+        /// <summary>Phát khi tập dòng chọn đổi, và luôn một lần (rỗng) sau mỗi lần hiển thị kết quả mới.</summary>
+        event EventHandler<SelectionChangedEventArgs> SelectionChanged;
+
+        /// <summary>Người dùng ẩn/hiện một cột.</summary>
+        event EventHandler ColumnsChanged;
+
+        /// <summary>Mã các cột đang ẩn.</summary>
+        IList<string> HiddenColumns { get; }
+
+        /// <summary>Khôi phục cột ẩn (khi quay lại màn hình) mà không phát ColumnsChanged.</summary>
+        void ShowHiddenColumns(IList<string> hidden);
+
+        /// <summary>Số dòng đang chọn, để nút xuất và chân trang nói rõ phạm vi.</summary>
+        void ShowSelectionCount(int count);
 
         event EventHandler ExportExcelRequested;
         event EventHandler ExportZipRequested;

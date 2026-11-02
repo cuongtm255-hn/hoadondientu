@@ -647,6 +647,110 @@ namespace HoaDonDienTu.WinForms.Tests
             Assert.That(WaitFor(() => Errors.Shown.Count > 0), Is.True);
         }
 
+        // ---- Chọn nhiều, cột ẩn (T07-05) ----
+
+        [Test]
+        public async Task Selecting_Rows_ShowsTheCount_AndExportUsesExactlyThoseRows()
+        {
+            await AddAsync(InvoiceDirection.Purchase, "1", new DateTime(2026, 1, 1));
+            await AddAsync(InvoiceDirection.Purchase, "2", new DateTime(2026, 1, 2));
+            await AddAsync(InvoiceDirection.Purchase, "3", new DateTime(2026, 1, 3));
+            OpenWithExport();
+            Assert.That(WaitFor(() => _view.Result != null && _view.Result.Rows.Count == 3), Is.True);
+            var ids = _view.Result.Rows.Select(r => r.InvoiceId).ToList();
+
+            _view.RaiseSelection(ids[2], ids[0]);
+
+            Assert.That(_view.SelectionCount, Is.EqualTo(2));
+            _view.RaiseExportExcel();
+            Assert.That(WaitFor(() => _exportService.Calls.Count == 1), Is.True);
+            var scope = _exportService.Calls[0].Request.Scope;
+            Assert.That(scope.IsSelection, Is.True);
+            Assert.That(scope.SelectedInvoiceIds, Is.EqualTo(new[] { ids[2], ids[0] }));
+            Assert.That(_exportPicker.SuggestedName, Does.Contain("Da-chon-2"));
+        }
+
+        [Test]
+        public async Task WithoutASelection_ExportCoversTheWholeFilteredResult()
+        {
+            await AddAsync(InvoiceDirection.Purchase, "1", new DateTime(2026, 1, 1));
+            OpenWithExport();
+            Assert.That(WaitFor(() => _view.Result != null), Is.True);
+            var id = _view.Result.Rows[0].InvoiceId;
+            _view.RaiseSelection(id);
+            _view.RaiseSelection();
+            Assert.That(_view.SelectionCount, Is.EqualTo(0));
+
+            _view.RaiseExportZip();
+
+            Assert.That(WaitFor(() => _exportService.Calls.Count == 1), Is.True);
+            Assert.That(_exportService.Calls[0].Request.Scope.IsSelection, Is.False);
+        }
+
+        [Test]
+        public async Task ZipExport_AlsoHonoursTheSelection()
+        {
+            await AddAsync(InvoiceDirection.Purchase, "1", new DateTime(2026, 1, 1));
+            await AddAsync(InvoiceDirection.Purchase, "2", new DateTime(2026, 1, 2));
+            OpenWithExport();
+            Assert.That(WaitFor(() => _view.Result != null && _view.Result.Rows.Count == 2), Is.True);
+            var id = _view.Result.Rows[1].InvoiceId;
+            _view.RaiseSelection(id);
+
+            _view.RaiseExportZip();
+
+            Assert.That(WaitFor(() => _exportService.Calls.Count == 1), Is.True);
+            Assert.That(_exportService.Calls[0].Request.Scope.SelectedInvoiceIds, Is.EqualTo(new[] { id }));
+        }
+
+        [Test]
+        public async Task NewResults_DropTheOldSelection()
+        {
+            await AddAsync(InvoiceDirection.Purchase, "1", new DateTime(2026, 1, 1), name: "Alpha");
+            await AddAsync(InvoiceDirection.Purchase, "2", new DateTime(2026, 1, 2), name: "Beta");
+            OpenWithExport();
+            Assert.That(WaitFor(() => _view.Result != null && _view.Result.Rows.Count == 2), Is.True);
+            _view.RaiseSelection(_view.Result.Rows[0].InvoiceId, _view.Result.Rows[1].InvoiceId);
+            Assert.That(_view.SelectionCount, Is.EqualTo(2));
+
+            _view.Filter.QuickSearch = "alpha";
+            _view.RaiseFilterChanged();
+
+            Assert.That(WaitFor(() => _view.Result.Rows.Count == 1), Is.True);
+            Assert.That(WaitFor(() => _view.SelectionCount == 0), Is.True);
+            _view.RaiseExportExcel();
+            Assert.That(WaitFor(() => _exportService.Calls.Count == 1), Is.True);
+            Assert.That(_exportService.Calls[0].Request.Scope.IsSelection, Is.False, "Không xuất nhầm các dòng đã chọn từ kết quả cũ");
+        }
+
+        [Test]
+        public async Task HiddenColumns_AreRemembered_PerCompany()
+        {
+            await AddAsync(InvoiceDirection.Purchase, "1", new DateTime(2026, 1, 1));
+            Open();
+            Assert.That(WaitFor(() => _view.Result != null), Is.True);
+            Assert.That(_view.RestoredHidden, Is.Empty);
+            _view.HiddenColumnsValue = new List<string> { "colTax", "colForm" };
+            _view.RaiseColumns();
+            _presenter.Dispose();
+
+            var back = new FakeArchiveView();
+            _view = back;
+            _presenter = new ArchivePresenter(back, _service, Context, Nav, _state, Runner, Errors, new DateTime(2026, 11, 2));
+            _presenter.Initialize();
+            Assert.That(WaitFor(() => back.Result != null), Is.True);
+            Assert.That(back.RestoredHidden, Is.EquivalentTo(new[] { "colTax", "colForm" }));
+            _presenter.Dispose();
+
+            Context.Current = new CompanyContext(CompanyId.NewId(), TaxCode.Parse("0109999999"), "Khác", _storageRoot + "-khac", null);
+            var other = new FakeArchiveView();
+            _view = other;
+            _presenter = new ArchivePresenter(other, _service, Context, Nav, _state, Runner, Errors, new DateTime(2026, 11, 2));
+            _presenter.Initialize();
+            Assert.That(WaitFor(() => other.RestoredHidden != null), Is.True);
+            Assert.That(other.RestoredHidden, Is.Empty);
+        }
+
         // ---- Fakes ----
 
         private sealed class ReadExportEntitlement : IEntitlementService
@@ -797,6 +901,23 @@ namespace HoaDonDienTu.WinForms.Tests
             public event EventHandler ExportZipRequested;
 
             public bool? ExportAllowed;
+
+            public event EventHandler<SelectionChangedEventArgs> SelectionChanged;
+            public event EventHandler ColumnsChanged;
+            public List<string> HiddenColumnsValue = new List<string>();
+            public IList<string> HiddenColumns { get { return HiddenColumnsValue; } }
+            public IList<string> RestoredHidden;
+            public int SelectionCount = -1;
+
+            public void ShowHiddenColumns(IList<string> hidden)
+            {
+                RestoredHidden = hidden;
+                HiddenColumnsValue = new List<string>(hidden);
+            }
+
+            public void ShowSelectionCount(int count) { SelectionCount = count; }
+            public void RaiseSelection(params Guid[] ids) { SelectionChanged(this, new SelectionChangedEventArgs(ids)); }
+            public void RaiseColumns() { ColumnsChanged(this, EventArgs.Empty); }
 
             public void ShowExportAllowed(bool allowed) { ExportAllowed = allowed; }
             public void RaiseExportExcel() { ExportExcelRequested(this, EventArgs.Empty); }

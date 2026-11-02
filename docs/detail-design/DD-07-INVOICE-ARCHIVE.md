@@ -97,7 +97,7 @@ Trạng thái: ⬜ Chưa bắt đầu · 🟡 Đang làm · ✅ Hoàn thành · 
 | T07-02 | `InvoiceArchiveRepository` (SQL lọc/sắp xếp/phân trang, index) | Infra | T06-03 | ⬜ | chờ SQLite (G-08); hiện lọc trong bộ nhớ | |
 | T07-03 | `InvoiceArchiveService` (query, summary, resolve selection) | Application | T07-02 | ✅ | InvoiceArchiveService (lọc, sắp xếp, phân trang, tóm tắt) trên IInvoiceRepository | |
 | T07-04 | `InvoiceArchiveControl` + presenter (SCR-05): lưới, lọc, tìm nhanh, tóm tắt | WinForms | T07-03, T01-05 | ✅ | ArchiveControl + ArchivePresenter; lưới, lọc, tìm nhanh, thẻ tóm tắt | |
-| T07-05 | Chọn nhiều, ẩn/hiện cột, sao chép, phím tắt | WinForms | T07-04 | ⬜ | chọn nhiều/cột/phím tắt chưa làm | |
+| T07-05 | Chọn nhiều, ẩn/hiện cột, sao chép, phím tắt | WinForms | T07-04 | ✅ | chọn nhiều/cột/phím tắt chưa làm | Chọn nhiều dòng trên trang (Ctrl/Shift+nhấp, Ctrl+A); Ctrl+C sao chép kèm tiêu đề (mặc định của lưới); ẩn/hiện cột bằng chuột phải tiêu đề, nhớ theo doanh nghiệp; phím tắt Enter mở chi tiết, Ctrl+E xuất Excel, Ctrl+Shift+E xuất ZIP, Esc bỏ chọn. Chọn chỉ trong trang hiện tại, sang trang/lọc mới thì bỏ chọn |
 | T07-06 | Chỉ báo + bộ lọc file lỗi, hành động `Kiểm tra file` | WinForms | T06-06 | ✅ | cột + bộ lọc file lỗi, nút Kiểm tra file | |
 | T07-07 | Giữ trạng thái khi vào/ra SCR-06 | WinForms | T07-04 | ✅ | giữ lọc/sắp xếp/trang theo doanh nghiệp; nhấp đôi một dòng mở SCR-06 và quay lại thấy đúng bộ lọc | |
 | T07-08 | Test hiệu năng 100.000 bản ghi | Tests | T07-02 | ⬜ | chờ SQLite | NFR-PERF-002 |

@@ -111,7 +111,7 @@ namespace HoaDonDienTu.WinForms.Archive
             this.pnlTitleActions.Dock = System.Windows.Forms.DockStyle.Right;
             this.pnlTitleActions.Name = "pnlTitleActions";
             this.pnlTitleActions.Padding = new System.Windows.Forms.Padding(0, 22, 16, 22);
-            this.pnlTitleActions.Size = new System.Drawing.Size(400, 84);
+            this.pnlTitleActions.Size = new System.Drawing.Size(470, 84);
             //
             // btnCheckFiles / btnExportZip / btnExportExcel (thứ tự thêm quyết định thứ tự xếp từ phải sang trái)
             //
@@ -122,12 +122,12 @@ namespace HoaDonDienTu.WinForms.Archive
             this.btnCheckFiles.Click += new System.EventHandler(this.OnCheckFilesClick);
             this.btnExportZip.Dock = System.Windows.Forms.DockStyle.Right;
             this.btnExportZip.Name = "btnExportZip";
-            this.btnExportZip.Size = new System.Drawing.Size(130, 40);
+            this.btnExportZip.Size = new System.Drawing.Size(150, 40);
             this.btnExportZip.Values.Text = "Xuất ZIP XML";
             this.btnExportZip.Click += new System.EventHandler(this.OnExportZipClick);
             this.btnExportExcel.Dock = System.Windows.Forms.DockStyle.Right;
             this.btnExportExcel.Name = "btnExportExcel";
-            this.btnExportExcel.Size = new System.Drawing.Size(120, 40);
+            this.btnExportExcel.Size = new System.Drawing.Size(130, 40);
             this.btnExportExcel.Values.Text = "Xuất Excel";
             this.btnExportExcel.Click += new System.EventHandler(this.OnExportExcelClick);
             //
@@ -411,7 +411,10 @@ namespace HoaDonDienTu.WinForms.Archive
             this.gridInvoices.Name = "gridInvoices";
             this.gridInvoices.ReadOnly = true;
             this.gridInvoices.RowHeadersVisible = false;
+            this.gridInvoices.MultiSelect = true;
             this.gridInvoices.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
+            this.gridInvoices.SelectionChanged += new System.EventHandler(this.OnGridSelectionChanged);
+            this.gridInvoices.KeyDown += new System.Windows.Forms.KeyEventHandler(this.OnGridKeyDown);
             this.gridInvoices.ColumnHeaderMouseClick += new System.Windows.Forms.DataGridViewCellMouseEventHandler(this.OnHeaderClick);
             this.gridInvoices.CellDoubleClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.OnCellDoubleClick);
             this.gridInvoices.CellFormatting += new System.Windows.Forms.DataGridViewCellFormattingEventHandler(this.OnCellFormatting);

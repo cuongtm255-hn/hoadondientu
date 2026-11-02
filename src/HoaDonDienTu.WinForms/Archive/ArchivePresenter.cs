@@ -43,6 +43,21 @@ namespace HoaDonDienTu.WinForms.Archive
             return false;
         }
 
+        private Guid _columnsCompany;
+        private IList<string> _hidden = new List<string>();
+
+        /// <summary>Cột đang ẩn của doanh nghiệp; rỗng nếu chưa từng chỉnh.</summary>
+        public IList<string> HiddenColumns(CompanyId company)
+        {
+            return _columnsCompany == company.Value ? new List<string>(_hidden) : new List<string>();
+        }
+
+        public void SaveHiddenColumns(CompanyId company, IList<string> hidden)
+        {
+            _columnsCompany = company.Value;
+            _hidden = new List<string>(hidden);
+        }
+
         public void Save(CompanyId company, ArchiveFilterInput filter, ArchiveQuery query)
         {
             _companyId = company.Value;
@@ -84,6 +99,7 @@ namespace HoaDonDienTu.WinForms.Archive
         private readonly IInvoiceArchiveService _service;
         private readonly ICompanyContextAccessor _context;
         private readonly INavigationService _navigation;
+        private IList<Guid> _selection = new List<Guid>();
         private readonly ArchiveViewStateStore _store;
         private readonly IUiOperationRunner _runner;
         private readonly IUserErrorPresenter _errors;
@@ -143,6 +159,8 @@ namespace HoaDonDienTu.WinForms.Archive
             _view.PageRequested += OnPage;
             _view.SortRequested += OnSort;
             _view.InvoiceRequested += OnInvoice;
+            _view.SelectionChanged += OnSelection;
+            _view.ColumnsChanged += OnColumns;
             _view.ExportExcelRequested += OnExportExcel;
             _view.ExportZipRequested += OnExportZip;
             _view.ShowExportAllowed(_export != null && _export.Entitlement.IsAllowed(AppFeature.ReadExport));
@@ -157,6 +175,8 @@ namespace HoaDonDienTu.WinForms.Archive
                         _view.ShowMessage("Chưa chọn doanh nghiệp. Chọn doanh nghiệp để xem kho hóa đơn.", false);
                         return;
                     }
+
+                    _view.ShowHiddenColumns(_store.HiddenColumns(_context.Current.CompanyId));
 
                     ArchiveFilterInput filter;
                     ArchiveQuery saved;
@@ -203,6 +223,8 @@ namespace HoaDonDienTu.WinForms.Archive
             _view.PageRequested -= OnPage;
             _view.SortRequested -= OnSort;
             _view.InvoiceRequested -= OnInvoice;
+            _view.SelectionChanged -= OnSelection;
+            _view.ColumnsChanged -= OnColumns;
             _view.ExportExcelRequested -= OnExportExcel;
             _view.ExportZipRequested -= OnExportZip;
         }
@@ -242,6 +264,24 @@ namespace HoaDonDienTu.WinForms.Archive
 
             _resetPage = true;
             Refresh();
+        }
+
+        /// <summary>Kết quả mới thay hết các dòng trên lưới nên lựa chọn cũ không còn hiệu lực.</summary>
+        private void ResetSelection()
+        {
+            _selection = new List<Guid>();
+            _view.ShowSelectionCount(0);
+        }
+
+        private void OnSelection(object sender, SelectionChangedEventArgs e)
+        {
+            _selection = e.InvoiceIds ?? new List<Guid>();
+            _view.ShowSelectionCount(_selection.Count);
+        }
+
+        private void OnColumns(object sender, EventArgs e)
+        {
+            if (_context.HasCurrent) _store.SaveHiddenColumns(_context.Current.CompanyId, _view.HiddenColumns);
         }
 
         private void OnInvoice(object sender, InvoiceRequestedEventArgs e)
@@ -297,7 +337,10 @@ namespace HoaDonDienTu.WinForms.Archive
 
                 var company = _context.Current;
                 Apply(_view.ReadFilter());
-                var scope = ExportScope.ForQuery(_query);
+
+                // Có dòng chọn thì chỉ xuất các dòng đó theo thứ tự đang hiển thị; không thì xuất toàn bộ kết quả đang lọc.
+                var selected = _selection.ToList();
+                var scope = selected.Count > 0 ? ExportScope.ForSelection(selected) : ExportScope.ForQuery(_query);
 
                 var folder = System.IO.Path.Combine(company.StorageRoot, "Exports");
                 try
@@ -363,6 +406,7 @@ namespace HoaDonDienTu.WinForms.Archive
                 _query.PageIndex = page.PageIndex;
                 _store.Save(company, filter, _query);
                 _view.ShowResult(Build(page, filter));
+            ResetSelection();
                 var problems = page.Summary.ProblemCount;
                 _view.ShowMessage(
                     problems == 0 ? "Đã kiểm tra: mọi file XML đều còn trên đĩa." : "Đã kiểm tra: " + problems + " hóa đơn thiếu file XML. Lọc theo \"Lỗi/thiếu file\" để xem.",
@@ -453,6 +497,7 @@ namespace HoaDonDienTu.WinForms.Archive
             _query.PageIndex = page.PageIndex;
             _store.Save(company, filter, _query);
             _view.ShowResult(Build(page, filter));
+            ResetSelection();
             _view.ShowMessage(string.Empty, false);
         }
 

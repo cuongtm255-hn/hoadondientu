@@ -36,6 +36,10 @@ namespace HoaDonDienTu.WinForms.Archive
         private const int TypingDelayMs = 250;
 
         private bool _suppress;
+        private bool _suppressSelection;
+        private string _footerBase = string.Empty;
+        private int _selectedCount;
+        private readonly ContextMenuStrip _columnMenu = new ContextMenuStrip();
         private readonly Timer _typingTimer;
 
         public ArchiveControl()
@@ -55,6 +59,7 @@ namespace HoaDonDienTu.WinForms.Archive
             cboFile.SelectedIndex = 0;
             cboYear.Items.Add("Tất cả năm");
             cboYear.SelectedIndex = 0;
+            BuildColumnMenu();
         }
 
         public event EventHandler FilterChanged;
@@ -63,6 +68,8 @@ namespace HoaDonDienTu.WinForms.Archive
         public event EventHandler<PageRequestedEventArgs> PageRequested;
         public event EventHandler<SortRequestedEventArgs> SortRequested;
         public event EventHandler<InvoiceRequestedEventArgs> InvoiceRequested;
+        public event EventHandler<SelectionChangedEventArgs> SelectionChanged;
+        public event EventHandler ColumnsChanged;
         public event EventHandler ExportExcelRequested;
         public event EventHandler ExportZipRequested;
 
@@ -138,11 +145,14 @@ namespace HoaDonDienTu.WinForms.Archive
                 lblStat2Value.Values.Text = m.TotalBeforeTax;
                 lblStat3Value.Values.Text = m.TotalTax;
                 lblStat4Value.Values.Text = m.TotalPayment;
-                lblFooter.Values.Text = m.FooterText;
+                _footerBase = m.FooterText;
+                lblFooter.Values.Text = FooterWithSelection();
                 lblPage.Values.Text = m.PageText;
                 btnPrev.Enabled = m.CanPrevious;
                 btnNext.Enabled = m.CanNext;
 
+                // Dựng lại cả lưới thì lưới tự phát SelectionChanged nhiều lần; chỉ báo đúng một lần ở cuối.
+                _suppressSelection = true;
                 gridInvoices.Rows.Clear();
                 foreach (var r in m.Rows)
                 {
@@ -155,7 +165,52 @@ namespace HoaDonDienTu.WinForms.Archive
                 foreach (DataGridViewColumn column in gridInvoices.Columns) column.HeaderCell.SortGlyphDirection = SortOrder.None;
                 var sorted = SortColumn(m.SortKey);
                 if (sorted != null) sorted.HeaderCell.SortGlyphDirection = m.SortDescending ? SortOrder.Descending : SortOrder.Ascending;
-                gridInvoices.ClearSelection();
+                _suppressSelection = true;
+                try
+                {
+                    gridInvoices.ClearSelection();
+                }
+                finally
+                {
+                    _suppressSelection = false;
+                }
+
+                // Kết quả mới thì không còn dòng nào được chọn; báo một lần để presenter bỏ lựa chọn cũ.
+                RaiseSelection();
+            });
+        }
+
+        public IList<string> HiddenColumns
+        {
+            get
+            {
+                var hidden = new List<string>();
+                foreach (DataGridViewColumn c in gridInvoices.Columns) if (!c.Visible) hidden.Add(c.Name);
+                return hidden;
+            }
+        }
+
+        public void ShowHiddenColumns(IList<string> hidden)
+        {
+            OnUi(delegate
+            {
+                var set = new HashSet<string>(hidden ?? new List<string>());
+                foreach (DataGridViewColumn c in gridInvoices.Columns) c.Visible = !set.Contains(c.Name);
+
+                // Không bao giờ ẩn hết cột.
+                if (gridInvoices.Columns.GetColumnCount(DataGridViewElementStates.Visible) == 0) colIssueDate.Visible = true;
+                SyncColumnMenu();
+            });
+        }
+
+        public void ShowSelectionCount(int count)
+        {
+            OnUi(delegate
+            {
+                _selectedCount = count;
+                btnExportExcel.Values.Text = count > 0 ? "Xuất Excel (" + count + ")" : "Xuất Excel";
+                btnExportZip.Values.Text = count > 0 ? "Xuất ZIP XML (" + count + ")" : "Xuất ZIP XML";
+                lblFooter.Values.Text = FooterWithSelection();
             });
         }
 
@@ -252,6 +307,119 @@ namespace HoaDonDienTu.WinForms.Archive
             var row = gridInvoices.Rows[e.RowIndex].Tag as ArchiveRowViewModel;
             if (row == null) return;
             e.CellStyle.ForeColor = row.FileState == ArchiveFileState.Missing ? Missing : row.FileState == ArchiveFileState.MultiVersion ? Multi : Good;
+        }
+
+        // ---- Chọn nhiều, phím tắt, cột ----
+
+        private string FooterWithSelection()
+        {
+            return _selectedCount > 0 ? _footerBase + " · Đã chọn " + _selectedCount : _footerBase;
+        }
+
+        private void RaiseSelection()
+        {
+            var handler = SelectionChanged;
+            if (handler == null) return;
+            var ids = new List<Guid>();
+            foreach (DataGridViewRow row in gridInvoices.Rows)
+            {
+                var vm = row.Tag as ArchiveRowViewModel;
+                if (row.Selected && vm != null) ids.Add(vm.InvoiceId);
+            }
+
+            handler(this, new SelectionChangedEventArgs(ids));
+        }
+
+        private void OnGridSelectionChanged(object sender, EventArgs e)
+        {
+            if (!_suppressSelection) RaiseSelection();
+        }
+
+        /// <summary>Enter mở chi tiết, Ctrl+E xuất Excel, Ctrl+Shift+E xuất ZIP, Esc bỏ chọn; Ctrl+A và Ctrl+C là mặc định của lưới (chọn hết, sao chép kèm tiêu đề).</summary>
+        private void OnGridKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Enter && !e.Control && !e.Alt)
+            {
+                var row = gridInvoices.CurrentRow == null ? null : gridInvoices.CurrentRow.Tag as ArchiveRowViewModel;
+                var handler = InvoiceRequested;
+                if (row != null && handler != null) handler(this, new InvoiceRequestedEventArgs(row.InvoiceId));
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+            }
+            else if (e.KeyCode == Keys.E && e.Control && !e.Alt)
+            {
+                if (e.Shift)
+                {
+                    if (btnExportZip.Enabled) Raise(ExportZipRequested);
+                }
+                else if (btnExportExcel.Enabled)
+                {
+                    Raise(ExportExcelRequested);
+                }
+
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+            }
+            else if (e.KeyCode == Keys.Escape)
+            {
+                gridInvoices.ClearSelection();
+                e.Handled = true;
+            }
+        }
+
+        private static readonly string[][] ColumnCaptions =
+        {
+            new[] { "colIssueDate", "Ngày lập" }, new[] { "colCounterpartyId", "MST đối tác" }, new[] { "colCounterpartyName", "Tên đối tác" },
+            new[] { "colForm", "Mẫu số" }, new[] { "colSymbol", "Ký hiệu" }, new[] { "colNumber", "Số hóa đơn" }, new[] { "colStatus", "Trạng thái" },
+            new[] { "colFile", "File" }, new[] { "colBeforeTax", "Chưa thuế" }, new[] { "colTax", "Thuế" }, new[] { "colPayment", "Thanh toán" }
+        };
+
+        private void BuildColumnMenu()
+        {
+            foreach (var pair in ColumnCaptions)
+            {
+                var name = pair[0];
+                var item = new ToolStripMenuItem(pair[1]) { Name = "mnuColumn_" + name, Checked = true, CheckOnClick = true, Tag = name };
+                item.Click += OnColumnMenuClick;
+                _columnMenu.Items.Add(item);
+            }
+
+            _columnMenu.Items.Add(new ToolStripSeparator());
+            var all = new ToolStripMenuItem("Hiện tất cả cột") { Name = "mnuColumn_all" };
+            all.Click += delegate
+            {
+                foreach (DataGridViewColumn c in gridInvoices.Columns) c.Visible = true;
+                SyncColumnMenu();
+                Raise(ColumnsChanged);
+            };
+            _columnMenu.Items.Add(all);
+            gridInvoices.ColumnHeadersDefaultCellStyle.WrapMode = DataGridViewTriState.False;
+            foreach (DataGridViewColumn c in gridInvoices.Columns) c.HeaderCell.ContextMenuStrip = _columnMenu;
+        }
+
+        private void OnColumnMenuClick(object sender, EventArgs e)
+        {
+            var item = (ToolStripMenuItem)sender;
+            var column = gridInvoices.Columns[(string)item.Tag];
+            if (!item.Checked && gridInvoices.Columns.GetColumnCount(DataGridViewElementStates.Visible) <= 1)
+            {
+                // Phải còn ít nhất một cột.
+                item.Checked = true;
+                return;
+            }
+
+            column.Visible = item.Checked;
+            Raise(ColumnsChanged);
+        }
+
+        private void SyncColumnMenu()
+        {
+            foreach (ToolStripItem i in _columnMenu.Items)
+            {
+                var item = i as ToolStripMenuItem;
+                if (item == null || !(item.Tag is string)) continue;
+                item.Checked = gridInvoices.Columns[(string)item.Tag].Visible;
+            }
         }
 
         private void OnCellDoubleClick(object sender, DataGridViewCellEventArgs e)
