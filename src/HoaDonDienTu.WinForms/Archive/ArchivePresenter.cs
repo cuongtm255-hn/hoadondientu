@@ -63,7 +63,14 @@ namespace HoaDonDienTu.WinForms.Archive
         private ArchiveQuery _query = new ArchiveQuery();
         private InvoiceDirection? _yearsFor;
         private bool _initialized;
-        private int _requestSequence;
+        private bool _disposed;
+
+        // Runner bỏ qua thao tác cùng tên đang chạy, nên mọi thay đổi bộ lọc/trang/sắp xếp được gom vào một vòng làm mới tuần tự:
+        // thay đổi đến khi đang tải sẽ được áp dụng ngay sau lần tải hiện tại, không bị mất.
+        private bool _refreshing;
+        private bool _dirty;
+        private bool _resetPage;
+        private bool _clearRequested;
 
         public ArchivePresenter(
             IArchiveView view,
@@ -99,31 +106,40 @@ namespace HoaDonDienTu.WinForms.Archive
             _view.PageRequested += OnPage;
             _view.SortRequested += OnSort;
 
+            _refreshing = true;
             Run("Mở kho hóa đơn", async token =>
             {
-                if (!_context.HasCurrent)
+                try
                 {
-                    _view.ShowMessage("Chưa chọn doanh nghiệp. Chọn doanh nghiệp để xem kho hóa đơn.", false);
-                    return;
-                }
+                    if (!_context.HasCurrent)
+                    {
+                        _view.ShowMessage("Chưa chọn doanh nghiệp. Chọn doanh nghiệp để xem kho hóa đơn.", false);
+                        return;
+                    }
 
-                ArchiveFilterInput filter;
-                ArchiveQuery saved;
-                if (_store.TryGet(_context.Current.CompanyId, out filter, out saved))
-                {
-                    _query = saved;
-                    await ShowYearsAsync(filter.Direction, filter.Year, token);
-                    _view.ShowFilter(filter);
-                }
-                else
-                {
-                    filter = new ArchiveFilterInput { Direction = InvoiceDirection.Purchase };
-                    await ShowYearsAsync(filter.Direction, null, token);
-                    filter.Year = _view.ReadFilter().Year;
-                    _view.ShowFilter(filter);
-                }
+                    ArchiveFilterInput filter;
+                    ArchiveQuery saved;
+                    if (_store.TryGet(_context.Current.CompanyId, out filter, out saved))
+                    {
+                        _query = saved;
+                        await ShowYearsAsync(filter.Direction, filter.Year, token);
+                        _view.ShowFilter(filter);
+                    }
+                    else
+                    {
+                        filter = new ArchiveFilterInput { Direction = InvoiceDirection.Purchase };
+                        await ShowYearsAsync(filter.Direction, null, token);
+                        filter.Year = _view.ReadFilter().Year;
+                        _view.ShowFilter(filter);
+                    }
 
-                await RefreshAsync(token);
+                    _dirty = true;
+                    await DrainAsync(token);
+                }
+                finally
+                {
+                    _refreshing = false;
+                }
             });
         }
 
@@ -131,7 +147,7 @@ namespace HoaDonDienTu.WinForms.Archive
         {
             if (!_initialized) return;
             _initialized = false;
-            _runner.CancelAll();
+            _disposed = true;
             _view.FilterChanged -= OnFilterChanged;
             _view.ClearRequested -= OnClear;
             _view.CheckFilesRequested -= OnCheckFiles;
@@ -143,75 +159,130 @@ namespace HoaDonDienTu.WinForms.Archive
 
         private void OnFilterChanged(object sender, EventArgs e)
         {
-            Run("Lọc kho hóa đơn", async token =>
-            {
-                var filter = _view.ReadFilter();
-                if (_yearsFor != filter.Direction)
-                {
-                    // Đổi chiều: danh sách năm và trạng thái chọn năm phải tính lại cho chiều mới.
-                    await ShowYearsAsync(filter.Direction, null, token);
-                }
-
-                _query.PageIndex = 0;
-                await RefreshAsync(token);
-            });
+            _resetPage = true;
+            Refresh();
         }
 
         private void OnClear(object sender, EventArgs e)
         {
-            Run("Xóa lọc", async token =>
+            _clearRequested = true;
+            _resetPage = true;
+            Refresh();
+        }
+
+        private void OnPage(object sender, PageRequestedEventArgs e)
+        {
+            _query.PageIndex = Math.Max(0, _query.PageIndex + e.Delta);
+            Refresh();
+        }
+
+        private void OnSort(object sender, SortRequestedEventArgs e)
+        {
+            if (_query.SortKey == e.Key)
             {
-                var direction = _view.ReadFilter().Direction;
-                await ShowYearsAsync(direction, null, token);
-                var year = _view.ReadFilter().Year;
-                _view.ShowFilter(new ArchiveFilterInput { Direction = direction, Year = year });
-                _query.PageIndex = 0;
-                await RefreshAsync(token);
-            });
+                _query.SortDescending = !_query.SortDescending;
+            }
+            else
+            {
+                _query.SortKey = e.Key;
+                _query.SortDescending = e.Key == ArchiveSortKey.IssueDate || e.Key == ArchiveSortKey.TotalPayment;
+            }
+
+            _resetPage = true;
+            Refresh();
         }
 
         private void OnCheckFiles(object sender, EventArgs e)
         {
             Run("Kiểm tra file", async token =>
             {
-                var page = await QueryAsync(_query, token);
-                var problems = page == null ? 0 : page.Summary.ProblemCount;
-                await RefreshAsync(token);
+                if (!_context.HasCurrent)
+                {
+                    _view.ShowMessage("Chưa chọn doanh nghiệp.", true);
+                    return;
+                }
+
+                var company = _context.Current.CompanyId;
+                var filter = _view.ReadFilter();
+                Apply(filter);
+                var query = _query.Clone();
+                query.RefreshFiles = true;
+                var page = await _service.QueryAsync(query, token);
+                if (_disposed) return;
+
+                // Kiểm tra lại đĩa xong thì hiển thị luôn kết quả mới, kèm kết luận.
+                _query.PageIndex = page.PageIndex;
+                _store.Save(company, filter, _query);
+                _view.ShowResult(Build(page, filter));
+                var problems = page.Summary.ProblemCount;
                 _view.ShowMessage(
                     problems == 0 ? "Đã kiểm tra: mọi file XML đều còn trên đĩa." : "Đã kiểm tra: " + problems + " hóa đơn thiếu file XML. Lọc theo \"Lỗi/thiếu file\" để xem.",
                     problems > 0);
             });
         }
 
-        private void OnPage(object sender, PageRequestedEventArgs e)
-        {
-            Run("Chuyển trang", async token =>
-            {
-                _query.PageIndex = Math.Max(0, _query.PageIndex + e.Delta);
-                await RefreshAsync(token);
-            });
-        }
-
-        private void OnSort(object sender, SortRequestedEventArgs e)
-        {
-            Run("Sắp xếp", async token =>
-            {
-                if (_query.SortKey == e.Key)
-                {
-                    _query.SortDescending = !_query.SortDescending;
-                }
-                else
-                {
-                    _query.SortKey = e.Key;
-                    _query.SortDescending = e.Key == ArchiveSortKey.IssueDate || e.Key == ArchiveSortKey.TotalPayment;
-                }
-
-                _query.PageIndex = 0;
-                await RefreshAsync(token);
-            });
-        }
-
         // ---- Tra cứu và hiển thị ----
+
+        private void Refresh()
+        {
+            _dirty = true;
+            if (_refreshing) return;
+            _refreshing = true;
+            Run("Làm mới kho hóa đơn", async token =>
+            {
+                try
+                {
+                    await DrainAsync(token);
+                }
+                finally
+                {
+                    _refreshing = false;
+                }
+            });
+        }
+
+        private async Task DrainAsync(CancellationToken token)
+        {
+            while (_dirty && !_disposed)
+            {
+                _dirty = false;
+                await StepAsync(token);
+            }
+        }
+
+        private async Task StepAsync(CancellationToken token)
+        {
+            if (!_context.HasCurrent)
+            {
+                _view.ShowMessage("Chưa chọn doanh nghiệp.", true);
+                return;
+            }
+
+            if (_clearRequested)
+            {
+                _clearRequested = false;
+                var direction = _view.ReadFilter().Direction;
+                await ShowYearsAsync(direction, null, token);
+                var year = _view.ReadFilter().Year;
+                _view.ShowFilter(new ArchiveFilterInput { Direction = direction, Year = year });
+            }
+
+            var filter = _view.ReadFilter();
+            if (_yearsFor != filter.Direction)
+            {
+                // Đổi chiều: danh sách năm và trạng thái chọn năm phải tính lại cho chiều mới.
+                await ShowYearsAsync(filter.Direction, null, token);
+                _resetPage = true;
+            }
+
+            if (_resetPage)
+            {
+                _query.PageIndex = 0;
+                _resetPage = false;
+            }
+
+            await RefreshAsync(token);
+        }
 
         private async Task ShowYearsAsync(InvoiceDirection direction, int? keep, CancellationToken token)
         {
@@ -223,31 +294,17 @@ namespace HoaDonDienTu.WinForms.Archive
 
         private async Task RefreshAsync(CancellationToken token)
         {
+            var company = _context.Current.CompanyId;
             var filter = _view.ReadFilter();
             Apply(filter);
-            var page = await QueryAsync(_query, token);
-            if (page == null) return;
+            var page = await _service.QueryAsync(_query, token);
+            if (_disposed) return;
 
             // Trang bị kéo về trang cuối khi dữ liệu ít đi (ví dụ sau khi lọc): giữ chỉ số thật để nút Trước/Sau đúng.
             _query.PageIndex = page.PageIndex;
-            _store.Save(_context.Current.CompanyId, filter, _query);
+            _store.Save(company, filter, _query);
             _view.ShowResult(Build(page, filter));
             _view.ShowMessage(string.Empty, false);
-        }
-
-        private async Task<ArchivePage> QueryAsync(ArchiveQuery query, CancellationToken token)
-        {
-            if (!_context.HasCurrent)
-            {
-                _view.ShowMessage("Chưa chọn doanh nghiệp.", true);
-                return null;
-            }
-
-            var sequence = Interlocked.Increment(ref _requestSequence);
-            var page = await _service.QueryAsync(query, token);
-
-            // Gõ nhanh thì nhiều truy vấn chồng nhau: chỉ kết quả của lần gần nhất được hiển thị.
-            return sequence == _requestSequence ? page : null;
         }
 
         private void Apply(ArchiveFilterInput f)

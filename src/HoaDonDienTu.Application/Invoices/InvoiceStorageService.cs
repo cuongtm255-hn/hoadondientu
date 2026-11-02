@@ -71,8 +71,11 @@ namespace HoaDonDienTu.Application.Invoices
                 var existing = await _repository.FindAsync(key, cancellationToken).ConfigureAwait(false);
                 if (existing != null && existing.Current != null && string.Equals(existing.Current.Sha256, sha, StringComparison.OrdinalIgnoreCase))
                 {
-                    await _repository.TouchAsync(existing.InvoiceId, now, cancellationToken).ConfigureAwait(false);
-                    return InvoiceSaveResult.AlreadyExists;
+                    var restored = await RestoreIfMissingAsync(session, existing, xml.Content, cancellationToken).ConfigureAwait(false);
+                    await _repository.TouchAsync(existing.InvoiceId, now, invoice, restored, cancellationToken).ConfigureAwait(false);
+
+                    // File vừa được ghi lại nghĩa là kho có thêm dữ liệu thật, không phải bản trùng.
+                    return restored == null ? InvoiceSaveResult.AlreadyExists : InvoiceSaveResult.Saved;
                 }
 
                 var versionNo = existing == null ? 1 : existing.Versions.Max(v => v.VersionNo) + 1;
@@ -141,6 +144,25 @@ namespace HoaDonDienTu.Application.Invoices
             }
         }
 
+        /// <summary>Hóa đơn đã có nhưng file hiện hành không còn trên đĩa: ghi lại đúng nội dung (hash trùng) vào chính vị trí cũ.</summary>
+        private async Task<string> RestoreIfMissingAsync(DownloadSession session, StoredInvoice existing, byte[] content, CancellationToken cancellationToken)
+        {
+            var current = existing.Current;
+            if (_files.Exists(session.StorageRoot, current.RelativePath)) return null;
+
+            var folder = System.IO.Path.GetDirectoryName(current.RelativePath) ?? string.Empty;
+            var temp = await _files.WriteTempAsync(session.StorageRoot, folder, content, cancellationToken).ConfigureAwait(false);
+            try
+            {
+                return _files.Commit(session.StorageRoot, temp, folder, System.IO.Path.GetFileName(current.RelativePath));
+            }
+            catch
+            {
+                _files.DiscardTemp(temp);
+                throw;
+            }
+        }
+
         private void Guard(DownloadSession session)
         {
             if (!_context.HasCurrent) throw new StorageGuardException("Chưa mở doanh nghiệp nào.");
@@ -204,11 +226,14 @@ namespace HoaDonDienTu.Application.Invoices
             return Task.FromResult(0);
         }
 
-        public Task TouchAsync(Guid invoiceId, DateTime nowUtc, CancellationToken cancellationToken)
+        public Task TouchAsync(Guid invoiceId, DateTime nowUtc, NormalizedInvoice latest, string restoredRelativePath, CancellationToken cancellationToken)
         {
             lock (_gate)
             {
-                _byKey.Values.First(i => i.InvoiceId == invoiceId).LastSeenAtUtc = nowUtc;
+                var stored = _byKey.Values.First(i => i.InvoiceId == invoiceId);
+                stored.LastSeenAtUtc = nowUtc;
+                if (latest != null) stored.Invoice = latest;
+                if (restoredRelativePath != null && stored.Current != null) stored.Current.RelativePath = restoredRelativePath;
             }
 
             return Task.FromResult(0);

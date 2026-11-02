@@ -85,14 +85,7 @@ namespace HoaDonDienTu.WinForms.Tests
 
         private static bool WaitFor(Func<bool> condition, int timeoutMs = 10000)
         {
-            var until = DateTime.UtcNow.AddMilliseconds(timeoutMs);
-            while (DateTime.UtcNow < until)
-            {
-                if (condition()) return true;
-                Thread.Sleep(15);
-            }
-
-            return condition();
+            return UiWait.Until(condition, timeoutMs);
         }
 
         [Test]
@@ -276,6 +269,89 @@ namespace HoaDonDienTu.WinForms.Tests
 
             Assert.That(WaitFor(() => other.Result != null), Is.True);
             Assert.That(other.Filter.Status, Is.EqualTo(HistoryStatusFilter.All));
+        }
+
+        [Test]
+        public async Task InvertedDateRange_ShowsAClearMessage_AndKeepsTheCurrentList()
+        {
+            await AddAsync(new DateTime(2026, 11, 1));
+            Open();
+            Assert.That(WaitFor(() => _view.Result != null && _view.Result.Rows.Count == 1), Is.True);
+
+            _view.Filter.From = new DateTime(2026, 12, 1);
+            _view.Filter.To = new DateTime(2026, 11, 1);
+            _view.RaiseFilterChanged();
+
+            Assert.That(WaitFor(() => _view.Message != null && _view.Message.Contains("lớn hơn")), Is.True, _view.Message);
+            Assert.That(_view.Result.Rows.Count, Is.EqualTo(1), "Danh sách đang hiển thị được giữ nguyên");
+
+            _view.Filter.From = new DateTime(2026, 11, 1);
+            _view.RaiseFilterChanged();
+
+            Assert.That(WaitFor(() => _view.Message == string.Empty), Is.True);
+        }
+
+        [Test]
+        public async Task FilterChangedWhileLoading_IsAppliedAfterwards_NotDropped()
+        {
+            await AddAsync(new DateTime(2026, 11, 1), direction: InvoiceDirection.Purchase);
+            await AddAsync(new DateTime(2026, 11, 2), direction: InvoiceDirection.Sold);
+            var gated = new GatedHistory(_service);
+            _presenter = new HistoryPresenter(_view, gated, Context, Nav, _state, Runner, Errors);
+            _presenter.Initialize();
+            Assert.That(WaitFor(() => _view.Result != null), Is.True);
+
+            gated.Block();
+            _view.Filter.Direction = InvoiceDirection.Purchase;
+            _view.RaiseFilterChanged();
+            Assert.That(WaitFor(() => gated.Entered), Is.True);
+            _view.Filter.Direction = InvoiceDirection.Sold;
+            _view.RaiseFilterChanged();
+            gated.Release();
+
+            Assert.That(WaitFor(() => _view.Result.Rows.Count == 1 && _view.Result.Rows[0].Direction == "Bán ra"), Is.True);
+        }
+
+        private sealed class GatedHistory : IDownloadHistoryService
+        {
+            private readonly IDownloadHistoryService _inner;
+            private readonly object _gate = new object();
+            private TaskCompletionSource<bool> _block;
+            private bool _entered;
+
+            public GatedHistory(IDownloadHistoryService inner)
+            {
+                _inner = inner;
+            }
+
+            public bool Entered { get { lock (_gate) { return _entered; } } }
+
+            public void Block()
+            {
+                lock (_gate)
+                {
+                    _block = new TaskCompletionSource<bool>();
+                    _entered = false;
+                }
+            }
+
+            public void Release()
+            {
+                lock (_gate) { _block.TrySetResult(true); }
+            }
+
+            public async Task<HistoryPage> QueryAsync(HistoryQuery query, CancellationToken cancellationToken)
+            {
+                TaskCompletionSource<bool> wait;
+                lock (_gate)
+                {
+                    wait = _block;
+                    if (wait != null && !wait.Task.IsCompleted) _entered = true;
+                }
+
+                if (wait != null) await wait.Task;
+                return await _inner.QueryAsync(query, cancellationToken);
+            }
         }
 
         private sealed class FakeHistoryView : IHistoryView

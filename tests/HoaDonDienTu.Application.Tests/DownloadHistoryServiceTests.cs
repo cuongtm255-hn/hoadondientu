@@ -144,6 +144,20 @@ namespace HoaDonDienTu.Application.Tests
             Assert.That(page.Summary.NeedsAttention, Is.EqualTo(1));
         }
 
+        [Test]
+        public async Task Summary_ActiveIgnoresNeverStartedDrafts()
+        {
+            await AddAsync(new DateTime(2026, 11, 1), DownloadSessionState.Draft);
+            await AddAsync(new DateTime(2026, 11, 2), DownloadSessionState.Running);
+            await AddAsync(new DateTime(2026, 11, 3), DownloadSessionState.WaitingForLogin);
+
+            var page = await QueryAsync();
+
+            Assert.That(page.Summary.Active, Is.EqualTo(2));
+            Assert.That(page.Summary.Total, Is.EqualTo(3));
+            Assert.That((await QueryAsync(q => q.Status = HistoryStatusFilter.InProgress)).TotalCount, Is.EqualTo(3), "Bộ lọc vẫn cho xem cả phiên nháp");
+        }
+
         [TestCase(HistoryStatusFilter.InProgress, 3)]
         [TestCase(HistoryStatusFilter.CompletedWithErrors, 1)]
         [TestCase(HistoryStatusFilter.Stopped, 1)]

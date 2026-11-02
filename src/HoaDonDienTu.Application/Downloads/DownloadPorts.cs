@@ -28,6 +28,9 @@ namespace HoaDonDienTu.Application.Downloads
 
         /// <summary>Mọi phiên của doanh nghiệp (cho lịch sử SCR-08), mới nhất trước.</summary>
         Task<IList<DownloadSession>> GetSessionsAsync(CompanyId companyId, CancellationToken cancellationToken);
+
+        /// <summary>Đoạn của mọi phiên thuộc doanh nghiệp, gộp theo mã phiên: một lần đọc thay cho mỗi phiên một truy vấn.</summary>
+        Task<IDictionary<Guid, IList<DownloadSegment>>> GetSegmentsByCompanyAsync(CompanyId companyId, CancellationToken cancellationToken);
     }
 
     public enum InvoiceSaveResult
@@ -171,6 +174,23 @@ namespace HoaDonDienTu.Application.Downloads
                     .OrderBy(s => s.CreatedAtUtc)
                     .Select(s => s.Clone())
                     .ToList();
+                return Task.FromResult(result);
+            }
+        }
+
+        public Task<IDictionary<Guid, IList<DownloadSegment>>> GetSegmentsByCompanyAsync(CompanyId companyId, CancellationToken cancellationToken)
+        {
+            lock (_gate)
+            {
+                IDictionary<Guid, IList<DownloadSegment>> result = new Dictionary<Guid, IList<DownloadSegment>>();
+                foreach (var session in _sessions.Values.Where(s => s.CompanyId.Equals(companyId)))
+                {
+                    List<DownloadSegment> found;
+                    result[session.Id] = _segments.TryGetValue(session.Id, out found)
+                        ? found.OrderBy(s => s.Index).Select(s => s.Clone()).ToList()
+                        : new List<DownloadSegment>();
+                }
+
                 return Task.FromResult(result);
             }
         }

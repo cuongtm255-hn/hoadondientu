@@ -65,6 +65,9 @@ namespace HoaDonDienTu.Application.Invoices
         public int PageIndex { get; set; }
         public int PageSize { get; set; }
 
+        /// <summary>true bỏ qua bộ nhớ đệm tình trạng file và kiểm tra lại đĩa (nút Kiểm tra file).</summary>
+        public bool RefreshFiles { get; set; }
+
         public ArchiveQuery Clone()
         {
             return (ArchiveQuery)MemberwiseClone();
@@ -125,6 +128,19 @@ namespace HoaDonDienTu.Application.Invoices
         private readonly IInvoiceRepository _repository;
         private readonly IInvoiceFileStore _files;
         private readonly ICompanyContextAccessor _context;
+        private readonly object _cacheGate = new object();
+        private readonly Dictionary<string, CachedExistence> _existence = new Dictionary<string, CachedExistence>(StringComparer.OrdinalIgnoreCase);
+
+        private sealed class CachedExistence
+        {
+            public bool Exists;
+            public DateTime CheckedAtUtc;
+        }
+
+        /// <summary>Gõ tìm kiếm liên tục không được kéo theo hàng chục nghìn lần kiểm tra đĩa: kết quả tồn tại file được nhớ ngắn hạn.</summary>
+        private static readonly TimeSpan ExistenceTtl = TimeSpan.FromSeconds(10);
+
+        private const int ExistenceCacheLimit = 200000;
 
         public InvoiceArchiveService(IInvoiceRepository repository, IInvoiceFileStore files, ICompanyContextAccessor context)
         {
@@ -141,13 +157,14 @@ namespace HoaDonDienTu.Application.Invoices
             if (query == null) throw new ArgumentNullException("query");
             var root = RequireRoot();
             var all = await _repository.ListAsync(cancellationToken).ConfigureAwait(false);
+            var refresh = query.RefreshFiles;
 
             var matched = all.Where(i => Matches(i, query)).ToList();
             var needFileState = query.FileFilter != FileIntegrityFilter.All;
             var states = new Dictionary<Guid, ArchiveFileState>();
             if (needFileState)
             {
-                foreach (var i in matched) states[i.InvoiceId] = StateOf(root, i);
+                foreach (var i in matched) states[i.InvoiceId] = StateOf(root, i, refresh);
                 matched = matched.Where(i => FileMatches(states[i.InvoiceId], query.FileFilter)).ToList();
             }
 
@@ -162,7 +179,7 @@ namespace HoaDonDienTu.Application.Invoices
             {
                 var inv = slice[n];
                 ArchiveFileState state;
-                if (!states.TryGetValue(inv.InvoiceId, out state)) state = StateOf(root, inv);
+                if (!states.TryGetValue(inv.InvoiceId, out state)) state = StateOf(root, inv, refresh);
                 rows.Add(new ArchiveRow
                 {
                     Number = pageIndex * pageSize + n + 1,
@@ -180,7 +197,7 @@ namespace HoaDonDienTu.Application.Invoices
                 TotalCount = sorted.Count,
                 PageIndex = pageIndex,
                 PageSize = pageSize,
-                Summary = Summarize(sorted, root, needFileState ? states : null)
+                Summary = Summarize(sorted, root, needFileState ? states : null, refresh)
             };
         }
 
@@ -197,11 +214,31 @@ namespace HoaDonDienTu.Application.Invoices
             return _context.Current.StorageRoot;
         }
 
-        private ArchiveFileState StateOf(string root, StoredInvoice invoice)
+        private ArchiveFileState StateOf(string root, StoredInvoice invoice, bool refresh)
         {
             var current = invoice.Current;
-            if (current == null || !_files.Exists(root, current.RelativePath)) return ArchiveFileState.Missing;
+            if (current == null || !FileExists(root, current.RelativePath, refresh)) return ArchiveFileState.Missing;
             return invoice.Versions.Count > 1 ? ArchiveFileState.MultiVersion : ArchiveFileState.Ok;
+        }
+
+        private bool FileExists(string root, string relativePath, bool refresh)
+        {
+            var key = root + "|" + relativePath;
+            var now = DateTime.UtcNow;
+            lock (_cacheGate)
+            {
+                CachedExistence cached;
+                if (!refresh && _existence.TryGetValue(key, out cached) && now - cached.CheckedAtUtc < ExistenceTtl) return cached.Exists;
+            }
+
+            var exists = _files.Exists(root, relativePath);
+            lock (_cacheGate)
+            {
+                if (_existence.Count >= ExistenceCacheLimit) _existence.Clear();
+                _existence[key] = new CachedExistence { Exists = exists, CheckedAtUtc = now };
+            }
+
+            return exists;
         }
 
         private static bool FileMatches(ArchiveFileState state, FileIntegrityFilter filter)
@@ -214,7 +251,7 @@ namespace HoaDonDienTu.Application.Invoices
             }
         }
 
-        private ArchiveSummary Summarize(IList<StoredInvoice> matched, string root, Dictionary<Guid, ArchiveFileState> known)
+        private ArchiveSummary Summarize(IList<StoredInvoice> matched, string root, Dictionary<Guid, ArchiveFileState> known, bool refresh)
         {
             var summary = new ArchiveSummary { Count = matched.Count };
             foreach (var i in matched)
@@ -224,7 +261,7 @@ namespace HoaDonDienTu.Application.Invoices
                 summary.TotalPayment += i.Invoice.TotalPayment ?? 0m;
             }
 
-            summary.ProblemCount = matched.Count(i => (known != null && known.ContainsKey(i.InvoiceId) ? known[i.InvoiceId] : StateOf(root, i)) == ArchiveFileState.Missing);
+            summary.ProblemCount = matched.Count(i => (known != null && known.ContainsKey(i.InvoiceId) ? known[i.InvoiceId] : StateOf(root, i, refresh)) == ArchiveFileState.Missing);
             return summary;
         }
 
@@ -254,19 +291,25 @@ namespace HoaDonDienTu.Application.Invoices
 
         private static IEnumerable<StoredInvoice> Sort(IEnumerable<StoredInvoice> source, ArchiveQuery q)
         {
-            Func<StoredInvoice, object> key;
+            IOrderedEnumerable<StoredInvoice> ordered;
             switch (q.SortKey)
             {
-                case ArchiveSortKey.InvoiceNumber: key = s => Pad(s.Invoice.InvoiceNumber); break;
-                case ArchiveSortKey.Counterparty: key = s => Fold(s.Invoice.Direction == InvoiceDirection.Purchase ? s.Invoice.SellerName : s.Invoice.BuyerName); break;
-                case ArchiveSortKey.TotalPayment: key = s => s.Invoice.TotalPayment ?? 0m; break;
-                default: key = s => s.Invoice.IssueDate; break;
+                case ArchiveSortKey.InvoiceNumber: ordered = Order(source, s => Pad(s.Invoice.InvoiceNumber), StringComparer.Ordinal, q.SortDescending); break;
+                case ArchiveSortKey.Counterparty:
+                    ordered = Order(source, s => Fold(s.Invoice.Direction == InvoiceDirection.Purchase ? s.Invoice.SellerName : s.Invoice.BuyerName), StringComparer.Ordinal, q.SortDescending);
+                    break;
+                case ArchiveSortKey.TotalPayment: ordered = Order(source, s => s.Invoice.TotalPayment ?? 0m, Comparer<decimal>.Default, q.SortDescending); break;
+                default: ordered = Order(source, s => s.Invoice.IssueDate, Comparer<DateTime>.Default, q.SortDescending); break;
             }
 
-            var ordered = q.SortDescending ? source.OrderByDescending(key) : source.OrderBy(key);
             return q.SortDescending
-                ? ordered.ThenByDescending(s => Pad(s.Invoice.InvoiceNumber)).ThenBy(s => s.InvoiceId)
-                : ordered.ThenBy(s => Pad(s.Invoice.InvoiceNumber)).ThenBy(s => s.InvoiceId);
+                ? ordered.ThenByDescending(s => Pad(s.Invoice.InvoiceNumber), StringComparer.Ordinal).ThenBy(s => s.InvoiceId)
+                : ordered.ThenBy(s => Pad(s.Invoice.InvoiceNumber), StringComparer.Ordinal).ThenBy(s => s.InvoiceId);
+        }
+
+        private static IOrderedEnumerable<StoredInvoice> Order<TKey>(IEnumerable<StoredInvoice> source, Func<StoredInvoice, TKey> key, IComparer<TKey> comparer, bool descending)
+        {
+            return descending ? source.OrderByDescending(key, comparer) : source.OrderBy(key, comparer);
         }
 
         /// <summary>Số hóa đơn so sánh theo giá trị số (9 đứng trước 10), không theo thứ tự chữ.</summary>
@@ -327,9 +370,9 @@ namespace HoaDonDienTu.Application.Invoices
             return Current().AddVersionAsync(invoiceId, version, latest, nowUtc, cancellationToken);
         }
 
-        public Task TouchAsync(Guid invoiceId, DateTime nowUtc, CancellationToken cancellationToken)
+        public Task TouchAsync(Guid invoiceId, DateTime nowUtc, NormalizedInvoice latest, string restoredRelativePath, CancellationToken cancellationToken)
         {
-            return Current().TouchAsync(invoiceId, nowUtc, cancellationToken);
+            return Current().TouchAsync(invoiceId, nowUtc, latest, restoredRelativePath, cancellationToken);
         }
 
         public Task<IList<StoredInvoice>> ListAsync(CancellationToken cancellationToken)

@@ -109,6 +109,41 @@ namespace HoaDonDienTu.Application.Tests
         }
 
         [Test]
+        public async Task SameContentAgain_RefreshesPortalMetadata_WithoutANewVersion()
+        {
+            await _service.UpsertAsync(_session, Dto(), Xml(), CancellationToken.None);
+            var changed = Dto();
+            changed.StatusRaw = "6";
+            changed.CheckResultRaw = "8";
+
+            var result = await _service.UpsertAsync(_session, changed, Xml(), CancellationToken.None);
+
+            Assert.That(result, Is.EqualTo(InvoiceSaveResult.AlreadyExists));
+            var stored = (await _repo.ListAsync(CancellationToken.None)).Single();
+            Assert.That(stored.Versions, Has.Count.EqualTo(1));
+            Assert.That(stored.Invoice.StatusRaw, Is.EqualTo("6"));
+            Assert.That(stored.Invoice.CheckResultRaw, Is.EqualTo("8"));
+        }
+
+        [Test]
+        public async Task SameContentAgain_RewritesAMissingFile_ToTheSamePlace()
+        {
+            await _service.UpsertAsync(_session, Dto(), Xml(), CancellationToken.None);
+            var path = (await _repo.ListAsync(CancellationToken.None)).Single().Current.RelativePath;
+            _files.Delete(Root, path);
+            Assert.That(_files.Exists(Root, path), Is.False);
+
+            var result = await _service.UpsertAsync(_session, Dto(), Xml(), CancellationToken.None);
+
+            Assert.That(result, Is.EqualTo(InvoiceSaveResult.Saved), "File được ghi lại là dữ liệu mới cho kho");
+            var stored = (await _repo.ListAsync(CancellationToken.None)).Single();
+            Assert.That(stored.Versions, Has.Count.EqualTo(1));
+            Assert.That(stored.Current.RelativePath, Is.EqualTo(path));
+            Assert.That(_files.Exists(Root, path), Is.True);
+            Assert.That(_files.TempCount, Is.EqualTo(0));
+        }
+
+        [Test]
         public async Task SameContentAgain_OnlyUpdatesLastSeen_AC04()
         {
             await _service.UpsertAsync(_session, Dto(), Xml(), CancellationToken.None);
@@ -308,7 +343,7 @@ namespace HoaDonDienTu.Application.Tests
             public Task<StoredInvoice> FindAsync(string businessKey, CancellationToken cancellationToken) { return Task.FromResult<StoredInvoice>(null); }
             public Task AddAsync(StoredInvoice invoice, CancellationToken cancellationToken) { throw new InvalidOperationException("db"); }
             public Task AddVersionAsync(Guid invoiceId, InvoiceVersionRecord version, NormalizedInvoice latest, DateTime nowUtc, CancellationToken cancellationToken) { throw new InvalidOperationException("db"); }
-            public Task TouchAsync(Guid invoiceId, DateTime nowUtc, CancellationToken cancellationToken) { return Task.FromResult(0); }
+            public Task TouchAsync(Guid invoiceId, DateTime nowUtc, NormalizedInvoice latest, string restoredRelativePath, CancellationToken cancellationToken) { return Task.FromResult(0); }
             public Task<IList<StoredInvoice>> ListAsync(CancellationToken cancellationToken) { return Task.FromResult<IList<StoredInvoice>>(new List<StoredInvoice>()); }
         }
 

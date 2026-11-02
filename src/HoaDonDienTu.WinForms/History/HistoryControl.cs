@@ -32,11 +32,20 @@ namespace HoaDonDienTu.WinForms.History
             }
         }
 
+        private const int TypingDelayMs = 250;
+
         private bool _suppress;
+        private readonly Timer _typingTimer;
 
         public HistoryControl()
         {
             InitializeComponent();
+            _typingTimer = new Timer(components) { Interval = TypingDelayMs };
+            _typingTimer.Tick += delegate
+            {
+                _typingTimer.Stop();
+                Raise(FilterChanged);
+            };
             cboDirection.Items.Add(new Option<InvoiceDirection?>(null, "Tất cả loại"));
             cboDirection.Items.Add(new Option<InvoiceDirection?>(InvoiceDirection.Purchase, "Mua vào"));
             cboDirection.Items.Add(new Option<InvoiceDirection?>(InvoiceDirection.Sold, "Bán ra"));
@@ -189,12 +198,16 @@ namespace HoaDonDienTu.WinForms.History
 
         private void OnSearchTextChanged(object sender, EventArgs e)
         {
-            if (!_suppress) Raise(FilterChanged);
+            if (_suppress) return;
+            _typingTimer.Stop();
+            _typingTimer.Start();
         }
 
         private void OnFilterSelectionChanged(object sender, EventArgs e)
         {
-            if (!_suppress) Raise(FilterChanged);
+            if (_suppress) return;
+            _typingTimer.Stop();
+            Raise(FilterChanged);
         }
 
         private void OnClearClick(object sender, EventArgs e)

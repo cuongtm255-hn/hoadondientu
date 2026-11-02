@@ -78,14 +78,7 @@ namespace HoaDonDienTu.WinForms.Tests
 
         private static bool WaitFor(Func<bool> condition, int timeoutMs = 10000)
         {
-            var until = DateTime.UtcNow.AddMilliseconds(timeoutMs);
-            while (DateTime.UtcNow < until)
-            {
-                if (condition()) return true;
-                Thread.Sleep(15);
-            }
-
-            return condition();
+            return UiWait.Until(condition, timeoutMs);
         }
 
         // ---- Mở màn hình ----
@@ -388,7 +381,108 @@ namespace HoaDonDienTu.WinForms.Tests
             Assert.That(_view.Result.ResultCount, Is.EqualTo("1"));
         }
 
+        [Test]
+        public async Task FilterChangedWhileLoading_IsAppliedAfterwards_NotDropped()
+        {
+            await AddAsync(InvoiceDirection.Purchase, "1", new DateTime(2026, 1, 5), name: "Alpha");
+            await AddAsync(InvoiceDirection.Purchase, "2", new DateTime(2026, 1, 6), name: "Beta");
+            var gated = new GatedService(_service);
+            _presenter = new ArchivePresenter(_view, gated, Context, _state, Runner, Errors, new DateTime(2026, 11, 2));
+            _presenter.Initialize();
+            Assert.That(WaitFor(() => _view.Result != null), Is.True);
+
+            gated.Block();
+            _view.Filter.QuickSearch = "alp";
+            _view.RaiseFilterChanged();
+            Assert.That(WaitFor(() => gated.Entered), Is.True, "Truy vấn đầu đang chờ");
+            _view.Filter.QuickSearch = "beta";
+            _view.RaiseFilterChanged();
+            gated.Release();
+
+            Assert.That(WaitFor(() => _view.Result.Rows.Count == 1 && _view.Result.Rows[0].CounterpartyName == "Beta"), Is.True, "Bộ lọc mới nhất phải được áp dụng");
+            Assert.That(gated.Searches.Last(), Is.EqualTo("beta"));
+        }
+
+        [Test]
+        public async Task CheckFiles_WithoutACompany_DoesNotClaimSuccess()
+        {
+            await AddAsync(InvoiceDirection.Purchase, "1", new DateTime(2026, 1, 1), fileExists: false);
+            Open();
+            Assert.That(WaitFor(() => _view.Result != null), Is.True);
+            Context.Current = null;
+
+            _view.RaiseCheckFiles();
+
+            Assert.That(WaitFor(() => _view.Message != null && _view.Message.Contains("Chưa chọn doanh nghiệp")), Is.True, _view.Message);
+            Assert.That(_view.Message, Does.Not.Contain("mọi file XML đều còn"));
+            Assert.That(_view.MessageIsError, Is.True);
+        }
+
+        [Test]
+        public async Task CheckFiles_BypassesTheFileCache_SoAFileDeletedMeanwhileIsFound()
+        {
+            await AddAsync(InvoiceDirection.Purchase, "1", new DateTime(2026, 1, 1));
+            Open();
+            Assert.That(WaitFor(() => _view.Result != null && _view.Result.Rows.Count == 1), Is.True);
+            _files.Existing.Clear();
+
+            _view.RaiseCheckFiles();
+
+            Assert.That(WaitFor(() => _view.Message != null && _view.Message.Contains("thiếu file XML")), Is.True, _view.Message);
+            Assert.That(_view.Result.Rows[0].FileText, Is.EqualTo("Thiếu XML"));
+        }
+
         // ---- Fakes ----
+
+        private sealed class GatedService : IInvoiceArchiveService
+        {
+            private readonly IInvoiceArchiveService _inner;
+            private readonly object _gate = new object();
+            private TaskCompletionSource<bool> _block;
+            private bool _entered;
+
+            public GatedService(IInvoiceArchiveService inner)
+            {
+                _inner = inner;
+                Searches = new List<string>();
+            }
+
+            public List<string> Searches { get; private set; }
+            public bool Entered { get { lock (_gate) { return _entered; } } }
+
+            public void Block()
+            {
+                lock (_gate)
+                {
+                    _block = new TaskCompletionSource<bool>();
+                    _entered = false;
+                }
+            }
+
+            public void Release()
+            {
+                lock (_gate) { _block.TrySetResult(true); }
+            }
+
+            public async Task<ArchivePage> QueryAsync(ArchiveQuery query, CancellationToken cancellationToken)
+            {
+                TaskCompletionSource<bool> wait;
+                lock (_gate)
+                {
+                    Searches.Add(query.QuickSearch);
+                    wait = _block;
+                    if (wait != null && !wait.Task.IsCompleted) _entered = true;
+                }
+
+                if (wait != null) await wait.Task;
+                return await _inner.QueryAsync(query, cancellationToken);
+            }
+
+            public Task<IList<int>> YearsAsync(InvoiceDirection direction, CancellationToken cancellationToken)
+            {
+                return _inner.YearsAsync(direction, cancellationToken);
+            }
+        }
 
         private sealed class FakeFiles : IInvoiceFileStore
         {

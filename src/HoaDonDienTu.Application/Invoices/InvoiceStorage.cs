@@ -66,8 +66,11 @@ namespace HoaDonDienTu.Application.Invoices
         /// <summary>Thêm phiên bản mới, đặt nó là hiện hành và giữ các bản cũ (BR-010).</summary>
         Task AddVersionAsync(Guid invoiceId, InvoiceVersionRecord version, NormalizedInvoice latest, DateTime nowUtc, CancellationToken cancellationToken);
 
-        /// <summary>Hash trùng: chỉ cập nhật thời điểm thấy lần cuối (BR-009).</summary>
-        Task TouchAsync(Guid invoiceId, DateTime nowUtc, CancellationToken cancellationToken);
+        /// <summary>
+        /// Hash trùng (BR-009): không tạo phiên bản mới, chỉ cập nhật thời điểm thấy lần cuối và metadata mới nhất của cổng
+        /// (trạng thái, kết quả kiểm tra...). <paramref name="restoredRelativePath"/> khác null khi file bị mất đã được ghi lại.
+        /// </summary>
+        Task TouchAsync(Guid invoiceId, DateTime nowUtc, NormalizedInvoice latest, string restoredRelativePath, CancellationToken cancellationToken);
 
         Task<IList<StoredInvoice>> ListAsync(CancellationToken cancellationToken);
     }

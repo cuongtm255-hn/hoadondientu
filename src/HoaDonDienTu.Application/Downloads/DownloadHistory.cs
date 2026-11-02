@@ -79,6 +79,8 @@ namespace HoaDonDienTu.Application.Downloads
     {
         public int Total { get; set; }
         public int Completed { get; set; }
+
+        /// <summary>Đang chạy, tạm dừng hoặc chờ đăng nhập; phiên nháp chưa từng chạy không tính.</summary>
         public int Active { get; set; }
 
         /// <summary>Hoàn tất có lỗi hoặc thất bại.</summary>
@@ -123,7 +125,7 @@ namespace HoaDonDienTu.Application.Downloads
             {
                 Total = all.Count,
                 Completed = all.Count(r => r.State == DownloadSessionState.Completed),
-                Active = all.Count(r => Group(r.State) == HistoryStatusFilter.InProgress),
+                Active = all.Count(r => Group(r.State) == HistoryStatusFilter.InProgress && r.State != DownloadSessionState.Draft),
                 NeedsAttention = all.Count(r => r.State == DownloadSessionState.CompletedWithErrors || r.State == DownloadSessionState.Failed)
             };
 
@@ -175,10 +177,12 @@ namespace HoaDonDienTu.Application.Downloads
 
             var sessions = (await _repository.GetSessionsAsync(_context.Current.CompanyId, token).ConfigureAwait(false))
                 .OrderBy(s => s.CreatedAtUtc).ToList();
+            var segmentsBySession = await _repository.GetSegmentsByCompanyAsync(_context.Current.CompanyId, token).ConfigureAwait(false);
             var perDay = new Dictionary<string, int>();
             foreach (var session in sessions)
             {
-                var segments = await _repository.GetSegmentsAsync(session.Id, token).ConfigureAwait(false);
+                IList<DownloadSegment> segments;
+                if (!segmentsBySession.TryGetValue(session.Id, out segments)) segments = new List<DownloadSegment>();
                 var saved = segments.Sum(s => s.XmlSavedCount);
                 var errors = segments.Sum(s => s.ErrorCount);
                 var received = segments.Sum(s => s.ReceivedCount);

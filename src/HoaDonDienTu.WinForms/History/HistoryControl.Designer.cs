@@ -174,6 +174,7 @@ namespace HoaDonDienTu.WinForms.History
             this.dtpFrom.ShowCheckBox = true;
             this.dtpFrom.Checked = false;
             this.dtpFrom.ValueChanged += new System.EventHandler(this.OnFilterSelectionChanged);
+            this.dtpFrom.CheckedChanged += new System.EventHandler(this.OnFilterSelectionChanged);
             //
             // dtpTo
             //
@@ -185,6 +186,7 @@ namespace HoaDonDienTu.WinForms.History
             this.dtpTo.ShowCheckBox = true;
             this.dtpTo.Checked = false;
             this.dtpTo.ValueChanged += new System.EventHandler(this.OnFilterSelectionChanged);
+            this.dtpTo.CheckedChanged += new System.EventHandler(this.OnFilterSelectionChanged);
             //
             // btnClear
             //

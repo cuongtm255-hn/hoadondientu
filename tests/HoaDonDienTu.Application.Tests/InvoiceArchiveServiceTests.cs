@@ -266,7 +266,28 @@ namespace HoaDonDienTu.Application.Tests
 
             _files.Existing.Clear();
 
-            Assert.That((await _service.QueryAsync(Q(), CancellationToken.None)).Rows.Single().FileState, Is.EqualTo(ArchiveFileState.Missing));
+            var forced = Q();
+            forced.RefreshFiles = true;
+            Assert.That((await _service.QueryAsync(forced, CancellationToken.None)).Rows.Single().FileState, Is.EqualTo(ArchiveFileState.Missing));
+        }
+
+        [Test]
+        public async Task FileState_IsCachedBriefly_SoRepeatedQueriesDoNotHitTheDiskAgain()
+        {
+            await AddAsync(InvoiceDirection.Purchase, "1", new DateTime(2026, 1, 1));
+            await _service.QueryAsync(Q(), CancellationToken.None);
+            var checks = _files.ExistsCalls;
+
+            await _service.QueryAsync(Q(), CancellationToken.None);
+            await _service.QueryAsync(Q(), CancellationToken.None);
+
+            Assert.That(_files.ExistsCalls, Is.EqualTo(checks), "Truy vấn lặp lại dùng bộ nhớ đệm");
+
+            var forced = Q();
+            forced.RefreshFiles = true;
+            await _service.QueryAsync(forced, CancellationToken.None);
+
+            Assert.That(_files.ExistsCalls, Is.GreaterThan(checks), "Kiểm tra file bỏ qua bộ nhớ đệm");
         }
 
         // ---- Năm / doanh nghiệp ----
@@ -336,7 +357,8 @@ namespace HoaDonDienTu.Application.Tests
             public Task<string> WriteTempAsync(string storageRoot, string relativeFolder, byte[] content, CancellationToken cancellationToken) { throw new NotSupportedException(); }
             public string Commit(string storageRoot, string tempPath, string relativeFolder, string fileName) { throw new NotSupportedException(); }
             public void DiscardTemp(string tempPath) { }
-            public bool Exists(string storageRoot, string relativePath) { return Existing.Contains(relativePath); }
+            public int ExistsCalls;
+            public bool Exists(string storageRoot, string relativePath) { ExistsCalls++; return Existing.Contains(relativePath); }
             public void Delete(string storageRoot, string relativePath) { }
         }
 

@@ -61,7 +61,14 @@ namespace HoaDonDienTu.WinForms.History
         private readonly IUserErrorPresenter _errors;
         private HistoryQuery _query = new HistoryQuery();
         private bool _initialized;
-        private int _requestSequence;
+        private bool _disposed;
+
+        // Runner bỏ qua thao tác cùng tên đang chạy, nên thay đổi bộ lọc/trang được gom vào một vòng làm mới tuần tự:
+        // thay đổi đến khi đang tải sẽ được áp dụng ngay sau lần tải hiện tại, không bị mất.
+        private bool _refreshing;
+        private bool _dirty;
+        private bool _resetPage;
+        private bool _clearRequested;
 
         public HistoryPresenter(
             IHistoryView view,
@@ -98,23 +105,32 @@ namespace HoaDonDienTu.WinForms.History
             _view.PageRequested += OnPage;
             _view.SessionRequested += OnSession;
 
+            _refreshing = true;
             Run("Mở lịch sử tải", async token =>
             {
-                if (!_context.HasCurrent)
+                try
                 {
-                    _view.ShowMessage("Chưa chọn doanh nghiệp. Chọn doanh nghiệp để xem lịch sử tải.", false);
-                    return;
-                }
+                    if (!_context.HasCurrent)
+                    {
+                        _view.ShowMessage("Chưa chọn doanh nghiệp. Chọn doanh nghiệp để xem lịch sử tải.", false);
+                        return;
+                    }
 
-                HistoryFilterInput filter;
-                HistoryQuery saved;
-                if (_store.TryGet(_context.Current.CompanyId, out filter, out saved))
+                    HistoryFilterInput filter;
+                    HistoryQuery saved;
+                    if (_store.TryGet(_context.Current.CompanyId, out filter, out saved))
+                    {
+                        _query = saved;
+                        _view.ShowFilter(filter);
+                    }
+
+                    _dirty = true;
+                    await DrainAsync(token);
+                }
+                finally
                 {
-                    _query = saved;
-                    _view.ShowFilter(filter);
+                    _refreshing = false;
                 }
-
-                await RefreshAsync(token);
             });
         }
 
@@ -122,7 +138,7 @@ namespace HoaDonDienTu.WinForms.History
         {
             if (!_initialized) return;
             _initialized = false;
-            _runner.CancelAll();
+            _disposed = true;
             _view.FilterChanged -= OnFilterChanged;
             _view.ClearRequested -= OnClear;
             _view.NewSessionRequested -= OnNewSession;
@@ -134,30 +150,21 @@ namespace HoaDonDienTu.WinForms.History
 
         private void OnFilterChanged(object sender, EventArgs e)
         {
-            Run("Lọc lịch sử tải", async token =>
-            {
-                _query.PageIndex = 0;
-                await RefreshAsync(token);
-            });
+            _resetPage = true;
+            Refresh();
         }
 
         private void OnClear(object sender, EventArgs e)
         {
-            Run("Xóa lọc", async token =>
-            {
-                _view.ShowFilter(new HistoryFilterInput());
-                _query.PageIndex = 0;
-                await RefreshAsync(token);
-            });
+            _clearRequested = true;
+            _resetPage = true;
+            Refresh();
         }
 
         private void OnPage(object sender, PageRequestedEventArgs e)
         {
-            Run("Chuyển trang", async token =>
-            {
-                _query.PageIndex = Math.Max(0, _query.PageIndex + e.Delta);
-                await RefreshAsync(token);
-            });
+            _query.PageIndex = Math.Max(0, _query.PageIndex + e.Delta);
+            Refresh();
         }
 
         private void OnSession(object sender, SessionRequestedEventArgs e)
@@ -172,6 +179,33 @@ namespace HoaDonDienTu.WinForms.History
 
         // ---- Tra cứu và hiển thị ----
 
+        private void Refresh()
+        {
+            _dirty = true;
+            if (_refreshing) return;
+            _refreshing = true;
+            Run("Làm mới lịch sử tải", async token =>
+            {
+                try
+                {
+                    await DrainAsync(token);
+                }
+                finally
+                {
+                    _refreshing = false;
+                }
+            });
+        }
+
+        private async Task DrainAsync(CancellationToken token)
+        {
+            while (_dirty && !_disposed)
+            {
+                _dirty = false;
+                await RefreshAsync(token);
+            }
+        }
+
         private async Task RefreshAsync(CancellationToken token)
         {
             if (!_context.HasCurrent)
@@ -180,16 +214,35 @@ namespace HoaDonDienTu.WinForms.History
                 return;
             }
 
-            var filter = _view.ReadFilter();
-            Apply(filter);
-            var sequence = Interlocked.Increment(ref _requestSequence);
-            var page = await _service.QueryAsync(_query, token);
+            var company = _context.Current.CompanyId;
+            if (_clearRequested)
+            {
+                _clearRequested = false;
+                _view.ShowFilter(new HistoryFilterInput());
+            }
 
-            // Gõ nhanh thì nhiều truy vấn chồng nhau: chỉ kết quả của lần gần nhất được hiển thị.
-            if (sequence != _requestSequence) return;
+            var filter = _view.ReadFilter();
+            var invalidRange = filter.From.HasValue && filter.To.HasValue && filter.From.Value > filter.To.Value;
+            if (invalidRange)
+            {
+                // Khoảng ngày ngược: báo rõ thay vì trả danh sách rỗng khó hiểu; giữ nguyên kết quả đang hiển thị.
+                _resetPage = false;
+                _view.ShowMessage("\"Từ ngày\" đang lớn hơn \"Đến ngày\". Hãy đổi lại khoảng ngày.", true);
+                return;
+            }
+
+            Apply(filter);
+            if (_resetPage)
+            {
+                _query.PageIndex = 0;
+                _resetPage = false;
+            }
+
+            var page = await _service.QueryAsync(_query, token);
+            if (_disposed) return;
 
             _query.PageIndex = page.PageIndex;
-            _store.Save(_context.Current.CompanyId, filter, _query);
+            _store.Save(company, filter, _query);
             _view.ShowResult(Build(page));
             _view.ShowMessage(string.Empty, false);
         }
