@@ -7,6 +7,9 @@ if (-not (Test-Path (Join-Path $bin 'libcef.dll'))) { throw "Chưa có Chromium 
 $out = Join-Path $bin 'CefSpike.exe'
 & $csc /nologo /platform:x86 /target:exe /out:$out `
     /r:"$bin\CefSharp.dll" /r:"$bin\CefSharp.Core.dll" /r:"$bin\CefSharp.WinForms.dll" `
-    /r:System.Windows.Forms.dll /r:System.Drawing.dll (Join-Path $PSScriptRoot 'Program.cs')
+    /r:System.Windows.Forms.dll /r:System.Drawing.dll (Join-Path $PSScriptRoot 'Program.cs') (Join-Path $repo 'src\HoaDonDienTu.WinForms\Login\PortalLoginPageScript.cs')
 Push-Location $bin
-try { & $out; "exit code $LASTEXITCODE" } finally { Pop-Location }
+try {
+    & $out; "exit code $LASTEXITCODE"
+    & $out assist; "assist exit code $LASTEXITCODE"
+} finally { Pop-Location }

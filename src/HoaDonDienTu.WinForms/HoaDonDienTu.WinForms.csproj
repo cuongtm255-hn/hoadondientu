@@ -50,6 +50,7 @@
   <ItemGroup>
     <Compile Include="Bootstrap\AppApplicationContext.cs" />
     <Compile Include="Login\PortalLoginTraffic.cs" />
+    <Compile Include="Login\PortalLoginPageScript.cs" />
     <Compile Include="Login\CefPortalLoginBrowser.cs" />
     <Compile Include="Bootstrap\CompositionRoot.cs" />
     <Compile Include="Bootstrap\GlobalExceptionHandler.cs" />

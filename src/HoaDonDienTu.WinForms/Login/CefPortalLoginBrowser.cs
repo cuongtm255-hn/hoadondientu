@@ -164,6 +164,14 @@ namespace HoaDonDienTu.WinForms.Login
                 Dock = DockStyle.Fill
             };
             _browser.AddressChanged += (sender, e) => Raise(NavigationChanged, new BrowserNavigationEventArgs(e.Address));
+            _browser.FrameLoadEnd += (sender, e) =>
+            {
+                // Trang cổng xong thì mở sẵn form đăng nhập (đóng thông báo, bấm "Đăng nhập", che trang chủ); chỉ ở khung chính của trang thuộc cổng.
+                if (e.Frame.IsMain && !e.Url.StartsWith("about:", StringComparison.Ordinal) && _traffic.IsNavigationAllowed(e.Url))
+                {
+                    e.Frame.ExecuteJavaScriptAsync(PortalLoginPageScript.Source);
+                }
+            };
             _browser.LoadError += (sender, e) =>
             {
                 if (e.ErrorCode != CefErrorCode.Aborted && e.FailedUrl != null && _traffic.IsNavigationAllowed(e.FailedUrl) && !e.FailedUrl.StartsWith("about:", StringComparison.Ordinal))

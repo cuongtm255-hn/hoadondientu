@@ -146,6 +146,31 @@ namespace HoaDonDienTu.WinForms.Tests
             Assert.That(buffer.TryBuild(null, "ua", out capture), Is.False);
         }
 
+        // ---- Script mở sẵn form đăng nhập ----
+
+        [Test]
+        public void PageScript_OnlyDrivesTheUi_NeverReadsInputsOrTouchesTheNetwork()
+        {
+            var script = PortalLoginPageScript.Source;
+
+            foreach (var forbidden in new[] { "password", "cvalue", ".value", "fetch(", "XMLHttpRequest", "sendBeacon", "localStorage", "sessionStorage", "document.cookie", "WebSocket", "eval(" })
+            {
+                Assert.That(script, Does.Not.Contain(forbidden), forbidden);
+            }
+        }
+
+        [Test]
+        public void PageScript_ClosesTheNoticeOpensTheLoginFormAndFocusesTheUsernameField()
+        {
+            var script = PortalLoginPageScript.Source;
+
+            Assert.That(script, Does.Contain(".ant-modal-close"));
+            Assert.That(script, Does.Contain(".home-header-menu-item span"));
+            Assert.That(script, Does.Contain("Đăng nhập"), "nhãn \"Đăng nhập\" viết bằng escape Unicode để không phụ thuộc mã hóa file");
+            Assert.That(script, Does.Contain("getElementById('username')"));
+            Assert.That(script, Does.Contain("__hddtLoginAssist"), "chạy một lần cho mỗi trang");
+        }
+
         [Test]
         public void Clear_DropsWhatWasCollected()
         {
