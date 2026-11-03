@@ -9,8 +9,12 @@ using HoaDonDienTu.Application.Abstractions;
 using HoaDonDienTu.Application.Authentication;
 using HoaDonDienTu.Application.Common;
 using HoaDonDienTu.Application.Downloads;
+using HoaDonDienTu.Application.Invoices;
+using HoaDonDienTu.Application.Navigation;
+using HoaDonDienTu.Application.Portal;
 using HoaDonDienTu.Domain.Downloads;
 using HoaDonDienTu.Domain.Invoices;
+using HoaDonDienTu.WinForms.Archive;
 using HoaDonDienTu.WinForms.Shell;
 
 namespace HoaDonDienTu.WinForms.Download
@@ -30,6 +34,7 @@ namespace HoaDonDienTu.WinForms.Download
         private readonly IDownloadRepository _repository;
         private readonly IPortalSessionStore _session;
         private readonly Func<IShellActions> _shell;
+        private readonly Func<INavigationService> _navigation;
         private readonly IConfirmationService _confirmation;
         private readonly IUiOperationRunner _runner;
         private readonly IUserErrorPresenter _errors;
@@ -47,6 +52,7 @@ namespace HoaDonDienTu.WinForms.Download
             IDownloadRepository repository,
             IPortalSessionStore session,
             Func<IShellActions> shell,
+            Func<INavigationService> navigation,
             IConfirmationService confirmation,
             IUiOperationRunner runner,
             IUserErrorPresenter errors,
@@ -67,6 +73,7 @@ namespace HoaDonDienTu.WinForms.Download
             _repository = repository;
             _session = session;
             _shell = shell;
+            _navigation = navigation;
             _confirmation = confirmation;
             _runner = runner;
             _errors = errors;
@@ -88,6 +95,8 @@ namespace HoaDonDienTu.WinForms.Download
             _view.CancelRequested += OnCancel;
             _view.RetryFailedRequested += OnRetryFailed;
             _view.RetrySegmentRequested += OnRetrySegment;
+            _view.OpenArchiveRequested += OnOpenArchive;
+            _view.NewDownloadRequested += OnNewDownload;
 
             Guard("Mở phiên tải", async token =>
             {
@@ -120,6 +129,8 @@ namespace HoaDonDienTu.WinForms.Download
             _view.CancelRequested -= OnCancel;
             _view.RetryFailedRequested -= OnRetryFailed;
             _view.RetrySegmentRequested -= OnRetrySegment;
+            _view.OpenArchiveRequested -= OnOpenArchive;
+            _view.NewDownloadRequested -= OnNewDownload;
 
             // Hủy token của lượt chạy: engine ghi checkpoint và để phiên ở trạng thái tạm dừng để tiếp tục sau.
             _runner.CancelAll();
@@ -170,6 +181,22 @@ namespace HoaDonDienTu.WinForms.Download
             });
         }
 
+        /// <summary>Phiên xong thì sang Kho hóa đơn đúng chiều (mua vào/bán ra) của phiên để xem hóa đơn vừa tải (FR-JOB-011).</summary>
+        private void OnOpenArchive(object sender, EventArgs e)
+        {
+            Guard("Mở Kho hóa đơn", async token =>
+            {
+                var session = await _repository.GetSessionAsync(_sessionId, token);
+                if (session == null) return;
+                await _navigation().NavigateAsync(ScreenId.InvoiceArchive, new ArchiveNavigationRequest(session.Direction, FileIntegrityFilter.All), token);
+            });
+        }
+
+        private void OnNewDownload(object sender, EventArgs e)
+        {
+            Guard("Mở màn hình tải", token => _navigation().NavigateAsync(ScreenId.Download, null, token));
+        }
+
         private void OnRetrySegment(object sender, SegmentRetryEventArgs e)
         {
             Guard("Thử lại đoạn", token => StartRunAsync(progress => _orchestrator.RetrySegmentAsync(_sessionId, e.SegmentId, progress, CancellationToken.None)));
@@ -210,15 +237,20 @@ namespace HoaDonDienTu.WinForms.Download
             if (_disposed) return;
             await RenderAsync(true);
             var final = await _repository.GetSessionAsync(_sessionId, CancellationToken.None);
-            ShowOutcome(final);
+            var finalSegments = await _repository.GetSegmentsAsync(_sessionId, CancellationToken.None);
+            ShowOutcome(final, finalSegments.Sum(s => s.ReceivedCount));
         }
 
-        private void ShowOutcome(DownloadSession session)
+        private void ShowOutcome(DownloadSession session, int received)
         {
             switch (session.State)
             {
                 case DownloadSessionState.Completed:
-                    _view.ShowMessage("Đã tải xong toàn bộ.", false);
+                    _view.ShowMessage(
+                        received == 0
+                            ? "Đã tải xong nhưng cổng Thuế không trả về hóa đơn nào cho kỳ và bộ lọc đã chọn. Bấm \"Tải kỳ khác\" để thử kỳ hoặc bộ lọc khác."
+                            : "Đã tải xong toàn bộ. Bấm \"Mở Kho hóa đơn\" để xem " + received.ToString("N0", CultureInfo.InvariantCulture) + " hóa đơn.",
+                        false);
                     break;
                 case DownloadSessionState.CompletedWithErrors:
                     _view.ShowMessage("Đã tải xong nhưng có đoạn lỗi. Bấm Thử lại để tải lại các đoạn đó.", true);
@@ -294,11 +326,13 @@ namespace HoaDonDienTu.WinForms.Download
                 CanResume = canRun && (state == DownloadSessionState.PausedByUser || state == DownloadSessionState.WaitingForLogin),
                 CanCancel = !DownloadStateMachine.IsFinished(state),
                 CanRetryFailed = canRun && ordered.Any(s => s.State == DownloadSegmentState.Failed),
+                CanOpenArchive = canRun && (state == DownloadSessionState.Completed || state == DownloadSessionState.CompletedWithErrors),
+                CanNewDownload = canRun && DownloadStateMachine.IsFinished(state),
                 Rows = ordered.Select(s => Row(s, canRun)).ToList()
             };
         }
 
-        private static SegmentRowViewModel Row(DownloadSegment s, bool canRun)
+        public static SegmentRowViewModel Row(DownloadSegment s, bool canRun)
         {
             var note = string.Empty;
             if (s.State == DownloadSegmentState.Running) note = "Đang tải trang " + (s.PageIndex + 1);
@@ -310,7 +344,8 @@ namespace HoaDonDienTu.WinForms.Download
             return new SegmentRowViewModel
             {
                 Id = s.Id,
-                Month = s.Range.Month.ToString("00", CultureInfo.InvariantCulture) + "/" + s.Range.Year + (string.IsNullOrEmpty(s.CheckResultCode) ? string.Empty : " · ttxly " + s.CheckResultCode),
+                Month = "Tháng " + s.Range.Month.ToString("00", CultureInfo.InvariantCulture) + "/" + s.Range.Year,
+                CheckResult = string.IsNullOrEmpty(s.CheckResultCode) ? "Tất cả" : PortalOptions.CheckResultLabel(s.CheckResultCode),
                 Range = s.Range.Start.ToString("dd/MM", CultureInfo.InvariantCulture) + "–" + s.Range.End.ToString("dd/MM", CultureInfo.InvariantCulture),
                 StateText = SegmentStateText(s),
                 Pages = started ? (s.PageIndex + (s.State == DownloadSegmentState.Completed || s.State == DownloadSegmentState.Failed ? 0 : 1)).ToString(CultureInfo.InvariantCulture) : "—",

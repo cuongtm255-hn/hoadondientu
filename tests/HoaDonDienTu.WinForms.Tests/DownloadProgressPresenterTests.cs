@@ -8,6 +8,9 @@ using HoaDonDienTu.Application.Authentication;
 using HoaDonDienTu.Application.Common;
 using HoaDonDienTu.Application.Companies;
 using HoaDonDienTu.Application.Downloads;
+using HoaDonDienTu.Application.Invoices;
+using HoaDonDienTu.Application.Navigation;
+using HoaDonDienTu.WinForms.Archive;
 using HoaDonDienTu.Application.Licensing;
 using HoaDonDienTu.Application.Portal;
 using HoaDonDienTu.Domain.Common;
@@ -49,6 +52,7 @@ namespace HoaDonDienTu.WinForms.Tests
             _portalSession = new InMemoryPortalSessionStore();
             _company = new CompanyContext(Id, TaxCode.Parse(Mst), "Công ty mẫu", @"C:\Kho\" + Mst, null);
             Context.Current = _company;
+            _nav = new RecordingNav();
             var client = new PortalHttpApiClient(_config, new PortalSessionMaterial(null, null, MockInvoiceDataset.TokenFor(Mst)), _portal);
             _orchestrator = new DownloadOrchestrator(
                 _downloads, Context, _portalSession, () => client, new CountingStore(), new NoLimit(), DefaultRetryPolicy.Standard,
@@ -75,10 +79,12 @@ namespace HoaDonDienTu.WinForms.Tests
             return await _orchestrator.CreateSessionAsync(plan, CancellationToken.None);
         }
 
+        private RecordingNav _nav;
+
         private DownloadProgressPresenter Open(Guid? sessionId)
         {
             _presenter = new DownloadProgressPresenter(
-                _view, _orchestrator, _downloads, _portalSession, () => _shell, Confirm, Runner, Errors, new SystemClock(), sessionId);
+                _view, _orchestrator, _downloads, _portalSession, () => _shell, () => _nav, Confirm, Runner, Errors, new SystemClock(), sessionId);
             _presenter.Initialize();
             return _presenter;
         }
@@ -116,6 +122,66 @@ namespace HoaDonDienTu.WinForms.Tests
         }
 
         [Test]
+        public async Task FinishedSession_OffersToOpenTheArchive_ForTheDirectionOfTheSession()
+        {
+            var id = await CreateAsync(PeriodSpec.ForMonth(2026, 1));
+            Open(id);
+            Assert.That(WaitFor(() => _view.Last != null && _view.Last.StateText == "Hoàn tất" && !_presenter.IsRunning), Is.True, _view.Message);
+            Assert.That(_view.Last.CanOpenArchive, Is.True);
+            Assert.That(_view.Last.CanNewDownload, Is.True);
+
+            _view.RaiseOpenArchive();
+
+            Assert.That(WaitFor(() => _nav.Targets.Count == 1), Is.True);
+            Assert.That(_nav.Targets[0], Is.EqualTo(ScreenId.InvoiceArchive));
+            var request = (ArchiveNavigationRequest)_nav.Parameters[0];
+            Assert.That(request.Direction, Is.EqualTo(InvoiceDirection.Sold));
+            Assert.That(request.FileFilter, Is.EqualTo(FileIntegrityFilter.All));
+        }
+
+        [Test]
+        public async Task FinishedSession_OffersToStartAnotherDownload()
+        {
+            var id = await CreateAsync(PeriodSpec.ForMonth(2026, 1));
+            Open(id);
+            Assert.That(WaitFor(() => _view.Last != null && _view.Last.StateText == "Hoàn tất" && !_presenter.IsRunning), Is.True, _view.Message);
+
+            _view.RaiseNewDownload();
+
+            Assert.That(WaitFor(() => _nav.Targets.Count == 1), Is.True);
+            Assert.That(_nav.Targets[0], Is.EqualTo(ScreenId.Download));
+        }
+
+        [Test]
+        public async Task UnfinishedSession_CannotOpenTheArchiveOrStartAnother()
+        {
+            _portalSession.Clear();
+            _shell.LoginSucceeds = false;
+            var id = await CreateAsync(PeriodSpec.ForMonth(2026, 1));
+
+            Open(id);
+
+            Assert.That(WaitFor(() => _view.Last != null), Is.True);
+            Assert.That(_view.Last.CanOpenArchive, Is.False);
+            Assert.That(_view.Last.CanNewDownload, Is.False);
+        }
+
+        [Test]
+        public void SegmentRows_UseVietnameseNames_NotPortalParameters()
+        {
+            var session = DownloadSession.Restore(Guid.NewGuid(), _company.CompanyId, _company.TaxCode, "x", InvoiceDirection.Purchase, PeriodSpec.ForMonth(2026, 11),
+                new InvoiceSearchFilter(), DownloadSessionState.Completed, DateTime.UtcNow, DateTime.UtcNow, DateTime.UtcNow, "t");
+            var segments = new[] { "5", "6", "8", null }.Select((code, i) =>
+                new DownloadSegment(Guid.NewGuid(), session.Id, i, new DateSegment(new DateTime(2026, 11, 1), new DateTime(2026, 11, 30))) { CheckResultCode = code }).ToList();
+
+            var rows = segments.Select(s => DownloadProgressPresenter.Row(s, false)).ToList();
+
+            Assert.That(rows.Select(r => r.Month), Is.All.EqualTo("Tháng 11/2026"));
+            Assert.That(rows.Select(r => r.CheckResult), Is.EqualTo(new[] { "Đã cấp mã hóa đơn", PortalOptions.CheckResultLabel("6"), PortalOptions.CheckResultLabel("8"), "Tất cả" }));
+            Assert.That(rows.Select(r => r.Month + r.CheckResult), Has.None.Contain("ttxly"));
+        }
+
+        [Test]
         public async Task Subtitle_ShowsDirectionAndRangeOfTheSession()
         {
             var id = await CreateAsync(PeriodSpec.ForQuarter(2026, 1));
@@ -124,7 +190,7 @@ namespace HoaDonDienTu.WinForms.Tests
 
             Assert.That(WaitFor(() => _view.Last != null && _view.Last.Rows.Count == 3), Is.True);
             Assert.That(_view.Last.Subtitle, Does.StartWith("Bán ra · 01/01/2026–31/03/2026"));
-            Assert.That(_view.Last.Rows.Select(r => r.Month), Is.EqualTo(new[] { "01/2026", "02/2026", "03/2026" }));
+            Assert.That(_view.Last.Rows.Select(r => r.Month), Is.EqualTo(new[] { "Tháng 01/2026", "Tháng 02/2026", "Tháng 03/2026" }));
             Assert.That(_view.Last.SessionCode, Has.Length.EqualTo(8));
         }
 
@@ -279,7 +345,7 @@ namespace HoaDonDienTu.WinForms.Tests
             Open(null);
 
             Assert.That(WaitFor(() => _view.Last != null), Is.True);
-            Assert.That(_view.Last.Rows.Single().Month, Is.EqualTo("02/2026"));
+            Assert.That(_view.Last.Rows.Single().Month, Is.EqualTo("Tháng 02/2026"));
             Assert.That((await _downloads.GetSessionAsync(newer, CancellationToken.None)).Id, Is.EqualTo(newer));
         }
 
@@ -330,6 +396,8 @@ namespace HoaDonDienTu.WinForms.Tests
             public event EventHandler ResumeRequested;
             public event EventHandler CancelRequested;
             public event EventHandler RetryFailedRequested;
+            public event EventHandler OpenArchiveRequested;
+            public event EventHandler NewDownloadRequested;
             public event EventHandler<SegmentRetryEventArgs> RetrySegmentRequested;
 
             public DownloadProgressViewModel Last { get { lock (_gate) { return _last; } } }
@@ -354,6 +422,8 @@ namespace HoaDonDienTu.WinForms.Tests
             public void RaiseResume() { ResumeRequested(this, EventArgs.Empty); }
             public void RaiseCancel() { CancelRequested(this, EventArgs.Empty); }
             public void RaiseRetryFailed() { RetryFailedRequested(this, EventArgs.Empty); }
+            public void RaiseOpenArchive() { OpenArchiveRequested(this, EventArgs.Empty); }
+            public void RaiseNewDownload() { NewDownloadRequested(this, EventArgs.Empty); }
             public void RaiseRetrySegment(Guid id) { RetrySegmentRequested(this, new SegmentRetryEventArgs(id)); }
         }
 

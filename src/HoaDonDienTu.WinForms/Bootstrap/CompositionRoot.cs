@@ -358,7 +358,7 @@ namespace HoaDonDienTu.WinForms.Bootstrap
                     parameter => new DownloadProgressScreen(
                         new DownloadProgressControl(),
                         view => new DownloadProgressPresenter(
-                            view, orchestrator, downloadRepository, SessionStore, () => ShellActions, Confirmation, OperationRunner,
+                            view, orchestrator, downloadRepository, SessionStore, () => ShellActions, () => NavigationService, Confirmation, OperationRunner,
                             ErrorPresenter, Clock, parameter is Guid ? (Guid?)parameter : null))),
                 new ScreenDescriptor(
                     HoaDonDienTu.Application.Navigation.ScreenId.Settings, "Cài đặt", "SCR-09",

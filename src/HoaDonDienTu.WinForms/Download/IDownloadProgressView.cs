@@ -7,7 +7,11 @@ namespace HoaDonDienTu.WinForms.Download
     public sealed class SegmentRowViewModel
     {
         public Guid Id { get; set; }
+        /// <summary>Tháng của đoạn, ví dụ "Tháng 11/2026".</summary>
         public string Month { get; set; }
+
+        /// <summary>Kết quả kiểm tra hóa đơn mua vào của đoạn bằng tên tiếng Việt ("Đã cấp mã hóa đơn"...); "Tất cả" khi không lọc.</summary>
+        public string CheckResult { get; set; }
         public string Range { get; set; }
         public string StateText { get; set; }
         public string Pages { get; set; }
@@ -40,6 +44,12 @@ namespace HoaDonDienTu.WinForms.Download
         public bool CanResume { get; set; }
         public bool CanCancel { get; set; }
         public bool CanRetryFailed { get; set; }
+
+        /// <summary>Phiên đã xong (có hoặc không có lỗi): cho mở Kho hóa đơn xem kết quả.</summary>
+        public bool CanOpenArchive { get; set; }
+
+        /// <summary>Phiên đã kết thúc (kể cả hủy/lỗi): cho quay lại chọn kỳ khác.</summary>
+        public bool CanNewDownload { get; set; }
         public IList<SegmentRowViewModel> Rows { get; set; }
     }
 
@@ -59,6 +69,8 @@ namespace HoaDonDienTu.WinForms.Download
         event EventHandler ResumeRequested;
         event EventHandler CancelRequested;
         event EventHandler RetryFailedRequested;
+        event EventHandler OpenArchiveRequested;
+        event EventHandler NewDownloadRequested;
         event EventHandler<SegmentRetryEventArgs> RetrySegmentRequested;
 
         /// <summary>Có thể được gọi từ luồng nền (engine báo tiến độ); view tự chuyển về UI thread.</summary>

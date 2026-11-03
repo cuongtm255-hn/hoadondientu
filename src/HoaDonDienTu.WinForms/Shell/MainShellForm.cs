@@ -92,6 +92,10 @@ namespace HoaDonDienTu.WinForms.Shell
         {
             lblPortalSession.Values.Text = state.Text;
             btnPortalLogin.Visible = !state.IsLoggedIn;
+
+            // Đã đăng nhập thì nút trên ribbon chuyển thành "Đăng nhập lại" (đổi phiên/MST), không còn gợi ý rằng chưa đăng nhập.
+            ribbonBtnPortalLogin.TextLine1 = "Đăng nhập";
+            ribbonBtnPortalLogin.TextLine2 = state.IsLoggedIn ? "lại" : string.Empty;
         }
 
         public void ShowOperation(OperationViewState state)

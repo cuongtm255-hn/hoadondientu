@@ -54,6 +54,9 @@ namespace HoaDonDienTu.WinForms.Download
             this.pnlSegments = new ComponentFactory.Krypton.Toolkit.KryptonPanel();
             this.gridSegments = new ComponentFactory.Krypton.Toolkit.KryptonDataGridView();
             this.colMonth = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.colCheck = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.btnOpenArchive = new ComponentFactory.Krypton.Toolkit.KryptonButton();
+            this.btnNewDownload = new ComponentFactory.Krypton.Toolkit.KryptonButton();
             this.colRange = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.colState = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.colPages = new System.Windows.Forms.DataGridViewTextBoxColumn();
@@ -312,6 +315,8 @@ namespace HoaDonDienTu.WinForms.Download
             // pnlSegmentsHeader
             //
             this.pnlSegmentsHeader.Controls.Add(this.btnRetryFailed);
+            this.pnlSegmentsHeader.Controls.Add(this.btnNewDownload);
+            this.pnlSegmentsHeader.Controls.Add(this.btnOpenArchive);
             this.pnlSegmentsHeader.Controls.Add(this.lblSegmentsTitle);
             this.pnlSegmentsHeader.Dock = System.Windows.Forms.DockStyle.Top;
             this.pnlSegmentsHeader.Name = "pnlSegmentsHeader";
@@ -335,6 +340,25 @@ namespace HoaDonDienTu.WinForms.Download
             this.btnRetryFailed.Values.Text = "Thử lại các lỗi";
             this.btnRetryFailed.Click += new System.EventHandler(this.OnRetryFailedClick);
             //
+            // btnNewDownload
+            //
+            this.btnNewDownload.Dock = System.Windows.Forms.DockStyle.Right;
+            this.btnNewDownload.Enabled = false;
+            this.btnNewDownload.Name = "btnNewDownload";
+            this.btnNewDownload.Size = new System.Drawing.Size(120, 32);
+            this.btnNewDownload.Values.Text = "Tải kỳ khác";
+            this.btnNewDownload.Click += new System.EventHandler(this.OnNewDownloadClick);
+            //
+            // btnOpenArchive
+            //
+            this.btnOpenArchive.Dock = System.Windows.Forms.DockStyle.Right;
+            this.btnOpenArchive.Enabled = false;
+            this.btnOpenArchive.Name = "btnOpenArchive";
+            this.btnOpenArchive.Size = new System.Drawing.Size(150, 32);
+            this.btnOpenArchive.StateCommon.Content.ShortText.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this.btnOpenArchive.Values.Text = "Mở Kho hóa đơn";
+            this.btnOpenArchive.Click += new System.EventHandler(this.OnOpenArchiveClick);
+            //
             // gridSegments
             //
             this.gridSegments.AllowUserToAddRows = false;
@@ -342,7 +366,7 @@ namespace HoaDonDienTu.WinForms.Download
             this.gridSegments.AllowUserToResizeRows = false;
             this.gridSegments.AutoSizeColumnsMode = System.Windows.Forms.DataGridViewAutoSizeColumnsMode.Fill;
             this.gridSegments.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
-            this.colMonth, this.colRange, this.colState, this.colPages, this.colReceived, this.colSaved, this.colNote, this.colRetry});
+            this.colMonth, this.colCheck, this.colRange, this.colState, this.colPages, this.colReceived, this.colSaved, this.colNote, this.colRetry});
             this.gridSegments.Dock = System.Windows.Forms.DockStyle.Fill;
             this.gridSegments.Name = "gridSegments";
             this.gridSegments.ReadOnly = true;
@@ -357,6 +381,9 @@ namespace HoaDonDienTu.WinForms.Download
             this.colMonth.FillWeight = 70F;
             this.colMonth.HeaderText = "Tháng";
             this.colMonth.Name = "colMonth";
+            this.colCheck.FillWeight = 130F;
+            this.colCheck.HeaderText = "Kết quả kiểm tra";
+            this.colCheck.Name = "colCheck";
             this.colRange.FillWeight = 80F;
             this.colRange.HeaderText = "Khoảng ngày";
             this.colRange.Name = "colRange";
@@ -432,6 +459,9 @@ namespace HoaDonDienTu.WinForms.Download
         private ComponentFactory.Krypton.Toolkit.KryptonPanel pnlSegments;
         private ComponentFactory.Krypton.Toolkit.KryptonDataGridView gridSegments;
         private System.Windows.Forms.DataGridViewTextBoxColumn colMonth;
+        private System.Windows.Forms.DataGridViewTextBoxColumn colCheck;
+        private ComponentFactory.Krypton.Toolkit.KryptonButton btnOpenArchive;
+        private ComponentFactory.Krypton.Toolkit.KryptonButton btnNewDownload;
         private System.Windows.Forms.DataGridViewTextBoxColumn colRange;
         private System.Windows.Forms.DataGridViewTextBoxColumn colState;
         private System.Windows.Forms.DataGridViewTextBoxColumn colPages;

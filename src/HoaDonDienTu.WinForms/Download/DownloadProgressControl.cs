@@ -21,6 +21,8 @@ namespace HoaDonDienTu.WinForms.Download
         public event EventHandler ResumeRequested;
         public event EventHandler CancelRequested;
         public event EventHandler RetryFailedRequested;
+        public event EventHandler OpenArchiveRequested;
+        public event EventHandler NewDownloadRequested;
         public event EventHandler<SegmentRetryEventArgs> RetrySegmentRequested;
 
         public void Show(DownloadProgressViewModel model)
@@ -78,6 +80,8 @@ namespace HoaDonDienTu.WinForms.Download
             btnResume.Enabled = m.CanResume;
             btnCancel.Enabled = m.CanCancel;
             btnRetryFailed.Enabled = m.CanRetryFailed;
+            btnOpenArchive.Enabled = m.CanOpenArchive;
+            btnNewDownload.Enabled = m.CanNewDownload;
 
             // Giữ nguyên dòng và vị trí cuộn: chỉ ghi lại giá trị khi số dòng không đổi, tránh nhấp nháy mỗi lần báo tiến độ.
             if (gridSegments.Rows.Count != m.Rows.Count)
@@ -91,6 +95,7 @@ namespace HoaDonDienTu.WinForms.Download
                 var r = m.Rows[i];
                 var cells = gridSegments.Rows[i].Cells;
                 cells["colMonth"].Value = r.Month;
+                cells["colCheck"].Value = r.CheckResult;
                 cells["colRange"].Value = r.Range;
                 cells["colState"].Value = r.StateText;
                 cells["colPages"].Value = r.Pages;
@@ -150,6 +155,16 @@ namespace HoaDonDienTu.WinForms.Download
         private void OnRetryFailedClick(object sender, EventArgs e)
         {
             Raise(RetryFailedRequested);
+        }
+
+        private void OnOpenArchiveClick(object sender, EventArgs e)
+        {
+            Raise(OpenArchiveRequested);
+        }
+
+        private void OnNewDownloadClick(object sender, EventArgs e)
+        {
+            Raise(NewDownloadRequested);
         }
 
         private void Raise(EventHandler handler)
