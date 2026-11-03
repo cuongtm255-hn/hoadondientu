@@ -1,9 +1,11 @@
 using System;
 using System.IO;
+using System.Data.SQLite;
 using System.Linq;
 using HoaDonDienTu.Application.Companies;
 using HoaDonDienTu.Domain.Companies;
 using HoaDonDienTu.Infrastructure.Persistence;
+using HoaDonDienTu.Infrastructure.Persistence.Sqlite;
 using Newtonsoft.Json.Linq;
 
 namespace HoaDonDienTu.Infrastructure.Companies
@@ -28,8 +30,37 @@ namespace HoaDonDienTu.Infrastructure.Companies
             result.WriteProblem = problem;
             result.FreeBytes = FreeBytes(path);
 
-            if (result.Exists) ReadIdentity(path, result);
+            if (result.Exists)
+            {
+                ReadIdentity(path, result);
+                result.DatabaseProblem = CheckDatabase(Path.Combine(path, CompanyDatabaseProvider.RelativePath));
+            }
+
             return result;
+        }
+
+        private static string CheckDatabase(string file)
+        {
+            if (!File.Exists(file)) return null;
+            try
+            {
+                var builder = new SQLiteConnectionStringBuilder { DataSource = file, Version = 3, ReadOnly = true, Pooling = false };
+                using (var connection = new SQLiteConnection(builder.ConnectionString))
+                {
+                    connection.Open();
+                    var version = SchemaVersionReader.Read(connection);
+                    return version > CompanyDatabaseSchema.Migrations.Count
+                        ? "cơ sở dữ liệu được tạo bởi phiên bản ứng dụng mới hơn, hãy cập nhật ứng dụng"
+                        : null;
+                }
+            }
+            catch (SQLiteException ex)
+            {
+                // Chỉ báo khi chắc file hỏng; lỗi khác (đang bị khóa, đĩa chỉ đọc không có -shm) để lần dùng đầu xử lý.
+                return ex.ResultCode == SQLiteErrorCode.NotADb || ex.ResultCode == SQLiteErrorCode.Corrupt
+                    ? "file cơ sở dữ liệu company.db bị hỏng"
+                    : null;
+            }
         }
 
         public StorageInitResult Initialize(string path, CompanyId companyId, TaxCode taxCode)

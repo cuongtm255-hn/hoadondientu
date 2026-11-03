@@ -55,6 +55,11 @@ namespace HoaDonDienTu.Infrastructure.Companies
                 throw new CompanyStorageException(CompanySwitchBlocker.DatabaseInvalid, "Kho dữ liệu thuộc MST khác; không mở để tránh lẫn dữ liệu.");
             }
 
+            if (!string.IsNullOrEmpty(inspection.DatabaseProblem))
+            {
+                throw new CompanyStorageException(CompanySwitchBlocker.DatabaseInvalid, "Cơ sở dữ liệu của kho không dùng được: " + inspection.DatabaseProblem + ".");
+            }
+
             try
             {
                 await _registry.UpdateAsync(

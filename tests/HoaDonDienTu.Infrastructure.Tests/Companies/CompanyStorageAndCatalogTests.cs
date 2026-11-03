@@ -75,6 +75,61 @@ namespace HoaDonDienTu.Infrastructure.Tests.Companies
             Assert.That(info.IsEmpty, Is.False);
         }
 
+        private string DatabaseFile(string name)
+        {
+            var path = Folder(name);
+            _storage.Initialize(path, CompanyId.NewId(), TaxCode.Parse("0101234567"));
+            return Path.Combine(path, "Data", "company.db");
+        }
+
+        [Test]
+        public void Inspect_StorageWithoutDatabaseYet_HasNoDatabaseProblem()
+        {
+            DatabaseFile("A");
+
+            Assert.That(_storage.Inspect(Folder("A")).DatabaseProblem, Is.Null);
+        }
+
+        [Test]
+        public void Inspect_HealthyDatabase_HasNoDatabaseProblem()
+        {
+            new HoaDonDienTu.Infrastructure.Persistence.Sqlite.CompanyDatabaseInitializer().Initialize(DatabaseFile("A"));
+
+            Assert.That(_storage.Inspect(Folder("A")).DatabaseProblem, Is.Null);
+        }
+
+        [Test]
+        public void Inspect_DatabaseFileThatIsNotSqlite_ReportsItAsDamaged()
+        {
+            var file = DatabaseFile("A");
+            Directory.CreateDirectory(Path.GetDirectoryName(file));
+            File.WriteAllText(file, "đây không phải cơ sở dữ liệu SQLite, chỉ là văn bản dài hơn một trăm byte để SQLite đọc được đầu file và từ chối nó.");
+
+            Assert.That(_storage.Inspect(Folder("A")).DatabaseProblem, Does.Contain("hỏng"));
+        }
+
+        [Test]
+        public void Inspect_DatabaseFromNewerApp_AsksToUpdate_AndLeavesTheFileAlone()
+        {
+            var file = DatabaseFile("A");
+            new HoaDonDienTu.Infrastructure.Persistence.Sqlite.CompanyDatabaseInitializer().Initialize(file);
+            using (var connection = new System.Data.SQLite.SQLiteConnection("Data Source=" + file + ";Pooling=False"))
+            {
+                connection.Open();
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = "PRAGMA user_version=999";
+                    command.ExecuteNonQuery();
+                }
+            }
+
+            var before = File.ReadAllBytes(file);
+            var problem = _storage.Inspect(Folder("A")).DatabaseProblem;
+
+            Assert.That(problem, Does.Contain("mới hơn"));
+            Assert.That(File.ReadAllBytes(file), Is.EqualTo(before));
+        }
+
         [Test]
         public void Initialize_Twice_RefusesToOverwriteExistingStorage()
         {
@@ -325,6 +380,22 @@ namespace HoaDonDienTu.Infrastructure.Tests.Companies
 
             Assert.That(e1.Blocker, Is.EqualTo(CompanySwitchBlocker.DatabaseInvalid));
             Assert.That(e2.Blocker, Is.EqualTo(CompanySwitchBlocker.DatabaseInvalid));
+        }
+
+        [Test]
+        public void Opener_StorageWithDamagedDatabase_IsRefusedAsDatabaseInvalid_AndNotMarkedOpened()
+        {
+            var item = Item("0100000001", "A", Folder("A"));
+            _storage.Initialize(item.StoragePath, item.Id, item.TaxCode);
+            Directory.CreateDirectory(Path.Combine(item.StoragePath, "Data"));
+            File.WriteAllText(Path.Combine(item.StoragePath, "Data", "company.db"), "đây không phải cơ sở dữ liệu SQLite, chỉ là văn bản dài hơn một trăm byte để SQLite đọc được đầu file và từ chối nó.");
+            _catalog.AddAsync(item, CancellationToken.None).GetAwaiter().GetResult();
+            var opener = new CompanyStorageOpener(_catalog, _storage, new FixedClock(), new SilentLogger());
+
+            var error = Assert.Throws<CompanyStorageException>(() => opener.OpenAsync(item.ToProfile(), CancellationToken.None).GetAwaiter().GetResult());
+
+            Assert.That(error.Blocker, Is.EqualTo(CompanySwitchBlocker.DatabaseInvalid));
+            Assert.That(_catalog.GetItemsAsync(CancellationToken.None).GetAwaiter().GetResult().Single().LastOpenedAt, Is.Null);
         }
 
         [Test]

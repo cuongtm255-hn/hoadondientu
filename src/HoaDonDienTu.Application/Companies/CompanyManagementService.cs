@@ -275,6 +275,11 @@ namespace HoaDonDienTu.Application.Companies
                 {
                     return Folder(false, "Thư mục là kho dữ liệu của MST " + (inspection.IdentityTaxCode == null ? "khác" : inspection.IdentityTaxCode.Value) + ", không phải " + taxCode.Value + ".");
                 }
+
+                if (!string.IsNullOrEmpty(inspection.DatabaseProblem))
+                {
+                    return Folder(false, "Kho dữ liệu không dùng được: " + inspection.DatabaseProblem + ".");
+                }
             }
             else if (relink)
             {

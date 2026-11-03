@@ -22,6 +22,12 @@ namespace HoaDonDienTu.Application.Companies
 
         /// <summary>Có file định danh nhưng không đọc được hoặc sai phiên bản.</summary>
         public string IdentityProblem { get; set; }
+
+        /// <summary>
+        /// Có <c>Data\company.db</c> nhưng không dùng được (không phải cơ sở dữ liệu, hỏng đầu file, hoặc schema mới hơn ứng dụng).
+        /// Chỉ là kiểm tra nhanh phần đầu file; kiểm toàn vẹn đầy đủ chạy khi cơ sở dữ liệu được dùng lần đầu.
+        /// </summary>
+        public string DatabaseProblem { get; set; }
     }
 
     public sealed class StorageInitResult
