@@ -207,6 +207,73 @@ namespace HoaDonDienTu.Application.Tests
         }
 
         [Test]
+        public async Task PreparePrint_ValidXml_GivesTheModel()
+        {
+            var stored = await AddInvoiceAsync(new[] { Xml });
+
+            var result = await _service.PreparePrintAsync(stored.InvoiceId, 1, CancellationToken.None);
+
+            Assert.That(result.IsReady, Is.True, result.Problem);
+            Assert.That(result.Problem, Is.Null);
+            Assert.That(result.Model.InvoiceNumber, Is.EqualTo("0000128"));
+            Assert.That(result.Model.Seller.Name, Is.EqualTo("Công ty ABC"));
+        }
+
+        [Test]
+        public async Task PreparePrint_TamperedFile_IsRefused_BecauseThePdfWouldMisstateTheDocument()
+        {
+            var stored = await AddInvoiceAsync(new[] { Xml });
+            _files.Put(stored.Versions[0].RelativePath, Encoding.UTF8.GetBytes(Xml.Replace("0000128", "0000999")));
+
+            var result = await _service.PreparePrintAsync(stored.InvoiceId, 1, CancellationToken.None);
+
+            Assert.That(result.IsReady, Is.False);
+            Assert.That(result.Problem, Does.Contain("sai SHA-256"));
+        }
+
+        [Test]
+        public async Task PreparePrint_MissingFile_ExplainsWhy()
+        {
+            var stored = await AddInvoiceAsync(new[] { Xml });
+            _files.Remove(stored.Versions[0].RelativePath);
+
+            var result = await _service.PreparePrintAsync(stored.InvoiceId, 1, CancellationToken.None);
+
+            Assert.That(result.IsReady, Is.False);
+            Assert.That(result.Problem, Does.Contain("không còn trong thư mục kho"));
+        }
+
+        [Test]
+        public async Task PreparePrint_TooLargeFile_ExplainsWhy()
+        {
+            var stored = await AddInvoiceAsync(new[] { Xml });
+            _files.TooLarge.Add(stored.Versions[0].RelativePath);
+
+            var result = await _service.PreparePrintAsync(stored.InvoiceId, 1, CancellationToken.None);
+
+            Assert.That(result.IsReady, Is.False);
+            Assert.That(result.Problem, Does.Contain("quá lớn"));
+        }
+
+        [Test]
+        public async Task PreparePrint_NotAnInvoiceXml_ReportsIt()
+        {
+            const string other = "<Khac><x/></Khac>";
+            var stored = await AddInvoiceAsync(new[] { other });
+
+            var result = await _service.PreparePrintAsync(stored.InvoiceId, 1, CancellationToken.None);
+
+            Assert.That(result.IsReady, Is.False);
+            Assert.That(result.Problem, Does.Contain("không phải hóa đơn điện tử"));
+        }
+
+        [Test]
+        public void PreparePrint_UnknownInvoice_Throws()
+        {
+            Assert.ThrowsAsync<InvoiceStorageException>(() => _service.PreparePrintAsync(Guid.NewGuid(), 1, CancellationToken.None));
+        }
+
+        [Test]
         public async Task ReadBytes_TooLargeFile_IsReadWithoutALimit_ForSavingACopy()
         {
             var stored = await AddInvoiceAsync(new[] { Xml });

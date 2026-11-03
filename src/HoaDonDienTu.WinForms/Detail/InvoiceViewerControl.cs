@@ -23,6 +23,8 @@ namespace HoaDonDienTu.WinForms.Detail
 
         public event EventHandler CloseRequested;
         public event EventHandler SaveCopyRequested;
+        public event EventHandler SavePdfRequested;
+        public event EventHandler PrintRequested;
         public event EventHandler<VersionRequestedEventArgs> VersionSelected;
 
         public void ShowResult(InvoiceViewerViewModel m)
@@ -72,6 +74,38 @@ namespace HoaDonDienTu.WinForms.Detail
 
                 txtRaw.Text = m.RawText ?? "(Không đọc được nội dung file)";
                 txtRaw.Select(0, 0);
+            });
+        }
+
+        public void ShowPdf(InvoicePdfViewModel m)
+        {
+            OnUi(delegate
+            {
+                btnPrint.Enabled = m.CanPrintOrSave;
+                btnSavePdf.Enabled = m.CanPrintOrSave;
+
+                // Giải phóng ảnh cũ trước khi nạp trang mới (mỗi trang là một bitmap).
+                foreach (Control old in flowPdfPages.Controls)
+                {
+                    var box = old as PictureBox;
+                    if (box != null && box.Image != null) box.Image.Dispose();
+                }
+
+                flowPdfPages.Controls.Clear();
+                var pages = m.Pages ?? new System.Collections.Generic.List<byte[]>();
+                foreach (var png in pages)
+                {
+                    using (var stream = new System.IO.MemoryStream(png))
+                    {
+                        flowPdfPages.Controls.Add(new PictureBox { Image = new Bitmap(stream), SizeMode = PictureBoxSizeMode.AutoSize, Margin = new Padding(0, 0, 0, 12), BackColor = Color.White });
+                    }
+                }
+
+                var hasPages = pages.Count > 0;
+                flowPdfPages.Visible = hasPages;
+                lblPdf.Visible = !hasPages;
+                lblPdf.Text = m.Notice ?? string.Empty;
+                lblPdf.ForeColor = m.IsError ? Bad : Color.FromArgb(60, 60, 60);
             });
         }
 
@@ -136,6 +170,18 @@ namespace HoaDonDienTu.WinForms.Detail
             var option = cboVersion.SelectedItem as ViewerVersionOption;
             var handler = VersionSelected;
             if (option != null && handler != null) handler(this, new VersionRequestedEventArgs(option.VersionNo));
+        }
+
+        private void OnPrintClick(object sender, EventArgs e)
+        {
+            var handler = PrintRequested;
+            if (handler != null) handler(this, EventArgs.Empty);
+        }
+
+        private void OnSavePdfClick(object sender, EventArgs e)
+        {
+            var handler = SavePdfRequested;
+            if (handler != null) handler(this, EventArgs.Empty);
         }
 
         private void OnCloseClick(object sender, EventArgs e)

@@ -12,5 +12,6 @@ Mỗi quyết định một file `NNNN-<tên-ngắn>.md` gồm bối cảnh, ph�
 | [0006](0006-sqlite-provider.md) | SQLite provider cho net45: System.Data.SQLite.Core | Accepted (còn kiểm máy sạch) | G-08 |
 | [0007](0007-webview-cefsharp.md) | WebView đăng nhập: CefSharp 109 trên net452 (nâng từ net45) | Accepted hướng chọn (chưa thử trên cổng thật) | G-01 |
 | [0008](0008-company-switch-safety.md) | Thứ tự an toàn khi chuyển MST và phục hồi sau sự cố | Accepted một phần (chưa spike giết tiến trình) | G-07 |
+| [0009](0009-pdf-from-xml-pdfsharp.md) | PDF và in: tự dựng từ XML bằng PDFsharp-gdi 1.50 | Accepted (chưa đối chiếu hóa đơn thật nhiều dạng) | G-03, G-09 (PDF) |
 
-Các gate **chưa có ADR**: G-03 (PDF), G-05 (giới hạn tốc độ), G-06 (giao thức licence), G-09 phần PDF. Cả ba cần bằng chứng bên ngoài mà chưa có: G-03 và G-05 cần traffic/đo trên cổng thật (UAT), G-06 cần giao thức từ nhà cung cấp licence.
+Các gate **chưa có ADR**: G-05 (giới hạn tốc độ) và G-06 (giao thức licence). Cả hai cần bằng chứng bên ngoài mà chưa có: G-05 cần đo trên cổng thật (UAT), G-06 cần giao thức từ nhà cung cấp licence.

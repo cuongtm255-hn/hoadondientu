@@ -160,8 +160,8 @@ namespace HoaDonDienTu.WinForms.Detail
                 },
                 XmlTitle = "XML",
                 CanViewXml = currentOk,
-                PdfText = "Chưa hỗ trợ",
-                PdfSub = "Chờ quyết định cách tạo PDF (G-03, G-09)",
+                PdfText = currentOk ? "Dựng từ XML" : "Cần file XML",
+                PdfSub = currentOk ? "Xem, in và lưu PDF ở màn Xem chứng từ" : "Chưa có file XML hiện hành để dựng PDF",
                 Versions = d.Versions.Select(VersionRow).ToList(),
                 Source = SourceFields(d)
             };

@@ -120,6 +120,13 @@ namespace HoaDonDienTu.Application.Invoices
         /// <exception cref="InvoiceStorageException">Hóa đơn hoặc phiên bản không tồn tại.</exception>
         Task<InvoiceXmlView> OpenXmlAsync(Guid invoiceId, int versionNo, CancellationToken cancellationToken);
 
+        /// <summary>
+        /// Đọc XML của một phiên bản thành mô hình để dựng PDF/in. Không dựng khi file mất, quá lớn, hỏng hoặc sai SHA-256 (tránh thể hiện sai chứng từ):
+        /// khi đó <see cref="InvoicePrintResult.Problem"/> nói rõ lý do.
+        /// </summary>
+        /// <exception cref="InvoiceStorageException">Hóa đơn hoặc phiên bản không tồn tại.</exception>
+        Task<InvoicePrintResult> PreparePrintAsync(Guid invoiceId, int versionNo, CancellationToken cancellationToken);
+
         /// <summary>Byte nguyên văn của file XML, không giới hạn cỡ: dùng cho "Lưu bản sao" khi file quá lớn để hiển thị.</summary>
         /// <exception cref="InvoiceStorageException">Hóa đơn, phiên bản hoặc file không còn.</exception>
         Task<byte[]> ReadBytesAsync(Guid invoiceId, int versionNo, CancellationToken cancellationToken);
@@ -252,6 +259,29 @@ namespace HoaDonDienTu.Application.Invoices
 
             if (!view.HashMatches) view.Problem = "Nội dung file khác với lúc tải về (sai SHA-256). Hãy tải lại hóa đơn để thay thế file này.";
             return view;
+        }
+
+        public async Task<InvoicePrintResult> PreparePrintAsync(Guid invoiceId, int versionNo, CancellationToken cancellationToken)
+        {
+            var view = await OpenXmlAsync(invoiceId, versionNo, cancellationToken).ConfigureAwait(false);
+            if (view.Bytes == null)
+            {
+                return new InvoicePrintResult { Problem = view.TooLarge ? "File XML quá lớn để dựng bản PDF/in." : view.Problem ?? "Không đọc được file XML." };
+            }
+
+            if (!view.HashMatches)
+            {
+                return new InvoicePrintResult { Problem = "Nội dung file XML khác với lúc tải về (sai SHA-256) nên không dựng PDF/in để tránh thể hiện sai chứng từ. Hãy tải lại hóa đơn." };
+            }
+
+            try
+            {
+                return new InvoicePrintResult { Model = InvoicePrintModelParser.Parse(view.Bytes) };
+            }
+            catch (InvoicePrintException ex)
+            {
+                return new InvoicePrintResult { Problem = ex.Message };
+            }
         }
 
         public async Task<byte[]> ReadBytesAsync(Guid invoiceId, int versionNo, CancellationToken cancellationToken)

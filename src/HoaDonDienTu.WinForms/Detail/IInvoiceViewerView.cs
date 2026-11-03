@@ -49,13 +49,33 @@ namespace HoaDonDienTu.WinForms.Detail
         public bool CanSaveCopy { get; set; }
     }
 
+    /// <summary>Nội dung tab PDF: các trang xem trước (PNG) hoặc lý do không dựng được.</summary>
+    public sealed class InvoicePdfViewModel
+    {
+        /// <summary>Ảnh PNG từng trang (khoảng 96 dpi); rỗng khi chưa dựng được.</summary>
+        public IList<byte[]> Pages { get; set; }
+
+        /// <summary>Thông báo thay cho trang xem trước: đang dựng, không dựng được và vì sao, hoặc chưa hỗ trợ.</summary>
+        public string Notice { get; set; }
+
+        public bool IsError { get; set; }
+
+        /// <summary>Cho phép In và Lưu PDF (đã có bản thể hiện hợp lệ).</summary>
+        public bool CanPrintOrSave { get; set; }
+    }
+
     public interface IInvoiceViewerView
     {
         event EventHandler CloseRequested;
         event EventHandler SaveCopyRequested;
+        event EventHandler SavePdfRequested;
+        event EventHandler PrintRequested;
         event EventHandler<VersionRequestedEventArgs> VersionSelected;
 
         void ShowResult(InvoiceViewerViewModel model);
+
+        /// <summary>Cập nhật tab PDF; có thể gọi sau <see cref="ShowResult"/> khi bản thể hiện dựng xong.</summary>
+        void ShowPdf(InvoicePdfViewModel model);
 
         /// <summary>Cảnh báo cụ thể (file mất/hỏng/sai hash) hoặc kết quả lưu bản sao.</summary>
         void ShowMessage(string text, bool isError);

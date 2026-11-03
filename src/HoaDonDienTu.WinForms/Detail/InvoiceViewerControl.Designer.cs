@@ -23,6 +23,8 @@ namespace HoaDonDienTu.WinForms.Detail
             this.btnClose = new ComponentFactory.Krypton.Toolkit.KryptonButton();
             this.btnPrint = new ComponentFactory.Krypton.Toolkit.KryptonButton();
             this.btnSaveCopy = new ComponentFactory.Krypton.Toolkit.KryptonButton();
+            this.btnSavePdf = new ComponentFactory.Krypton.Toolkit.KryptonButton();
+            this.flowPdfPages = new System.Windows.Forms.FlowLayoutPanel();
             this.lblSubtitle = new ComponentFactory.Krypton.Toolkit.KryptonLabel();
             this.lblTitle = new ComponentFactory.Krypton.Toolkit.KryptonLabel();
             this.pnlMessage = new ComponentFactory.Krypton.Toolkit.KryptonPanel();
@@ -73,6 +75,7 @@ namespace HoaDonDienTu.WinForms.Detail
             // pnlTitleActions
             //
             this.pnlTitleActions.Controls.Add(this.btnSaveCopy);
+            this.pnlTitleActions.Controls.Add(this.btnSavePdf);
             this.pnlTitleActions.Controls.Add(this.btnPrint);
             this.pnlTitleActions.Controls.Add(this.btnClose);
             this.pnlTitleActions.Dock = System.Windows.Forms.DockStyle.Right;
@@ -92,6 +95,13 @@ namespace HoaDonDienTu.WinForms.Detail
             this.btnPrint.Name = "btnPrint";
             this.btnPrint.Size = new System.Drawing.Size(80, 40);
             this.btnPrint.Values.Text = "In";
+            this.btnPrint.Click += new System.EventHandler(this.OnPrintClick);
+            this.btnSavePdf.Dock = System.Windows.Forms.DockStyle.Right;
+            this.btnSavePdf.Enabled = false;
+            this.btnSavePdf.Name = "btnSavePdf";
+            this.btnSavePdf.Size = new System.Drawing.Size(100, 40);
+            this.btnSavePdf.Values.Text = "Lưu PDF";
+            this.btnSavePdf.Click += new System.EventHandler(this.OnSavePdfClick);
             this.btnSaveCopy.Dock = System.Windows.Forms.DockStyle.Right;
             this.btnSaveCopy.Enabled = false;
             this.btnSaveCopy.Name = "btnSaveCopy";
@@ -173,14 +183,25 @@ namespace HoaDonDienTu.WinForms.Detail
             //
             // tabPdf
             //
+            this.tabPdf.Controls.Add(this.flowPdfPages);
             this.tabPdf.Controls.Add(this.lblPdf);
             this.tabPdf.Name = "tabPdf";
-            this.tabPdf.Text = "PDF (chưa hỗ trợ)";
-            this.lblPdf.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.tabPdf.Text = "PDF";
+            this.flowPdfPages.AutoScroll = true;
+            this.flowPdfPages.BackColor = System.Drawing.Color.FromArgb(120, 124, 130);
+            this.flowPdfPages.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.flowPdfPages.FlowDirection = System.Windows.Forms.FlowDirection.TopDown;
+            this.flowPdfPages.Name = "flowPdfPages";
+            this.flowPdfPages.Padding = new System.Windows.Forms.Padding(16, 12, 16, 12);
+            this.flowPdfPages.Visible = false;
+            this.flowPdfPages.WrapContents = false;
+            this.lblPdf.Dock = System.Windows.Forms.DockStyle.Top;
+            this.lblPdf.AutoSize = false;
+            this.lblPdf.Height = 120;
             this.lblPdf.Font = new System.Drawing.Font("Segoe UI", 10F);
             this.lblPdf.Name = "lblPdf";
             this.lblPdf.Padding = new System.Windows.Forms.Padding(24);
-            this.lblPdf.Text = "Chức năng xem và in PDF chưa khả dụng: đang chờ quyết định cách tạo PDF (G-03) và thư viện hỗ trợ (G-09).\r\nXML là chứng từ gốc; bạn vẫn xem được nội dung ở hai tab bên cạnh và lưu bản sao XML.";
+            this.lblPdf.Text = "Đang dựng bản PDF từ XML…";
             //
             // InvoiceViewerControl
             //
@@ -221,6 +242,8 @@ namespace HoaDonDienTu.WinForms.Detail
         private System.Windows.Forms.TabPage tabRaw;
         private System.Windows.Forms.TextBox txtRaw;
         private System.Windows.Forms.TabPage tabPdf;
+        private ComponentFactory.Krypton.Toolkit.KryptonButton btnSavePdf;
+        private System.Windows.Forms.FlowLayoutPanel flowPdfPages;
         private System.Windows.Forms.Label lblPdf;
     }
 }

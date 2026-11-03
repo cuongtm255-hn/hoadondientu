@@ -343,7 +343,8 @@ namespace HoaDonDienTu.WinForms.Bootstrap
                         new InvoiceViewerControl(),
                         view => new InvoiceViewerPresenter(
                             view, detail, contextManager, NavigationService, new XmlSaveFilePicker(), OperationRunner, ErrorPresenter,
-                            ((InvoiceViewerRequest)parameter).InvoiceId, ((InvoiceViewerRequest)parameter).VersionNo))),
+                            ((InvoiceViewerRequest)parameter).InvoiceId, ((InvoiceViewerRequest)parameter).VersionNo,
+                            new InvoicePrintTools(new PdfSharpInvoiceRenderer(), new ExportSavePicker(), new WindowsInvoicePrinter())))),
                 new ScreenDescriptor(
                     HoaDonDienTu.Application.Navigation.ScreenId.Dashboard, "Tổng quan", "SCR-02",
                     parameter => new DashboardScreen(

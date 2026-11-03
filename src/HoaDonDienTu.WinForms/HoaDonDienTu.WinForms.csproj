@@ -115,6 +115,7 @@
     </Compile>
     <Compile Include="Detail\InvoiceDetailPresenter.cs" />
     <Compile Include="Detail\InvoiceViewerPresenter.cs" />
+    <Compile Include="Detail\InvoicePrintTools.cs" />
     <Compile Include="Detail\InvoiceDetailScreens.cs" />
     <Compile Include="Detail\IInvoiceDetailView.cs" />
     <Compile Include="Detail\IInvoiceViewerView.cs" />

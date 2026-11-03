@@ -102,9 +102,17 @@ namespace HoaDonDienTu.WinForms.Tests
             return _detail;
         }
 
-        private InvoiceViewerPresenter OpenViewer(int version = 2)
+        private FakeRenderer _renderer;
+        private FakeSavePicker _pdfPicker;
+        private FakePrinter _printer;
+
+        private InvoiceViewerPresenter OpenViewer(int version = 2, bool withPrintTools = true)
         {
-            _viewer = new InvoiceViewerPresenter(_viewerView, _service, Context, Nav, _picker, Runner, Errors, InvoiceId, version);
+            _renderer = new FakeRenderer();
+            _pdfPicker = new FakeSavePicker();
+            _printer = new FakePrinter();
+            var tools = withPrintTools ? new InvoicePrintTools(_renderer, _pdfPicker, _printer) : null;
+            _viewer = new InvoiceViewerPresenter(_viewerView, _service, Context, Nav, _picker, Runner, Errors, InvoiceId, version, tools);
             _viewer.Initialize();
             return _viewer;
         }
@@ -144,7 +152,7 @@ namespace HoaDonDienTu.WinForms.Tests
             Assert.That(r.CanViewXml, Is.True);
             Assert.That(r.XmlSub, Is.EqualTo("SHA-256: 8a2f…d91c · 2 phiên bản"));
             Assert.That(r.XmlProblem, Is.False);
-            Assert.That(r.PdfText, Is.EqualTo("Chưa hỗ trợ"));
+            Assert.That(r.PdfText, Is.EqualTo("Dựng từ XML"));
             Assert.That(r.Versions.Select(v => v.Name), Is.EqualTo(new[] { "v2", "v1" }));
             Assert.That(r.Versions.Select(v => v.Status), Is.EqualTo(new[] { "Hiện hành", "Bản cũ" }));
             Assert.That(r.Versions[0].Session, Is.EqualTo("Phiên DL-2026-1101-001"));
@@ -326,6 +334,127 @@ namespace HoaDonDienTu.WinForms.Tests
             Assert.That(File.ReadAllBytes(target), Is.EqualTo(_service.LargeBytes));
         }
 
+        // ---- Tab PDF (ADR 0009) ----
+
+        [Test]
+        public void Pdf_IsBuiltFromTheXml_AndShownAsPreviewPages_WithPrintAndSaveEnabled()
+        {
+            OpenViewer();
+
+            Assert.That(WaitFor(() => _viewerView.Pdf != null && _viewerView.Pdf.CanPrintOrSave), Is.True);
+            Assert.That(_viewerView.Pdf.Pages, Has.Count.EqualTo(2));
+            Assert.That(_viewerView.Pdf.Notice, Is.Null);
+            Assert.That(_service.PrintCalls, Is.EqualTo(new[] { 2 }));
+            Assert.That(_viewerView.PdfHistory.First().Notice, Does.Contain("Đang dựng"), "báo đang dựng trước khi có trang");
+        }
+
+        [Test]
+        public void Pdf_WhenTheFileCannotBeTrusted_ShowsTheReason_AndDisablesPrintAndSave()
+        {
+            _service.Print[2] = new InvoicePrintResult { Problem = "Nội dung file XML khác với lúc tải về (sai SHA-256) nên không dựng PDF/in." };
+
+            OpenViewer();
+
+            Assert.That(WaitFor(() => _viewerView.Pdf != null && _viewerView.Pdf.Notice != null && _viewerView.Pdf.Notice.Contains("sai SHA-256")), Is.True);
+            Assert.That(_viewerView.Pdf.IsError, Is.True);
+            Assert.That(_viewerView.Pdf.CanPrintOrSave, Is.False);
+            Assert.That(_renderer.Builds, Is.EqualTo(0), "không dựng PDF sai chứng từ");
+        }
+
+        [Test]
+        public void Pdf_RendererFailure_IsReportedNotThrown()
+        {
+            OpenViewer();
+            Assert.That(WaitFor(() => _viewerView.Pdf != null && _viewerView.Pdf.CanPrintOrSave), Is.True);
+            _viewer.Dispose();
+            _service.Xml[1] = XmlView(1, "<HDon><a>1</a></HDon>");
+            _viewerView = new FakeViewerView();
+            OpenViewer(1);
+            _renderer.Fail = true;
+            _viewerView.RaiseVersion(1);
+
+            Assert.That(WaitFor(() => _viewerView.Pdf != null && _viewerView.Pdf.IsError && _viewerView.Pdf.Notice.Contains("Không dựng được")), Is.True);
+            Assert.That(_viewerView.Pdf.CanPrintOrSave, Is.False);
+        }
+
+        [Test]
+        public void Pdf_WithoutPrintTools_SaysItIsUnavailable()
+        {
+            OpenViewer(2, false);
+
+            Assert.That(WaitFor(() => _viewerView.Pdf != null), Is.True);
+            Assert.That(_viewerView.Pdf.Notice, Does.Contain("chưa khả dụng"));
+            Assert.That(_viewerView.Pdf.CanPrintOrSave, Is.False);
+            Assert.That(_service.PrintCalls, Is.Empty);
+        }
+
+        [Test]
+        public void Pdf_Save_WritesTheDocumentPdf_ToTheChosenPlace_WithAPdfExtension()
+        {
+            var target = Path.Combine(_tempDir, "hoa-don.pdf");
+            OpenViewer();
+            Assert.That(WaitFor(() => _viewerView.Pdf != null && _viewerView.Pdf.CanPrintOrSave), Is.True);
+            _pdfPicker.Result = target;
+
+            _viewerView.RaiseSavePdf();
+
+            Assert.That(WaitFor(() => File.Exists(target)), Is.True);
+            Assert.That(Encoding.ASCII.GetString(File.ReadAllBytes(target)), Is.EqualTo("%PDF-fake"));
+            Assert.That(_pdfPicker.LastExtension, Is.EqualTo("pdf"));
+            Assert.That(_pdfPicker.LastSuggested, Does.EndWith(".pdf"));
+            Assert.That(WaitFor(() => _viewerView.MessageText != null && _viewerView.MessageText.Contains("Đã lưu PDF")), Is.True, _viewerView.MessageText);
+        }
+
+        [Test]
+        public void Pdf_Save_CancelledDialog_WritesNothing()
+        {
+            OpenViewer();
+            Assert.That(WaitFor(() => _viewerView.Pdf != null && _viewerView.Pdf.CanPrintOrSave), Is.True);
+            _pdfPicker.Result = null;
+
+            _viewerView.RaiseSavePdf();
+
+            Assert.That(WaitFor(() => _pdfPicker.LastExtension == "pdf"), Is.True);
+            Assert.That(Directory.GetFiles(_tempDir), Is.Empty);
+        }
+
+        [Test]
+        public void Pdf_Print_SendsTheDocumentToThePrinter_NamedAfterTheInvoice()
+        {
+            OpenViewer();
+            Assert.That(WaitFor(() => _viewerView.Pdf != null && _viewerView.Pdf.CanPrintOrSave), Is.True);
+
+            _viewerView.RaisePrint();
+
+            Assert.That(WaitFor(() => _printer.Printed == 1), Is.True);
+            Assert.That(_printer.LastJob, Is.EqualTo("Hóa đơn 0000128"));
+        }
+
+        [Test]
+        public void Pdf_PrintAndSave_DoNothingBeforeADocumentExists()
+        {
+            _service.Print[2] = new InvoicePrintResult { Problem = "không dựng được" };
+            OpenViewer();
+            Assert.That(WaitFor(() => _viewerView.Pdf != null && _viewerView.Pdf.IsError), Is.True);
+
+            _viewerView.RaisePrint();
+            _viewerView.RaiseSavePdf();
+
+            Assert.That(_printer.Printed, Is.EqualTo(0));
+            Assert.That(_pdfPicker.LastExtension, Is.Null);
+        }
+
+        [Test]
+        public void Pdf_SwitchingTheVersion_BuildsThatVersion()
+        {
+            OpenViewer();
+            Assert.That(WaitFor(() => _viewerView.Pdf != null && _viewerView.Pdf.CanPrintOrSave), Is.True);
+
+            _viewerView.RaiseVersion(1);
+
+            Assert.That(WaitFor(() => _service.PrintCalls.SequenceEqual(new[] { 2, 1 })), Is.True);
+        }
+
         [Test]
         public void Viewer_BrokenXmlStillShowsTheRawText()
         {
@@ -454,6 +583,17 @@ namespace HoaDonDienTu.WinForms.Tests
                 return Task.FromResult(LargeBytes);
             }
 
+            public Dictionary<int, InvoicePrintResult> Print = new Dictionary<int, InvoicePrintResult>();
+            public List<int> PrintCalls = new List<int>();
+
+            public Task<InvoicePrintResult> PreparePrintAsync(Guid invoiceId, int versionNo, CancellationToken cancellationToken)
+            {
+                PrintCalls.Add(versionNo);
+                InvoicePrintResult result;
+                if (!Print.TryGetValue(versionNo, out result)) result = new InvoicePrintResult { Model = new InvoicePrintModel { InvoiceNumber = "0000128" } };
+                return Task.FromResult(result);
+            }
+
             public Task<InvoiceXmlView> OpenXmlAsync(Guid invoiceId, int versionNo, CancellationToken cancellationToken)
             {
                 InvoiceXmlView view;
@@ -490,6 +630,54 @@ namespace HoaDonDienTu.WinForms.Tests
             public void RaiseViewVersion(int no) { ViewVersionRequested(this, new VersionRequestedEventArgs(no)); }
         }
 
+        private sealed class FakeDocument : IInvoiceDocument
+        {
+            public int PageCount { get { return 2; } }
+            public byte[] ToPdf() { return Encoding.ASCII.GetBytes("%PDF-fake"); }
+            public byte[] RenderPagePng(int pageIndex, int dpi) { return new byte[] { 0x89, 0x50, 0x4E, 0x47, (byte)pageIndex }; }
+        }
+
+        private sealed class FakeRenderer : IInvoiceDocumentRenderer
+        {
+            public int Builds;
+            public bool Fail;
+
+            public IInvoiceDocument Build(InvoicePrintModel model)
+            {
+                Builds++;
+                if (Fail) throw new InvalidOperationException("boom");
+                return new FakeDocument();
+            }
+        }
+
+        private sealed class FakeSavePicker : IExportSavePicker
+        {
+            public string Result;
+            public string LastSuggested;
+            public string LastExtension;
+
+            public string Pick(string suggestedFileName, string extension, string filterDescription, string title, string initialDirectory)
+            {
+                LastSuggested = suggestedFileName;
+                LastExtension = extension;
+                return Result;
+            }
+        }
+
+        private sealed class FakePrinter : IInvoicePrinter
+        {
+            public int Printed;
+            public string LastJob;
+            public bool Accept = true;
+
+            public bool Print(IInvoiceDocument document, string jobName)
+            {
+                LastJob = jobName;
+                if (Accept) Printed++;
+                return Accept;
+            }
+        }
+
         private sealed class FakeViewerView : IInvoiceViewerView
         {
             private readonly object _gate = new object();
@@ -499,7 +687,25 @@ namespace HoaDonDienTu.WinForms.Tests
 
             public event EventHandler CloseRequested;
             public event EventHandler SaveCopyRequested;
+            public event EventHandler SavePdfRequested;
+            public event EventHandler PrintRequested;
             public event EventHandler<VersionRequestedEventArgs> VersionSelected;
+
+            private InvoicePdfViewModel _pdf;
+            public InvoicePdfViewModel Pdf { get { lock (_gate) { return _pdf; } } }
+            public List<InvoicePdfViewModel> PdfHistory = new List<InvoicePdfViewModel>();
+
+            public void ShowPdf(InvoicePdfViewModel model)
+            {
+                lock (_gate)
+                {
+                    _pdf = model;
+                    PdfHistory.Add(model);
+                }
+            }
+
+            public void RaiseSavePdf() { SavePdfRequested(this, EventArgs.Empty); }
+            public void RaisePrint() { PrintRequested(this, EventArgs.Empty); }
 
             public InvoiceViewerViewModel Result { get { lock (_gate) { return _result; } } }
             public string MessageText { get { lock (_gate) { return _message; } } }

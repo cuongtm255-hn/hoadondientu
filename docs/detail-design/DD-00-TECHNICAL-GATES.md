@@ -43,6 +43,7 @@ Không đưa API WebView cụ thể ra ngoài Infrastructure adapter.
 | G-02 API discovery | Endpoint, method, header, pagination/cursor, giới hạn ngày, page size, error schema, cách xác minh phiên/MST, cách tải XML/PDF | `docs/api-samples/*` đã làm sạch + ADR | DD-01 (production auth), DD-05, DD-06 |
 |  | **Trạng thái 11/2026: 🟡 đóng một phần.** Đã có mẫu thật cho đăng nhập (JWT, MST ở `sub`), tra cứu **bán ra** (RSQL, mọi tham số), chi tiết, xuất XML (zip), xuất Excel; xem [api-samples](../api-samples/README.md). Còn thiếu: tra cứu mua vào, `state` phân trang, `size` tối đa, mã lỗi hết phiên | | |
 | G-03 PDF strategy | Dùng PDF/print endpoint của cổng hay render XML theo mẫu; nhất quán với XML | ADR | DD-08 |
+|  | **Trạng thái 03/11/2026: ✅ đóng** bằng [ADR 0009](../decisions/0009-pdf-from-xml-pdfsharp.md): tự dựng từ XML (cổng không có API in), một bố cục cho PDF/xem trước/in; không dựng khi XML mất, hỏng hoặc sai SHA-256. Còn đối chiếu hóa đơn thật nhiều dạng. |
 | G-04 Excel fidelity | So sánh file xuất với workbook mẫu: cột, kiểu dữ liệu, tiêu đề, phạm vi ngày | Báo cáo đối chiếu + ADR | DD-09 |
 |  | **Trạng thái 02/11/2026: ✅ đóng** bằng [ADR 0002](../decisions/0002-excel-export-fidelity.md): file do ứng dụng xuất khớp mẫu về tiêu đề, 19 cột, ô gộp, độ rộng, kiểu chữ/số; khác biệt có chủ đích (ngày và tỷ giá dạng số, thêm dòng phạm vi) đã ghi lại. Còn cần đối chiếu mẫu mua vào/ngoại tệ khi có. |
 | G-05 Rate limit | Nhịp gọi an toàn; hành vi 429/giới hạn tương đương | ADR + cấu hình mặc định | DD-05 |
@@ -73,7 +74,7 @@ Trạng thái: ⬜ Chưa bắt đầu · 🟡 Đang làm · ✅ Hoàn thành · 
 | T00-02 | G-01 | Xác định cách phát hiện login và lấy token/cookie | T00-01 | ⬜ | | |
 | T00-03 | G-02 | Ghi traffic: xác minh phiên/MST, tra cứu mua vào/bán ra, phân trang, tải XML | T00-02 | 🟡 | | Đã ghi traffic thật cho đăng nhập, tra cứu bán ra, chi tiết, xuất XML/Excel (11/2026) và cập nhật cấu hình/cổng giả/mã nguồn theo đó. **Còn:** tra cứu mua vào, phân trang `state`, mã lỗi hết phiên. Bản ghi nguyên văn chứa mật khẩu/token thật nên chỉ giữ bản đã làm sạch |
 | T00-04 | G-05 | Đo giới hạn tốc độ / hành vi 429 | T00-03 | ⬜ | | |
-| T00-05 | G-03 | Quyết định chiến lược PDF | T00-03 | ⬜ | | |
+| T00-05 | G-03 | Quyết định chiến lược PDF | T00-03 | ✅ | [ADR 0009](../decisions/0009-pdf-from-xml-pdfsharp.md) | Tự dựng từ XML bằng PDFsharp-gdi 1.50.5147 |
 | T00-06 | G-04 | Đối chiếu Excel với workbook mẫu `DANH SÁCH HÓA ĐƠN.xlsx` | — | ✅ | [ADR 0002](../decisions/0002-excel-export-fidelity.md) | Báo cáo đối chiếu nằm trong ADR: so sánh tiêu đề, độ rộng, ô gộp, kiểu ô với mẫu; đã mở bằng Excel thật |
 | T00-07 | G-06 | Chốt giao thức licence với nhà cung cấp | — | ⬜ | | |
 | T00-08 | G-07 | Spike chuyển MST/crash recovery | DD-01 T01-07 | 🟡 | [ADR 0008](../decisions/0008-company-switch-safety.md) | Thứ tự chuyển MST và phục hồi lỗi mở kho có test; khôi phục phiên dở dang (T05-09); còn spike giết tiến trình đúng lúc chuyển |

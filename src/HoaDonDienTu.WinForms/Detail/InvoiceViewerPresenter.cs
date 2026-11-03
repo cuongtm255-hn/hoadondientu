@@ -27,12 +27,15 @@ namespace HoaDonDienTu.WinForms.Detail
         private readonly ISaveFilePicker _picker;
         private readonly IUiOperationRunner _runner;
         private readonly IUserErrorPresenter _errors;
+        private readonly InvoicePrintTools _print;
         private readonly Guid _invoiceId;
         private readonly int _initialVersion;
         private bool _initialized;
         private bool _disposed;
         private InvoiceDetail _detail;
         private InvoiceXmlView _xml;
+        private IInvoiceDocument _document;
+        private int _documentVersion;
         private int _loadSequence;
 
         public InvoiceViewerPresenter(
@@ -44,7 +47,8 @@ namespace HoaDonDienTu.WinForms.Detail
             IUiOperationRunner runner,
             IUserErrorPresenter errors,
             Guid invoiceId,
-            int versionNo)
+            int versionNo,
+            InvoicePrintTools print = null)
         {
             if (view == null) throw new ArgumentNullException("view");
             if (service == null) throw new ArgumentNullException("service");
@@ -62,6 +66,7 @@ namespace HoaDonDienTu.WinForms.Detail
             _errors = errors;
             _invoiceId = invoiceId;
             _initialVersion = versionNo;
+            _print = print;
         }
 
         public void Initialize()
@@ -70,6 +75,8 @@ namespace HoaDonDienTu.WinForms.Detail
             _initialized = true;
             _view.CloseRequested += OnClose;
             _view.SaveCopyRequested += OnSaveCopy;
+            _view.SavePdfRequested += OnSavePdf;
+            _view.PrintRequested += OnPrint;
             _view.VersionSelected += OnVersionSelected;
 
             Run("Nạp trình xem", async token =>
@@ -100,6 +107,8 @@ namespace HoaDonDienTu.WinForms.Detail
             _disposed = true;
             _view.CloseRequested -= OnClose;
             _view.SaveCopyRequested -= OnSaveCopy;
+            _view.SavePdfRequested -= OnSavePdf;
+            _view.PrintRequested -= OnPrint;
             _view.VersionSelected -= OnVersionSelected;
         }
 
@@ -136,7 +145,103 @@ namespace HoaDonDienTu.WinForms.Detail
             });
         }
 
+        // ---- PDF và in (G-03, ADR 0009) ----
+
+        /// <summary>Lưu PDF của phiên bản đang xem; PDF chỉ được dựng ra file khi người dùng yêu cầu (BR-008).</summary>
+        private void OnSavePdf(object sender, EventArgs e)
+        {
+            var document = _document;
+            var detail = _detail;
+            var version = _documentVersion;
+            if (_print == null || document == null || detail == null) return;
+
+            Run("Lưu PDF", async token =>
+            {
+                var path = _print.SavePicker.Pick(
+                    System.IO.Path.ChangeExtension(SuggestedName(detail.Invoice, version), "pdf"), "pdf", "Tệp PDF", "Lưu PDF — hóa đơn " + detail.Invoice.InvoiceNumber, null);
+                if (path == null) return;
+
+                var bytes = await Task.Run(() => document.ToPdf(), token);
+                File.WriteAllBytes(path, bytes);
+                _view.ShowMessage("Đã lưu PDF: " + path + " (bản thể hiện dựng từ XML; XML mới là chứng từ gốc)", false);
+            });
+        }
+
+        private void OnPrint(object sender, EventArgs e)
+        {
+            var document = _document;
+            var detail = _detail;
+            if (_print == null || document == null || detail == null) return;
+
+            Run("In hóa đơn", token =>
+            {
+                var printed = _print.Printer.Print(document, "Hóa đơn " + detail.Invoice.InvoiceNumber);
+                if (printed) _view.ShowMessage("Đã gửi hóa đơn tới máy in.", false);
+                return Task.FromResult(0);
+            });
+        }
+
+        /// <summary>Dựng bản thể hiện của phiên bản vừa nạp ở luồng nền rồi cập nhật tab PDF; bỏ kết quả nếu người dùng đã đổi phiên bản.</summary>
+        private async Task BuildPdfAsync(int versionNo, int sequence, CancellationToken token)
+        {
+            _document = null;
+            if (_print == null)
+            {
+                _view.ShowPdf(new InvoicePdfViewModel { Pages = new List<byte[]>(), Notice = "Chức năng PDF và in chưa khả dụng trong bản này.", IsError = false });
+                return;
+            }
+
+            _view.ShowPdf(new InvoicePdfViewModel { Pages = new List<byte[]>(), Notice = "Đang dựng bản PDF từ XML…" });
+            InvoicePrintResult prepared;
+            try
+            {
+                prepared = await _service.PreparePrintAsync(_invoiceId, versionNo, token);
+            }
+            catch (InvoiceStorageException ex)
+            {
+                if (sequence == _loadSequence && !_disposed) _view.ShowPdf(new InvoicePdfViewModel { Pages = new List<byte[]>(), Notice = ex.Message, IsError = true });
+                return;
+            }
+
+            if (_disposed || sequence != _loadSequence) return;
+            if (!prepared.IsReady)
+            {
+                _view.ShowPdf(new InvoicePdfViewModel { Pages = new List<byte[]>(), Notice = prepared.Problem, IsError = true });
+                return;
+            }
+
+            IInvoiceDocument document;
+            IList<byte[]> pages;
+            try
+            {
+                var model = prepared.Model;
+                var built = await Task.Run(
+                    () =>
+                    {
+                        var doc = _print.Renderer.Build(model);
+                        var images = new List<byte[]>();
+                        for (var i = 0; i < doc.PageCount; i++) images.Add(doc.RenderPagePng(i, PreviewDpi));
+                        return new KeyValuePair<IInvoiceDocument, IList<byte[]>>(doc, images);
+                    },
+                    token);
+                document = built.Key;
+                pages = built.Value;
+            }
+            catch (Exception ex) when (!(ex is OperationCanceledException))
+            {
+                if (sequence == _loadSequence && !_disposed) _view.ShowPdf(new InvoicePdfViewModel { Pages = new List<byte[]>(), Notice = "Không dựng được bản PDF từ XML này.", IsError = true });
+                return;
+            }
+
+            if (_disposed || sequence != _loadSequence) return;
+            _document = document;
+            _documentVersion = versionNo;
+            _view.ShowPdf(new InvoicePdfViewModel { Pages = pages, CanPrintOrSave = true });
+        }
+
         // ---- Nạp và hiển thị ----
+
+        private const int PreviewDpi = 96;
 
         private async Task LoadVersionAsync(int versionNo, CancellationToken token)
         {
@@ -147,6 +252,7 @@ namespace HoaDonDienTu.WinForms.Detail
             _xml = xml;
             _view.ShowResult(Build(_detail, xml));
             _view.ShowMessage(xml.Problem ?? string.Empty, xml.Problem != null);
+            await BuildPdfAsync(versionNo, sequence, token);
         }
 
         public static InvoiceViewerViewModel Build(InvoiceDetail detail, InvoiceXmlView xml)
