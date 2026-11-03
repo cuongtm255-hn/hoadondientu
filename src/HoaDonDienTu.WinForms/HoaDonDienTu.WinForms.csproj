@@ -201,4 +201,11 @@
     <ProjectReference Include="..\HoaDonDienTu.Infrastructure\HoaDonDienTu.Infrastructure.csproj" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- Chromium (CefSharp) kèm 55 gói ngôn ngữ, ~30 MB; ứng dụng đặt Locale = "vi" nên chỉ giữ tiếng Việt và en-US (dự phòng của Chromium). -->
+  <Target Name="TrimChromiumLocales" AfterTargets="Build" Condition=" '$(Configuration)' == 'Release' ">
+    <ItemGroup>
+      <UnusedChromiumLocale Include="$(OutDir)locales\*.pak" Exclude="$(OutDir)locales\vi.pak;$(OutDir)locales\en-US.pak" />
+    </ItemGroup>
+    <Delete Files="@(UnusedChromiumLocale)" />
+  </Target>
 </Project>

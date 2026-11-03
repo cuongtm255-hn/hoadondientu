@@ -50,7 +50,7 @@ Kiểm trên NuGet (03/11/2026, đọc metadata gói, không cài):
 - Solution nâng net452; `HoaDonDienTu.exe` build **x86** (CefSharp không chạy AnyCPU; test host vốn x86); Debug không chép Chromium (`CefSharpBuildAction=NoAction`), Release chép đủ.
 - `CefPortalLoginBrowser` sau `IPortalLoginBrowser`; `PortalLoginTraffic` chứa phần thuần (giới hạn điều hướng, nhận ra lời gọi đăng nhập, gom phản hồi) và có test.
 - Spike [`spikes/CefSpike`](../../spikes/CefSpike/Program.cs): Chromium `109.0.5414.87` khởi động, `RequestContext` riêng trong bộ nhớ, cookie manager và JavaScript hoạt động (trang `data:` cục bộ).
-- Bản Release nặng khoảng 264 MB (chủ yếu `libcef.dll` và thư mục `locales`); giữ lại chỉ `vi`/`en-US` trong `locales` là việc đóng gói còn lại (P6-05).
+- Bản Release nặng khoảng 264 MB (chủ yếu `libcef.dll` và thư mục `locales`). Từ 03/11/2026 bước build Release (`TrimChromiumLocales` trong `HoaDonDienTu.WinForms.csproj`) xóa các gói ngôn ngữ ngoài `vi.pak` và `en-US.pak`, còn khoảng 237 MB; `Locale = "vi"` được đặt ở `CefPortalLoginBrowser`, `en-US` là dự phòng của Chromium. Chưa thử trên máy sạch.
 
 ## Chưa kiểm
 
