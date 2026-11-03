@@ -311,7 +311,8 @@ namespace HoaDonDienTu.WinForms.Bootstrap
                 new BackupService(contextManager, jobs, entitlement, AppVersion, null, new SqliteCompanyDatabaseBackup(databases, contextManager)),
                 connectivity, folderLauncher, new ExportSavePicker(), new OpenFilePicker(), Confirmation);
 
-            var splitter = new PeriodSplitter();
+            // Không tải phần của kỳ nằm trong tương lai (chọn cả năm giữa năm thì chỉ tải tới hôm nay).
+            var splitter = new TodayClampedSplitter(new PeriodSplitter(), () => Clock.UtcNow.ToLocalTime().Date);
             var startPolicy = new DownloadStartPolicy(contextManager, SessionStore, entitlement);
             var storageProbe = new FileSystemStorageProbe();
             var capabilities = new PortalApiConfigCapabilities(portalConfig);

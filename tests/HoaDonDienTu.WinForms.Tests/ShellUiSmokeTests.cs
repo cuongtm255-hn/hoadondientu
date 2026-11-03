@@ -269,7 +269,7 @@ namespace HoaDonDienTu.WinForms.Tests
 
             ClickOpeningDialog("btnPortalLogin", dialog => PressText(dialog, "Đăng nhập đúng MST"));
 
-            Assert.That(WaitFor(() => Control<KryptonLabel>("lblPortalSession").Values.Text == "Đã đăng nhập"), Is.True);
+            Assert.That(WaitFor(() => Control<KryptonLabel>("lblPortalSession").Values.Text == string.Empty), Is.True);
             Assert.That(_root.SessionStore.HasActiveSession, Is.True);
             Assert.That(Control<KryptonButton>("btnPortalLogin").Visible, Is.False);
         }
@@ -357,17 +357,29 @@ namespace HoaDonDienTu.WinForms.Tests
         }
 
         [Test]
-        public void Download_Year2026_Purchase_Shows12Rows_AC02()
+        public void Download_PastYear_Purchase_Shows12Rows_AC02()
         {
             LoginAndOpenDownload();
 
-            Control<KryptonNumericUpDown>("numYear").Value = 2026;
+            Control<KryptonNumericUpDown>("numYear").Value = DateTime.Today.Year - 1;
 
             Assert.That(Control<KryptonCheckButton>("rdoPurchase").Checked, Is.True);
             Assert.That(Control<KryptonCheckButton>("btnKindYear").Checked, Is.True);
             Assert.That(PlanRows(), Is.EqualTo(12));
-            Assert.That(Control<KryptonDataGridView>("gridPlan").Rows[0].Cells[1].Value, Is.EqualTo("01/01/2026–31/01/2026"));
+            Assert.That(Control<KryptonDataGridView>("gridPlan").Rows[0].Cells[1].Value, Is.EqualTo("01/01/" + (DateTime.Today.Year - 1) + "–31/01/" + (DateTime.Today.Year - 1)));
             Assert.That(Control<KryptonButton>("btnStartDownload").Enabled, Is.True);
+        }
+
+        [Test]
+        public void Download_CurrentYear_OnlyListsMonthsUpToToday()
+        {
+            LoginAndOpenDownload();
+
+            Control<KryptonNumericUpDown>("numYear").Value = DateTime.Today.Year;
+
+            Assert.That(PlanRows(), Is.EqualTo(DateTime.Today.Month), "Không liệt kê tháng chưa tới");
+            var last = Control<KryptonDataGridView>("gridPlan").Rows[DateTime.Today.Month - 1].Cells[1].Value.ToString();
+            Assert.That(last, Does.EndWith(DateTime.Today.ToString("dd/MM/yyyy")), "Tháng hiện tại được cắt tới hôm nay");
         }
 
         [Test]
@@ -409,7 +421,7 @@ namespace HoaDonDienTu.WinForms.Tests
 
             Assert.That(Control<KryptonButton>("btnStartDownload").Enabled, Is.False);
             Assert.That(Control<System.Windows.Forms.Control>("lblStartReason").Text, Does.Contain("đăng nhập"));
-            Assert.That(PlanRows(), Is.EqualTo(12), "Kế hoạch vẫn xem trước được khi chưa đăng nhập");
+            Assert.That(PlanRows(), Is.EqualTo(DateTime.Today.Month), "Kế hoạch (cả năm hiện tại, chỉ tới hôm nay) vẫn xem trước được khi chưa đăng nhập");
         }
 
         [Test]
@@ -438,13 +450,13 @@ namespace HoaDonDienTu.WinForms.Tests
             Assert.That(WaitFor(() => ProgressMessage().Contains("Đã tải xong toàn bộ"), 90000), Is.True, ProgressMessage());
 
             var grid = Control<KryptonDataGridView>("gridSegments");
-            Assert.That(grid.Rows.Count, Is.EqualTo(36), "Năm 2026 mua vào → 12 tháng × 3 kết quả kiểm tra (5, 6, 8)");
+            Assert.That(grid.Rows.Count, Is.EqualTo(DateTime.Today.Month * 3), "Cả năm hiện tại, chỉ tới hôm nay: mỗi tháng × 3 kết quả kiểm tra (5, 6, 8)");
             Assert.That(Control<KryptonLabel>("lblStat1Value").Values.Text, Is.EqualTo("100%"));
             Assert.That(Control<KryptonButton>("btnPause").Enabled, Is.False);
             Assert.That(Control<KryptonButton>("btnCancel").Enabled, Is.False, "Phiên đã kết thúc");
             var root = _root.ContextManager.Current.StorageRoot;
             var files = System.IO.Directory.GetFiles(System.IO.Path.Combine(root, "2026"), "*.xml", System.IO.SearchOption.AllDirectories);
-            Assert.That(files.Length, Is.GreaterThan(20));
+            Assert.That(files.Length, Is.GreaterThan(0));
             Assert.That(Control<KryptonLabel>("lblStat3Value").Values.Text, Is.EqualTo(files.Length.ToString("N0", System.Globalization.CultureInfo.InvariantCulture)));
         }
 

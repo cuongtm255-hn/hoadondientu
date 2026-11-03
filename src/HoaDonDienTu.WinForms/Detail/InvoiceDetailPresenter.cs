@@ -63,7 +63,6 @@ namespace HoaDonDienTu.WinForms.Detail
             _initialized = true;
             _view.BackRequested += OnBack;
             _view.ViewCurrentRequested += OnViewCurrent;
-            _view.ViewVersionRequested += OnViewVersion;
 
             Run("Nạp chi tiết hóa đơn", async token =>
             {
@@ -94,7 +93,6 @@ namespace HoaDonDienTu.WinForms.Detail
             _disposed = true;
             _view.BackRequested -= OnBack;
             _view.ViewCurrentRequested -= OnViewCurrent;
-            _view.ViewVersionRequested -= OnViewVersion;
         }
 
         private void OnBack(object sender, EventArgs e)
@@ -107,13 +105,6 @@ namespace HoaDonDienTu.WinForms.Detail
             var detail = _detail;
             if (detail == null || detail.Current == null) return;
             OpenViewer(detail.Current.VersionNo);
-        }
-
-        private void OnViewVersion(object sender, VersionRequestedEventArgs e)
-        {
-            var detail = _detail;
-            if (detail == null || detail.Versions.All(v => v.VersionNo != e.VersionNo)) return;
-            OpenViewer(e.VersionNo);
         }
 
         private void OpenViewer(int versionNo)

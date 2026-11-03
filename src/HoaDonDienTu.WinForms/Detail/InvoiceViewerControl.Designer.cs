@@ -81,7 +81,7 @@ namespace HoaDonDienTu.WinForms.Detail
             this.pnlTitleActions.Dock = System.Windows.Forms.DockStyle.Right;
             this.pnlTitleActions.Name = "pnlTitleActions";
             this.pnlTitleActions.Padding = new System.Windows.Forms.Padding(0, 22, 16, 22);
-            this.pnlTitleActions.Size = new System.Drawing.Size(380, 84);
+            this.pnlTitleActions.Size = new System.Drawing.Size(460, 84);
             //
             // btnClose / btnPrint / btnSaveCopy (thứ tự thêm quyết định thứ tự xếp từ phải sang trái)
             //

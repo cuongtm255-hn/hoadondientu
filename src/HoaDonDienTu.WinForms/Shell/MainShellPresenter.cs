@@ -139,7 +139,7 @@ namespace HoaDonDienTu.WinForms.Shell
             var snapshot = _sessionStore.GetSnapshot();
             _view.ShowPortalSession(snapshot == null
                 ? new PortalSessionViewState { IsLoggedIn = false, Text = "Chưa đăng nhập" }
-                : new PortalSessionViewState { IsLoggedIn = true, Text = "Đã đăng nhập" });
+                : new PortalSessionViewState { IsLoggedIn = true, Text = string.Empty });
         }
 
         private void OnNavigationRequested(object sender, NavigationRequestedEventArgs e)

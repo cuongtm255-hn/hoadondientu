@@ -240,24 +240,18 @@ namespace HoaDonDienTu.WinForms.Tests
         }
 
         [Test]
-        public void Detail_ViewCurrentOpensTheCurrentVersion_AndAVersionRowOpensThatVersion()
+        public void Detail_ViewCurrentOpensTheViewerOnTheCurrentVersion()
         {
             OpenDetail();
             Assert.That(WaitFor(() => _detailView.Result != null), Is.True);
 
             _detailView.RaiseViewCurrent();
             Assert.That(WaitFor(() => Nav.Targets.Count == 1), Is.True);
-            _detailView.RaiseViewVersion(1);
-            Assert.That(WaitFor(() => Nav.Targets.Count == 2), Is.True);
-            _detailView.RaiseViewVersion(9);
-            Thread.Sleep(80);
 
-            Assert.That(Nav.Targets, Is.EqualTo(new[] { ScreenId.InvoiceViewer, ScreenId.InvoiceViewer }));
-            var first = (InvoiceViewerRequest)Nav.Parameters[0];
-            var second = (InvoiceViewerRequest)Nav.Parameters[1];
-            Assert.That(first.InvoiceId, Is.EqualTo(InvoiceId));
-            Assert.That(first.VersionNo, Is.EqualTo(2));
-            Assert.That(second.VersionNo, Is.EqualTo(1));
+            Assert.That(Nav.Targets, Is.EqualTo(new[] { ScreenId.InvoiceViewer }));
+            var request = (InvoiceViewerRequest)Nav.Parameters[0];
+            Assert.That(request.InvoiceId, Is.EqualTo(InvoiceId));
+            Assert.That(request.VersionNo, Is.EqualTo(2));
         }
 
         [Test]
@@ -610,7 +604,6 @@ namespace HoaDonDienTu.WinForms.Tests
 
             public event EventHandler BackRequested;
             public event EventHandler ViewCurrentRequested;
-            public event EventHandler<VersionRequestedEventArgs> ViewVersionRequested;
 
             public InvoiceDetailViewModel Result { get { lock (_gate) { return _result; } } }
             public string Message { get { lock (_gate) { return _message; } } }
@@ -627,7 +620,6 @@ namespace HoaDonDienTu.WinForms.Tests
 
             public void RaiseBack() { BackRequested(this, EventArgs.Empty); }
             public void RaiseViewCurrent() { ViewCurrentRequested(this, EventArgs.Empty); }
-            public void RaiseViewVersion(int no) { ViewVersionRequested(this, new VersionRequestedEventArgs(no)); }
         }
 
         private sealed class FakeDocument : IInvoiceDocument

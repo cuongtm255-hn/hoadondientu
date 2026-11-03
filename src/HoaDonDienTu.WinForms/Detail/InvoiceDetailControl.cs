@@ -28,7 +28,6 @@ namespace HoaDonDienTu.WinForms.Detail
 
         public event EventHandler BackRequested;
         public event EventHandler ViewCurrentRequested;
-        public event EventHandler<VersionRequestedEventArgs> ViewVersionRequested;
 
         public void ShowResult(InvoiceDetailViewModel m)
         {
@@ -154,17 +153,17 @@ namespace HoaDonDienTu.WinForms.Detail
 
         private Control Files(InvoiceDetailViewModel m)
         {
-            var table = NewTable(3);
+            // Mở XML/PDF đã có nút "Xem chứng từ" ở đầu màn hình; PDF dựng khi xem nên không có nút "Tạo".
+            var table = NewTable(2);
             table.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 52));
             table.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            table.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 80));
-            AddFileRow(table, "XML", m.XmlText, m.XmlSub, m.XmlProblem, "Mở", m.CanViewXml, delegate { Raise(ViewCurrentRequested); });
-            AddFileRow(table, "PDF", m.PdfText, m.PdfSub, false, "Tạo", false, null);
+            AddFileRow(table, "XML", m.XmlText, m.XmlSub, m.XmlProblem);
+            AddFileRow(table, "PDF", m.PdfText, m.PdfSub, false);
             table.Height = table.RowCount * 56;
             return table;
         }
 
-        private static void AddFileRow(TableLayoutPanel table, string kind, string text, string sub, bool problem, string action, bool enabled, EventHandler click)
+        private static void AddFileRow(TableLayoutPanel table, string kind, string text, string sub, bool problem)
         {
             var row = table.RowCount++;
             table.RowStyles.Add(new RowStyle(SizeType.Absolute, 56));
@@ -172,21 +171,17 @@ namespace HoaDonDienTu.WinForms.Detail
             badge.ForeColor = problem ? Bad : Good;
             var info = new Label { Text = text + "\r\n" + sub, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft, AutoEllipsis = true };
             if (problem) info.ForeColor = Bad;
-            var button = new KryptonButton { Dock = DockStyle.Fill, Enabled = enabled, Margin = new Padding(4, 8, 0, 8) };
-            button.Values.Text = action;
-            if (click != null) button.Click += click;
             table.Controls.Add(badge, 0, row);
             table.Controls.Add(info, 1, row);
-            table.Controls.Add(button, 2, row);
         }
 
         private Control Versions(IList<DetailVersionRow> versions)
         {
-            var table = NewTable(4);
+            // Đổi phiên bản xem ở màn Xem chứng từ (ô chọn phiên bản), nên mỗi dòng chỉ liệt kê.
+            var table = NewTable(3);
             table.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 40));
             table.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             table.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 84));
-            table.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 54));
             foreach (var v in versions)
             {
                 var row = table.RowCount++;
@@ -195,18 +190,9 @@ namespace HoaDonDienTu.WinForms.Detail
                 var info = new Label { Text = v.Date + "\r\n" + v.Session, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft, AutoEllipsis = true };
                 var status = Cell(v.Status, true, false);
                 status.ForeColor = v.Problem ? Bad : v.Status == "Hiện hành" ? Good : Warning;
-                var versionNo = v.VersionNo;
-                var button = new KryptonButton { Dock = DockStyle.Fill, Enabled = !v.Problem, Margin = new Padding(2, 8, 0, 8) };
-                button.Values.Text = "Xem";
-                button.Click += delegate
-                {
-                    var handler = ViewVersionRequested;
-                    if (handler != null) handler(this, new VersionRequestedEventArgs(versionNo));
-                };
                 table.Controls.Add(no, 0, row);
                 table.Controls.Add(info, 1, row);
                 table.Controls.Add(status, 2, row);
-                table.Controls.Add(button, 3, row);
             }
 
             table.Height = Math.Max(1, table.RowCount) * 48;

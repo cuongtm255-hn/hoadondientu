@@ -91,7 +91,6 @@ namespace HoaDonDienTu.WinForms.Detail
         /// <summary>Mở phiên bản hiện hành.</summary>
         event EventHandler ViewCurrentRequested;
 
-        event EventHandler<VersionRequestedEventArgs> ViewVersionRequested;
 
         void ShowResult(InvoiceDetailViewModel model);
         void ShowMessage(string text, bool isError);

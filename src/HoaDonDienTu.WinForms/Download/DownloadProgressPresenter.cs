@@ -43,6 +43,9 @@ namespace HoaDonDienTu.WinForms.Download
         private readonly Stopwatch _sinceRender = Stopwatch.StartNew();
         private Guid _sessionId;
         private volatile bool _running;
+        private readonly object _renderGate = new object();
+        private int _renderTicket;
+        private int _lastShownTicket;
         private bool _initialized;
         private bool _disposed;
 
@@ -285,11 +288,21 @@ namespace HoaDonDienTu.WinForms.Download
         {
             if (_disposed || _sessionId == Guid.Empty) return;
 
+            // Số thứ tự lấy trước khi đọc: lượt vẽ bắt đầu sau luôn đọc được trạng thái mới hơn, nên lượt cũ về muộn (đọc dở trong lúc phiên vừa xong) bị bỏ
+            // thay vì ghi đè lên kết quả cuối bằng trạng thái "đang chạy".
+            var ticket = Interlocked.Increment(ref _renderTicket);
+
             // Không ConfigureAwait(false): repository thật (SQLite) hoàn tất trên luồng khác nhưng view phải được cập nhật trên luồng giao diện.
             var session = await _repository.GetSessionAsync(_sessionId, CancellationToken.None);
             var segments = await _repository.GetSegmentsAsync(_sessionId, CancellationToken.None);
             if (session == null) return;
-            _view.Show(Build(session, segments));
+            var model = Build(session, segments);
+            lock (_renderGate)
+            {
+                if (ticket < _lastShownTicket) return;
+                _lastShownTicket = ticket;
+                _view.Show(model);
+            }
         }
 
         private DownloadProgressViewModel Build(DownloadSession session, IList<DownloadSegment> segments)
