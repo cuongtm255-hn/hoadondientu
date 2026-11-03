@@ -10,12 +10,14 @@ using System.Text;
 using HoaDonDienTu.Application.Invoices;
 using PdfSharp.Drawing;
 using PdfSharp.Pdf;
+using QRCoder;
 
 namespace HoaDonDienTu.Infrastructure.Invoices
 {
     /// <summary>
-    /// Dàn trang bản thể hiện hóa đơn (A4) bằng PDFsharp 1.50 (MIT, ADR 0009): một danh sách lệnh vẽ theo trang được phát ra PDF, ảnh xem trước và máy in,
-    /// nên ba nơi luôn giống nhau. Chữ Arial nhúng dạng Unicode (có đủ dấu tiếng Việt). Chỉ vẽ những gì XML có; không tự tính lại số liệu.
+    /// Dàn trang bản thể hiện hóa đơn (A4) theo bố cục trang xem hóa đơn của cổng Thuế (khung viền đôi, mã QR, tiêu đề giữa trang, danh sách thông tin người bán/mua,
+    /// bảng hàng hóa, hai bảng tổng hợp, khối chữ ký) bằng PDFsharp 1.50 (MIT, ADR 0009). Một danh sách lệnh vẽ theo trang được phát ra PDF, ảnh xem trước và máy in nên ba
+    /// nơi luôn giống nhau. Chữ Times New Roman nhúng Unicode (đủ dấu tiếng Việt). Chỉ vẽ những gì XML có; không tự tính lại số liệu và không khẳng định chữ ký hợp lệ.
     /// </summary>
     public sealed class PdfSharpInvoiceRenderer : IInvoiceDocumentRenderer
     {
@@ -56,7 +58,8 @@ namespace HoaDonDienTu.Infrastructure.Invoices
             public double Y1;
             public double X2;
             public double Y2;
-            public double Thickness = 0.5;
+            public double Thickness = 0.6;
+            public XColor Color = XColors.Black;
         }
 
         private sealed class RectOp : Op
@@ -68,6 +71,8 @@ namespace HoaDonDienTu.Infrastructure.Invoices
             public XColor Fill;
             public bool Filled;
             public bool Border = true;
+            public XColor BorderColor = XColors.Black;
+            public double BorderThickness = 0.6;
         }
 
         private sealed class Document : IInvoiceDocument
@@ -137,7 +142,7 @@ namespace HoaDonDienTu.Infrastructure.Invoices
 
             private static void Draw(XGraphics graphics, IList<Op> ops, bool forPdf)
             {
-                var options = forPdf ? new XPdfFontOptions(PdfFontEncoding.Unicode, PdfFontEmbedding.Always) : null;
+                var options = forPdf ? new XPdfFontOptions(PdfFontEncoding.Unicode) : null;
                 foreach (var op in ops)
                 {
                     var text = op as TextOp;
@@ -156,13 +161,13 @@ namespace HoaDonDienTu.Infrastructure.Invoices
                     var line = op as LineOp;
                     if (line != null)
                     {
-                        graphics.DrawLine(new XPen(XColors.Black, line.Thickness), line.X1, line.Y1, line.X2, line.Y2);
+                        graphics.DrawLine(new XPen(line.Color, line.Thickness), line.X1, line.Y1, line.X2, line.Y2);
                         continue;
                     }
 
                     var rect = (RectOp)op;
                     if (rect.Filled) graphics.DrawRectangle(new XSolidBrush(rect.Fill), rect.X, rect.Y, rect.Width, rect.Height);
-                    if (rect.Border) graphics.DrawRectangle(new XPen(XColors.Black, 0.5), rect.X, rect.Y, rect.Width, rect.Height);
+                    if (rect.Border) graphics.DrawRectangle(new XPen(rect.BorderColor, rect.BorderThickness), rect.X, rect.Y, rect.Width, rect.Height);
                 }
             }
         }
@@ -171,18 +176,26 @@ namespace HoaDonDienTu.Infrastructure.Invoices
 
         private static class InvoiceLayout
         {
-            public const string FontName = "Arial";
+            public const string FontName = "Times New Roman";
 
             private const double PageWidth = 595.28;
             private const double PageHeight = 841.89;
-            private const double Margin = 36;
+            private const double FrameInset = 22;
+            private const double Margin = 42;
             private const double ContentWidth = PageWidth - 2 * Margin;
             private const double BottomLimit = PageHeight - 46;
+            private const double BodySize = 10;
+            private const double CellSize = 9.5;
             private static readonly CultureInfo Vi = CultureInfo.GetCultureInfo("vi-VN");
+            private static readonly XColor Brown = XColor.FromArgb(166, 114, 50);
+            private static readonly XColor Gray = XColor.FromArgb(90, 90, 90);
 
             // Cột bảng hàng hóa (tổng = ContentWidth).
-            private static readonly double[] ColumnWidths = { 28, 174, 36, 46, 76, 54, 101.28 };
-            private static readonly string[] ColumnTitles = { "STT", "Tên hàng hóa, dịch vụ", "ĐVT", "Số lượng", "Đơn giá", "Thuế suất", "Thành tiền" };
+            private static readonly double[] ColumnWidths = { 24, 50, 50, 110, 32, 34, 58, 40, 36, 0 };
+            private static readonly string[] ColumnTitles =
+            {
+                "STT", "Tính chất", "Loại hàng hoá đặc trưng", "Tên hàng hóa, dịch vụ", "Đơn vị tính", "Số lượng", "Đơn giá", "Chiết khấu", "Thuế suất", "Thành tiền chưa có thuế GTGT"
+            };
 
             public static IList<IList<Op>> Build(InvoicePrintModel m)
             {
@@ -196,10 +209,38 @@ namespace HoaDonDienTu.Infrastructure.Invoices
                 }
             }
 
+            private static string TitleOf(InvoicePrintModel m)
+            {
+                // Tên loại hóa đơn theo ký hiệu mẫu số (TT78): cổng thể hiện tên đầy đủ chứ không phải tên viết tắt trong XML.
+                switch (m.FormSymbol)
+                {
+                    case "1": return "HOÁ ĐƠN GIÁ TRỊ GIA TĂNG";
+                    case "2": return "HOÁ ĐƠN BÁN HÀNG";
+                    case "3": return "HOÁ ĐƠN BÁN TÀI SẢN CÔNG";
+                    case "4": return "HOÁ ĐƠN BÁN HÀNG DỰ TRỮ QUỐC GIA";
+                    case "5": return "TEM, VÉ, THẺ ĐIỆN TỬ LÀ HOÁ ĐƠN";
+                    case "6": return "PHIẾU XUẤT KHO KIÊM VẬN CHUYỂN NỘI BỘ";
+                    default: return string.IsNullOrEmpty(m.Title) ? "HOÁ ĐƠN" : m.Title.ToUpper(Vi);
+                }
+            }
+
+            private static string KindOf(string code)
+            {
+                switch (code)
+                {
+                    case "1": return "Hàng hóa, dịch vụ";
+                    case "2": return "Khuyến mại";
+                    case "3": return "Chiết khấu thương mại";
+                    case "4": return "Ghi chú, diễn giải";
+                    default: return code ?? string.Empty;
+                }
+            }
+
             private sealed class Builder
             {
                 private readonly XGraphics _measure;
                 private readonly InvoicePrintModel _m;
+                private readonly double[] _columns;
                 private IList<Op> _page;
                 private double _y;
 
@@ -207,6 +248,8 @@ namespace HoaDonDienTu.Infrastructure.Invoices
                 {
                     _measure = measure;
                     _m = model;
+                    _columns = (double[])ColumnWidths.Clone();
+                    _columns[_columns.Length - 1] = ContentWidth - _columns.Take(_columns.Length - 1).Sum();
                     Pages = new List<IList<Op>>();
                 }
 
@@ -219,15 +262,21 @@ namespace HoaDonDienTu.Infrastructure.Invoices
                     Parties();
                     LinesTable();
                     Totals();
-                    SignaturesAndNote();
+                    Signatures();
                     NumberPages();
                 }
+
+                // ---- Nền tảng ----
 
                 private void NewPage()
                 {
                     _page = new List<Op>();
                     Pages.Add(_page);
-                    _y = Margin;
+                    _y = Margin - 10;
+
+                    // Khung viền đôi của trang xem hóa đơn.
+                    _page.Add(new RectOp { X = FrameInset, Y = FrameInset, Width = PageWidth - 2 * FrameInset, Height = PageHeight - 2 * FrameInset, BorderColor = Brown, BorderThickness = 1.2 });
+                    _page.Add(new RectOp { X = FrameInset + 4, Y = FrameInset + 4, Width = PageWidth - 2 * FrameInset - 8, Height = PageHeight - 2 * FrameInset - 8, BorderColor = Brown, BorderThickness = 0.5 });
                 }
 
                 private double Width(string text, double size, XFontStyle style)
@@ -273,94 +322,170 @@ namespace HoaDonDienTu.Infrastructure.Invoices
                     return lines;
                 }
 
-                private double Text(double x, double y, double width, string text, double size, XFontStyle style, Align align)
+                private static double LineStep(double size)
+                {
+                    return size * 1.22;
+                }
+
+                private double TextHeight(string text, double width, double size, XFontStyle style)
+                {
+                    return Math.Max(1, Wrap(text, width, size, style).Count) * LineStep(size);
+                }
+
+                private double Text(double x, double y, double width, string text, double size, XFontStyle style, Align align, XColor? color = null)
                 {
                     var lines = Wrap(text, width, size, style);
-                    var step = size * 1.35;
+                    var step = LineStep(size);
                     for (var i = 0; i < lines.Count; i++)
                     {
-                        _page.Add(new TextOp { X = x, Y = y + i * step, Width = width, Text = lines[i], Size = size, Style = style, Align = align });
+                        _page.Add(new TextOp { X = x, Y = y + i * step, Width = width, Text = lines[i], Size = size, Style = style, Align = align, Color = color ?? XColors.Black });
                     }
 
                     return Math.Max(1, lines.Count) * step;
                 }
 
+                private void Rule()
+                {
+                    _page.Add(new LineOp { X1 = Margin, Y1 = _y, X2 = Margin + ContentWidth, Y2 = _y, Color = Brown, Thickness = 0.8 });
+                    _y += 6;
+                }
+
+                // ---- Phần đầu ----
+
                 private void Header()
                 {
-                    var title = string.IsNullOrEmpty(_m.Title) ? "HÓA ĐƠN" : _m.Title.ToUpper(Vi);
-                    _y += Text(Margin, _y, ContentWidth, title, 15, XFontStyle.Bold, Align.Center);
-                    _y += Text(Margin, _y, ContentWidth, "(Bản thể hiện của hóa đơn điện tử)", 8.5, XFontStyle.Italic, Align.Center);
+                    const double qrSize = 60;
+                    var top = _y;
+                    if (!string.IsNullOrEmpty(_m.QrPayload)) DrawQr(Margin, top, qrSize);
+
+                    var right = Margin + ContentWidth - 150;
+                    var line = top + 4;
+                    foreach (var text in new[] { "Mẫu số " + (_m.FormSymbol ?? string.Empty), "Ký hiệu: " + (_m.InvoiceSymbol ?? string.Empty), "Số: " + (_m.InvoiceNumber ?? string.Empty) })
+                    {
+                        Text(right, line, 150, text, BodySize, XFontStyle.Bold, Align.Left);
+                        line += LineStep(BodySize) + 1;
+                    }
+
+                    _y = top + qrSize + 6;
+                    _y += Text(Margin, _y, ContentWidth, TitleOf(_m), 19, XFontStyle.Bold, Align.Center) + 4;
                     if (_m.IssueDate.HasValue)
                     {
                         var d = _m.IssueDate.Value;
-                        _y += Text(Margin, _y + 2, ContentWidth, "Ngày " + d.Day.ToString("00") + " tháng " + d.Month.ToString("00") + " năm " + d.Year, 9.5, XFontStyle.Italic, Align.Center);
+                        _y += Text(Margin, _y, ContentWidth, "Ngày " + d.Day.ToString("00") + " tháng " + d.Month.ToString("00") + " năm " + d.Year, 11, XFontStyle.Regular, Align.Center) + 4;
                     }
 
+                    if (!string.IsNullOrEmpty(_m.AuthorityCode)) _y += Text(Margin, _y, ContentWidth, "MCCQT: " + _m.AuthorityCode, 11, XFontStyle.Regular, Align.Center);
                     _y += 6;
-                    var symbol = (_m.FormSymbol ?? string.Empty) + (_m.InvoiceSymbol ?? string.Empty);
-                    var left = Margin;
-                    Text(left, _y, ContentWidth, "Mẫu số / Ký hiệu: " + symbol, 10, XFontStyle.Regular, Align.Right);
-                    _y += 14;
-                    Text(left, _y, ContentWidth, "Số: " + (_m.InvoiceNumber ?? string.Empty), 11, XFontStyle.Bold, Align.Right);
-                    _y += 20;
                     Rule();
                 }
 
-                private void Rule()
+                private void DrawQr(double x, double y, double size)
                 {
-                    _page.Add(new LineOp { X1 = Margin, Y1 = _y, X2 = Margin + ContentWidth, Y2 = _y });
-                    _y += 6;
+                    try
+                    {
+                        using (var generator = new QRCodeGenerator())
+                        using (var data = generator.CreateQrCode(_m.QrPayload, QRCodeGenerator.ECCLevel.M))
+                        {
+                            var matrix = data.ModuleMatrix;
+                            var count = matrix.Count;
+                            var cell = size / count;
+                            for (var row = 0; row < count; row++)
+                            {
+                                var column = 0;
+                                while (column < count)
+                                {
+                                    if (!matrix[row][column])
+                                    {
+                                        column++;
+                                        continue;
+                                    }
+
+                                    var start = column;
+                                    while (column < count && matrix[row][column]) column++;
+                                    _page.Add(new RectOp { X = x + start * cell, Y = y + row * cell, Width = (column - start) * cell + 0.15, Height = cell + 0.15, Filled = true, Fill = XColors.Black, Border = false });
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception)
+                    {
+                        // Nội dung QR quá dài hoặc không mã hóa được: bỏ ô QR thay vì làm hỏng cả bản in.
+                    }
                 }
 
-                private void LabelRow(string label, string value, bool bold = false)
+                // ---- Người bán / người mua ----
+
+                private void Row(string label, string value)
                 {
-                    if (string.IsNullOrEmpty(value)) return;
-                    const double labelWidth = 118;
-                    var height = Math.Max(
-                        Text(Margin, _y, labelWidth, label, 9.5, XFontStyle.Regular, Align.Left),
-                        Text(Margin + labelWidth, _y, ContentWidth - labelWidth, value, 9.5, bold ? XFontStyle.Bold : XFontStyle.Regular, Align.Left));
-                    _y += height + 1;
+                    var text = label + " " + (value ?? string.Empty);
+                    if (_y + TextHeight(text, ContentWidth, BodySize, XFontStyle.Regular) > BottomLimit) NewPage();
+                    _y += Text(Margin, _y, ContentWidth, text.TrimEnd(), BodySize, XFontStyle.Regular, Align.Left) + 1;
+                }
+
+                private static string Account(InvoicePrintParty p)
+                {
+                    if (string.IsNullOrEmpty(p.BankAccount)) return string.Empty;
+                    return string.IsNullOrEmpty(p.BankName) ? p.BankAccount : p.BankAccount + " - " + p.BankName;
                 }
 
                 private void Parties()
                 {
-                    LabelRow("Đơn vị bán hàng:", _m.Seller.Name, true);
-                    LabelRow("Mã số thuế:", _m.Seller.TaxCode);
-                    LabelRow("Địa chỉ:", _m.Seller.Address);
-                    LabelRow("Điện thoại:", _m.Seller.Phone);
-                    LabelRow("Email:", _m.Seller.Email);
-                    LabelRow("Số tài khoản:", Join(_m.Seller.BankAccount, _m.Seller.BankName));
-                    _y += 3;
+                    var s = _m.Seller;
+                    Row("Tên người bán:", s.Name);
+                    Row("Mã số thuế:", s.TaxCode);
+                    Row("Mã cửa hàng:", s.StoreCode);
+                    Row("Tên cửa hàng:", s.StoreName);
+                    Row("Địa chỉ:", s.Address);
+                    Row("Điện thoại:", s.Phone);
+                    Row("Số tài khoản:", Account(s));
+                    _y += 2;
                     Rule();
-                    LabelRow("Họ tên người mua hàng:", _m.Buyer.ContactName);
-                    LabelRow("Tên đơn vị:", _m.Buyer.Name, true);
-                    LabelRow("Mã số thuế:", _m.Buyer.TaxCode);
-                    LabelRow("CCCD:", _m.Buyer.IdNumber);
-                    LabelRow("Địa chỉ:", _m.Buyer.Address);
-                    LabelRow("Hình thức thanh toán:", _m.PaymentMethod);
-                    if (!string.IsNullOrEmpty(_m.Currency) && _m.Currency != "VND")
-                    {
-                        LabelRow("Đồng tiền / tỷ giá:", _m.Currency + (_m.ExchangeRate.HasValue ? " / " + Number(_m.ExchangeRate) : string.Empty));
-                    }
 
-                    _y += 4;
+                    var b = _m.Buyer;
+                    Row("Tên người mua:", b.Name);
+                    Row("Họ tên người mua hàng:", b.ContactName);
+                    Row("Mã số thuế:", b.TaxCode);
+                    Row("Mã ĐVCQHVNSNN:", b.BudgetUnitCode);
+                    Row("CCCD người mua:", b.IdNumber);
+                    Row("Số hộ chiếu:", b.PassportNumber);
+                    Row("Địa chỉ:", b.Address);
+                    Row("Điện thoại:", b.Phone);
+                    Row("Số tài khoản:", Account(b));
+                    Row("Hình thức thanh toán:", _m.PaymentMethod);
+                    Row("Đơn vị tiền tệ:" , _m.Currency + (!string.IsNullOrEmpty(_m.Currency) && _m.Currency != "VND" && _m.ExchangeRate.HasValue ? " (tỷ giá " + Number(_m.ExchangeRate) + ")" : string.Empty));
+                    if (_y + LineStep(BodySize) > BottomLimit) NewPage();
+                    Text(Margin, _y, 250, "Số bảng kê: " + (_m.ListNumber ?? string.Empty), BodySize, XFontStyle.Regular, Align.Left);
+                    _y += Text(Margin + 250, _y, ContentWidth - 250, "Ngày bảng kê: " + (_m.ListDate ?? string.Empty), BodySize, XFontStyle.Regular, Align.Left) + 6;
                 }
 
-                private static string Join(string a, string b)
+                // ---- Bảng ----
+
+                private double Cell(double x, double y, double width, double height, string text, XFontStyle style, Align align, bool border = true)
                 {
-                    if (string.IsNullOrEmpty(a)) return b;
-                    return string.IsNullOrEmpty(b) ? a : a + " - " + b;
+                    if (border) _page.Add(new RectOp { X = x, Y = y, Width = width, Height = height });
+                    if (!string.IsNullOrEmpty(text)) Text(x + 3, y + 3, width - 6, text, CellSize, style, align);
+                    return height;
+                }
+
+                private double RowHeight(IList<double> widths, IList<string> cells, XFontStyle style)
+                {
+                    var tallest = 1.0;
+                    for (var i = 0; i < widths.Count; i++)
+                    {
+                        if (!string.IsNullOrEmpty(cells[i])) tallest = Math.Max(tallest, TextHeight(cells[i], widths[i] - 6, CellSize, style));
+                    }
+
+                    return tallest + 6;
                 }
 
                 private void TableHeader()
                 {
-                    const double height = 20;
+                    var height = RowHeight(_columns, ColumnTitles, XFontStyle.Bold);
                     var x = Margin;
-                    for (var i = 0; i < ColumnWidths.Length; i++)
+                    for (var i = 0; i < _columns.Length; i++)
                     {
-                        _page.Add(new RectOp { X = x, Y = _y, Width = ColumnWidths[i], Height = height, Filled = true, Fill = XColor.FromArgb(235, 235, 235) });
-                        Text(x + 2, _y + 5, ColumnWidths[i] - 4, ColumnTitles[i], 8.5, XFontStyle.Bold, Align.Center);
-                        x += ColumnWidths[i];
+                        Cell(x, _y, _columns[i], height, ColumnTitles[i], XFontStyle.Bold, Align.Center);
+                        x += _columns[i];
                     }
 
                     _y += height;
@@ -368,113 +493,157 @@ namespace HoaDonDienTu.Infrastructure.Invoices
 
                 private void LinesTable()
                 {
+                    var tableTop = _y;
                     TableHeader();
                     foreach (var line in _m.Lines)
                     {
                         var isNote = line.Kind == "4";
-                        var name = line.Name ?? string.Empty;
-                        var nameLines = Wrap(name, ColumnWidths[1] - 6, 9, XFontStyle.Regular).Count;
-                        var rowHeight = Math.Max(1, nameLines) * 9 * 1.35 + 8;
-                        if (_y + rowHeight > BottomLimit - 30)
+                        var cells = new[]
+                        {
+                            line.Number, KindOf(line.Kind), null, line.Name, isNote ? null : line.Unit, isNote ? null : Number(line.Quantity),
+                            isNote ? null : Number(line.UnitPrice), isNote ? null : Number(line.DiscountAmount), isNote ? null : line.TaxRate, isNote ? null : Number(line.Amount)
+                        };
+                        var height = RowHeight(_columns, cells, XFontStyle.Regular);
+                        if (_y + height > BottomLimit - 20)
                         {
                             NewPage();
                             TableHeader();
                         }
 
-                        var cells = isNote
-                            ? new[] { line.Number, name, null, null, null, null, null }
-                            : new[] { line.Number, name, line.Unit, Number(line.Quantity), Number(line.UnitPrice), line.TaxRate, Number(line.Amount) };
                         var x = Margin;
-                        for (var i = 0; i < ColumnWidths.Length; i++)
+                        for (var i = 0; i < _columns.Length; i++)
                         {
-                            _page.Add(new RectOp { X = x, Y = _y, Width = ColumnWidths[i], Height = rowHeight });
-                            if (!string.IsNullOrEmpty(cells[i]))
-                            {
-                                var align = i == 1 || i == 2 ? Align.Left : i == 0 || i == 5 ? Align.Center : Align.Right;
-                                Text(x + 3, _y + 4, ColumnWidths[i] - 6, cells[i], 9, i == 1 && isNote ? XFontStyle.Italic : XFontStyle.Regular, align);
-                            }
-
-                            x += ColumnWidths[i];
+                            var align = i == 1 || i == 2 || i == 3 || i == 4 ? Align.Left : Align.Center;
+                            Cell(x, _y, _columns[i], height, cells[i], XFontStyle.Regular, align);
+                            x += _columns[i];
                         }
 
-                        _y += rowHeight;
+                        _y += height;
                     }
 
                     if (_m.Lines.Count == 0)
                     {
-                        _page.Add(new RectOp { X = Margin, Y = _y, Width = ContentWidth, Height = 24 });
-                        Text(Margin, _y + 6, ContentWidth, "(XML không có dòng hàng hóa, dịch vụ)", 9, XFontStyle.Italic, Align.Center);
+                        Cell(Margin, _y, ContentWidth, 24, "(XML không có dòng hàng hóa, dịch vụ)", XFontStyle.Italic, Align.Center);
                         _y += 24;
                     }
 
                     _y += 8;
                 }
 
-                private void TotalRow(string label, string value, bool bold)
-                {
-                    if (string.IsNullOrEmpty(value)) return;
-                    if (_y + 16 > BottomLimit) NewPage();
-                    var style = bold ? XFontStyle.Bold : XFontStyle.Regular;
-                    Text(Margin, _y, ContentWidth - 110, label, 9.5, style, Align.Right);
-                    Text(Margin + ContentWidth - 105, _y, 105, value, 9.5, style, Align.Right);
-                    _y += 14;
-                }
-
                 private void Totals()
                 {
-                    var currency = string.IsNullOrEmpty(_m.Currency) ? string.Empty : " " + _m.Currency;
-                    TotalRow("Cộng tiền hàng (chưa thuế):", Money(_m.TotalBeforeTax), false);
-                    foreach (var tax in _m.TaxLines)
+                    // Bảng thuế suất bên trái, bảng tổng hợp bên phải (như trang xem của cổng).
+                    var leftWidths = new[] { 52.0, 78.0, 70.0 };
+                    var rightLabelWidth = 190.0;
+                    var rightWidth = ContentWidth - 200 - 10;
+                    var valueWidth = rightWidth - rightLabelWidth;
+
+                    var rightRows = new List<string[]>
                     {
-                        TotalRow("Thuế GTGT (" + (tax.Rate ?? "?") + ")" + (tax.TaxableAmount.HasValue ? " trên " + Number(tax.TaxableAmount) : string.Empty) + ":", Money(tax.TaxAmount), false);
+                        new[] { "Tổng tiền chưa thuế\n(Tổng cộng thành tiền chưa có thuế)", Money(_m.TotalBeforeTax) },
+                        new[] { "Tổng tiền thuế (Tổng cộng tiền thuế)", Money(_m.TotalTax) },
+                        new[] { "Tổng tiền phí", Money(_m.TotalFee) },
+                        new[] { "Tổng tiền chiết khấu thương mại", Money(_m.TotalDiscount) },
+                        new[] { "Tổng tiền thanh toán bằng số", Money(_m.TotalPayment) },
+                        new[] { "Tổng tiền thanh toán bằng chữ", _m.TotalInWords }
+                    };
+                    var rightHeights = rightRows.Select(r => RowHeight(new[] { rightLabelWidth, valueWidth }, r, XFontStyle.Regular)).ToList();
+                    var taxRows = _m.TaxLines.Select(t => new[] { t.Rate, Number(t.TaxableAmount), Number(t.TaxAmount) }).ToList();
+                    var leftHeader = new[] { "Thuế suất", "Tổng tiền chưa thuế", "Tổng tiền thuế" };
+                    var leftHeaderHeight = RowHeight(leftWidths, leftHeader, XFontStyle.Bold);
+                    var leftHeights = taxRows.Select(r => RowHeight(leftWidths, r, XFontStyle.Regular)).ToList();
+
+                    var need = Math.Max(rightHeights.Sum(), leftHeaderHeight + leftHeights.Sum());
+                    if (_y + need > BottomLimit) NewPage();
+
+                    var top = _y;
+                    var x = Margin;
+                    for (var i = 0; i < leftWidths.Length; i++)
+                    {
+                        Cell(x, top, leftWidths[i], leftHeaderHeight, leftHeader[i], XFontStyle.Bold, Align.Center);
+                        x += leftWidths[i];
                     }
 
-                    TotalRow("Tổng tiền thuế:", Money(_m.TotalTax), false);
-                    TotalRow("Tổng tiền chiết khấu thương mại:", Money(_m.TotalDiscount), false);
-                    TotalRow("Tổng tiền thanh toán" + currency + ":", Money(_m.TotalPayment), true);
-                    if (!string.IsNullOrEmpty(_m.TotalInWords))
+                    var y = top + leftHeaderHeight;
+                    for (var r = 0; r < taxRows.Count; r++)
                     {
-                        if (_y + 30 > BottomLimit) NewPage();
-                        _y += Text(Margin, _y + 2, ContentWidth, "Số tiền viết bằng chữ: " + _m.TotalInWords, 9.5, XFontStyle.Italic, Align.Left) + 4;
+                        x = Margin;
+                        for (var i = 0; i < leftWidths.Length; i++)
+                        {
+                            Cell(x, y, leftWidths[i], leftHeights[r], taxRows[r][i], XFontStyle.Regular, Align.Center);
+                            x += leftWidths[i];
+                        }
+
+                        y += leftHeights[r];
                     }
 
-                    _y += 6;
+                    var rightX = Margin + 200 + 10;
+                    y = top;
+                    for (var r = 0; r < rightRows.Count; r++)
+                    {
+                        Cell(rightX, y, rightLabelWidth, rightHeights[r], rightRows[r][0], XFontStyle.Regular, Align.Center);
+                        Cell(rightX + rightLabelWidth, y, valueWidth, rightHeights[r], rightRows[r][1], XFontStyle.Regular, Align.Center);
+                        y += rightHeights[r];
+                    }
+
+                    _y = top + need + 6;
                 }
 
-                private void SignaturesAndNote()
+                // ---- Chữ ký ----
+
+                private void Signatures()
                 {
-                    if (_y + 70 > BottomLimit) NewPage();
-                    if (_m.SellerSignedAt.HasValue)
+                    if (_y + 118 > BottomLimit) NewPage();
+                    Rule();
+                    var half = ContentWidth / 2;
+                    var top = _y;
+                    Text(Margin, top, half, "NGƯỜI MUA HÀNG", 13, XFontStyle.Regular, Align.Center);
+                    Text(Margin, top + 17, half, "(Chữ ký số (nếu có))", 10, XFontStyle.Italic, Align.Center);
+                    Text(Margin + half, top, half, "NGƯỜI BÁN HÀNG", 13, XFontStyle.Regular, Align.Center);
+                    Text(Margin + half, top + 17, half, "(Chữ ký điện tử, chữ ký số)", 10, XFontStyle.Italic, Align.Center);
+
+                    var boxTop = top + 36;
+                    double boxHeight = 0;
+                    if (!string.IsNullOrEmpty(_m.SellerSignedAtText) || _m.SellerSignedAt.HasValue)
                     {
-                        _y += Text(Margin, _y, ContentWidth, "Người bán đã ký số ngày " + _m.SellerSignedAt.Value.ToString("dd/MM/yyyy HH:mm:ss", CultureInfo.InvariantCulture), 9, XFontStyle.Regular, Align.Left);
+                        // Không in "Signature Valid": ứng dụng không kiểm chữ ký số, chỉ cho biết XML có chữ ký.
+                        var signed = _m.SellerSignedAtText ?? _m.SellerSignedAt.Value.ToString("yyyy-MM-dd'T'HH:mm:ss", CultureInfo.InvariantCulture);
+                        var lines = new[]
+                        {
+                            "XML có chữ ký số của người bán",
+                            "Ký bởi " + (_m.SellerSignerName ?? _m.Seller.Name ?? string.Empty),
+                            "Ký ngày: " + signed
+                        };
+                        var boxWidth = half - 40;
+                        var boxX = Margin + half + 20;
+                        var used = 0.0;
+                        var heights = lines.Select(l => TextHeight(l, boxWidth - 12, 10, XFontStyle.Regular)).ToList();
+                        boxHeight = heights.Sum() + 12;
+                        _page.Add(new RectOp { X = boxX, Y = boxTop, Width = boxWidth, Height = boxHeight, BorderColor = Gray, BorderThickness = 0.8 });
+                        for (var i = 0; i < lines.Length; i++)
+                        {
+                            Text(boxX + 6, boxTop + 6 + used, boxWidth - 12, lines[i], 10, XFontStyle.Regular, Align.Left);
+                            used += heights[i];
+                        }
                     }
 
-                    if (!string.IsNullOrEmpty(_m.AuthorityCode))
-                    {
-                        _y += Text(Margin, _y, ContentWidth, "Mã của cơ quan thuế: " + _m.AuthorityCode, 9, XFontStyle.Bold, Align.Left);
-                    }
-
-                    if (_m.AuthoritySignedAt.HasValue)
-                    {
-                        _y += Text(Margin, _y, ContentWidth, "Cơ quan thuế ký ngày " + _m.AuthoritySignedAt.Value.ToString("dd/MM/yyyy HH:mm:ss", CultureInfo.InvariantCulture), 9, XFontStyle.Regular, Align.Left);
-                    }
-
-                    _y += 6;
+                    _y = boxTop + Math.Max(boxHeight, 36) + 10;
+                    _y += Text(Margin, _y, ContentWidth, "(Cần kiểm tra, đối chiếu khi lập, nhận hóa đơn)", 10, XFontStyle.Italic, Align.Center) + 4;
                     Text(
                         Margin, _y, ContentWidth,
-                        "Bản thể hiện này do ứng dụng dựng từ file XML đã lưu để xem và in; file XML mới là chứng từ gốc. Chữ ký số chỉ kiểm được trên file XML.",
-                        8, XFontStyle.Italic, Align.Left);
+                        "Bản thể hiện này do ứng dụng dựng từ file XML đã lưu để xem và in; file XML mới là chứng từ gốc. Ứng dụng chưa kiểm tra chữ ký số.",
+                        8, XFontStyle.Italic, Align.Center, Gray);
                 }
 
                 private void NumberPages()
                 {
                     for (var i = 0; i < Pages.Count; i++)
                     {
-                        Pages[i].Add(new TextOp { X = Margin, Y = PageHeight - 30, Width = ContentWidth, Text = "Trang " + (i + 1) + "/" + Pages.Count, Size = 8, Style = XFontStyle.Regular, Align = Align.Center });
+                        Pages[i].Add(new TextOp { X = Margin, Y = PageHeight - 40, Width = ContentWidth, Text = "Trang " + (i + 1) + "/" + Pages.Count, Size = 8, Style = XFontStyle.Regular, Align = Align.Center, Color = Gray });
                     }
                 }
 
-                private string Money(decimal? value)
+                private static string Money(decimal? value)
                 {
                     return value.HasValue ? Number(value) : null;
                 }

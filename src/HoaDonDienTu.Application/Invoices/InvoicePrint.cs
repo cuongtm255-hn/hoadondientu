@@ -49,6 +49,18 @@ namespace HoaDonDienTu.Application.Invoices
 
         /// <summary>CCCD của người mua không có MST.</summary>
         public string IdNumber { get; set; }
+
+        /// <summary>Mã cửa hàng (người bán).</summary>
+        public string StoreCode { get; set; }
+
+        /// <summary>Tên cửa hàng (người bán).</summary>
+        public string StoreName { get; set; }
+
+        /// <summary>Số hộ chiếu (người mua).</summary>
+        public string PassportNumber { get; set; }
+
+        /// <summary>Mã đơn vị có quan hệ với ngân sách nhà nước (người mua).</summary>
+        public string BudgetUnitCode { get; set; }
     }
 
     /// <summary>
@@ -78,6 +90,14 @@ namespace HoaDonDienTu.Application.Invoices
         public decimal? ExchangeRate { get; set; }
         public string PaymentMethod { get; set; }
 
+        /// <summary>Số và ngày bảng kê kèm hóa đơn (nguyên văn).</summary>
+        public string ListNumber { get; set; }
+
+        public string ListDate { get; set; }
+
+        /// <summary>Nội dung mã QR của hóa đơn (<c>DLQRCode</c>); null khi XML không có.</summary>
+        public string QrPayload { get; set; }
+
         public InvoicePrintParty Seller { get; private set; }
         public InvoicePrintParty Buyer { get; private set; }
         public IList<InvoicePrintLine> Lines { get; private set; }
@@ -86,6 +106,10 @@ namespace HoaDonDienTu.Application.Invoices
         public decimal? TotalBeforeTax { get; set; }
         public decimal? TotalTax { get; set; }
         public decimal? TotalDiscount { get; set; }
+
+        /// <summary>Tổng tiền phí (từ <c>TgTPhi</c>, hoặc cộng các khoản phí của <c>DSLPhi</c>).</summary>
+        public decimal? TotalFee { get; set; }
+
         public decimal? TotalPayment { get; set; }
         public string TotalInWords { get; set; }
 
@@ -94,6 +118,12 @@ namespace HoaDonDienTu.Application.Invoices
 
         public DateTime? SellerSignedAt { get; set; }
         public DateTime? AuthoritySignedAt { get; set; }
+
+        /// <summary>Thời điểm người bán ký đúng như trong XML (ví dụ <c>2026-04-08T20:56:58</c>).</summary>
+        public string SellerSignedAtText { get; set; }
+
+        /// <summary>Tên người ký lấy từ chứng thư số của người bán (CN của <c>X509SubjectName</c>); null khi không có.</summary>
+        public string SellerSignerName { get; set; }
     }
 
     /// <summary>XML không đọc được hoặc không phải hóa đơn điện tử theo lược đồ đã biết.</summary>
@@ -151,7 +181,10 @@ namespace HoaDonDienTu.Application.Invoices
                 Currency = Text(general, "DVTTe"),
                 ExchangeRate = Number(Text(general, "TGia")),
                 PaymentMethod = Text(general, "HTTToan"),
-                AuthorityCode = Text(root, "MCCQT")
+                ListNumber = Text(general, "SBKe"),
+                ListDate = Text(general, "NBKe"),
+                AuthorityCode = Text(root, "MCCQT"),
+                QrPayload = Text(root, "DLQRCode") ?? Text(data, "DLQRCode")
             };
 
             ReadParty(Child(content, "NBan"), model.Seller);
@@ -183,11 +216,15 @@ namespace HoaDonDienTu.Application.Invoices
             model.TotalBeforeTax = Number(Text(total, "TgTCThue"));
             model.TotalTax = Number(Text(total, "TgTThue"));
             model.TotalDiscount = Number(Text(total, "TTCKTMai"));
+            model.TotalFee = Number(Text(total, "TgTPhi")) ?? SumFees(total);
             model.TotalPayment = Number(Text(total, "TgTTTBSo"));
             model.TotalInWords = Text(total, "TgTTTBChu");
 
             var signatures = Child(root, "DSCKS");
-            model.SellerSignedAt = SigningTime(Child(signatures, "NBan"));
+            var sellerSignature = Child(signatures, "NBan");
+            model.SellerSignedAt = SigningTime(sellerSignature);
+            model.SellerSignedAtText = SigningTimeText(sellerSignature);
+            model.SellerSignerName = CommonName(sellerSignature);
             model.AuthoritySignedAt = SigningTime(Child(signatures, "CQT"));
             return model;
         }
@@ -204,6 +241,37 @@ namespace HoaDonDienTu.Application.Invoices
             party.BankName = Text(element, "TNHang");
             party.ContactName = Text(element, "HVTNMHang");
             party.IdNumber = Text(element, "CCCDan");
+            party.StoreCode = Text(element, "MCHang");
+            party.StoreName = Text(element, "TCHang");
+            party.PassportNumber = Text(element, "SHChieu");
+            party.BudgetUnitCode = Text(element, "MDVQHNSach");
+        }
+
+        private static decimal? SumFees(XElement total)
+        {
+            var fees = Children(Child(total, "DSLPhi"), "LPhi").Select(f => Number(Text(f, "TPhi"))).Where(v => v.HasValue).ToList();
+            return fees.Count == 0 ? (decimal?)null : fees.Sum(v => v.Value);
+        }
+
+        private static string SigningTimeText(XElement signer)
+        {
+            var property = signer == null ? null : signer.Descendants().FirstOrDefault(e => e.Name.LocalName == "SigningTime");
+            var text = property == null ? null : property.Value.Trim();
+            return string.IsNullOrEmpty(text) ? null : text;
+        }
+
+        /// <summary>CN trong <c>X509SubjectName</c> của chữ ký (ví dụ <c>CN=CÔNG TY A, O=...</c>); null khi không có hoặc không có CN.</summary>
+        private static string CommonName(XElement signer)
+        {
+            var subject = signer == null ? null : signer.Descendants().FirstOrDefault(e => e.Name.LocalName == "X509SubjectName");
+            if (subject == null) return null;
+            foreach (var part in subject.Value.Split(','))
+            {
+                var trimmed = part.Trim();
+                if (trimmed.StartsWith("CN=", StringComparison.OrdinalIgnoreCase) && trimmed.Length > 3) return trimmed.Substring(3).Trim();
+            }
+
+            return null;
         }
 
         private static DateTime? SigningTime(XElement signer)

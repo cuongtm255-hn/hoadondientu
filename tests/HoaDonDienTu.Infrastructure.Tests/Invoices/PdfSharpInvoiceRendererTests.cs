@@ -34,7 +34,10 @@ namespace HoaDonDienTu.Infrastructure.Tests.Invoices
                 TotalInWords = "Hai triệu một trăm bảy mươi lăm nghìn đồng",
                 AuthorityCode = "00ABCDEF0123456789ABCDEF0123456789",
                 SellerSignedAt = new DateTime(2026, 10, 31, 15, 4, 36),
-                AuthoritySignedAt = new DateTime(2026, 10, 31, 15, 4, 40)
+                SellerSignedAtText = "2026-10-31T15:04:36",
+                SellerSignerName = "CÔNG TY TNHH GIẢ BÁN HÀNG",
+                AuthoritySignedAt = new DateTime(2026, 10, 31, 15, 4, 40),
+                QrPayload = "000201999500323A23B70457BDD05DD4FED45AF33B99A501100108460041020110130 (MÃ QR GIẢ)"
             };
             m.Seller.Name = "CÔNG TY TNHH GIẢ BÁN HÀNG";
             m.Seller.TaxCode = "0100000001";
@@ -45,6 +48,9 @@ namespace HoaDonDienTu.Infrastructure.Tests.Invoices
             m.Buyer.Name = "CÔNG TY CỔ PHẦN GIẢ MUA HÀNG";
             m.Buyer.TaxCode = "0100000002";
             m.Buyer.Address = "Số 2, phố Mua, Hà Nội";
+            m.Buyer.ContactName = "Nguyễn Văn Mua";
+            m.TotalFee = null;
+            m.TotalDiscount = null;
             for (var i = 1; i <= lines; i++)
             {
                 m.Lines.Add(new InvoicePrintLine { Number = i.ToString(), Name = name + " #" + i, Unit = "vé", Quantity = 1, UnitPrice = 1000000m, TaxRate = "8%", Amount = 1000000m, Kind = "1" });
@@ -57,7 +63,7 @@ namespace HoaDonDienTu.Infrastructure.Tests.Invoices
         [Test]
         public void SmallInvoice_IsOneA4Page_AndTheSamePdfOpensWithEmbeddedUnicodeFont()
         {
-            var document = _renderer.Build(Model(2));
+            var document = _renderer.Build(Model(2, "Vé máy bay nội địa HAN-SGN"));
 
             var pdf = document.ToPdf();
 
@@ -65,7 +71,7 @@ namespace HoaDonDienTu.Infrastructure.Tests.Invoices
             Assert.That(Encoding.ASCII.GetString(pdf, 0, 5), Is.EqualTo("%PDF-"));
             var text = Encoding.GetEncoding("latin1").GetString(pdf);
             Assert.That(text, Does.Contain("/Type/Page").Or.Contain("/Type /Page"));
-            Assert.That(text, Does.Contain("/FontFile2"), "phông Arial được nhúng để tiếng Việt hiển thị đúng ở mọi máy");
+            Assert.That(text, Does.Contain("/FontFile2"), "phông Times New Roman được nhúng để tiếng Việt hiển thị đúng ở mọi máy");
             Assert.That(pdf.Length, Is.GreaterThan(5000));
         }
 
@@ -115,6 +121,48 @@ namespace HoaDonDienTu.Infrastructure.Tests.Invoices
         }
 
         [Test]
+        public void QrCode_IsDrawnTopLeft_WhenTheXmlHasOne_AndOmittedOtherwise()
+        {
+            var withQr = Model(1);
+            var withoutQr = Model(1);
+            withoutQr.QrPayload = null;
+
+            var a = DarkPixelsInTopLeft(_renderer.Build(withQr).RenderPagePng(0, 96));
+            var b = DarkPixelsInTopLeft(_renderer.Build(withoutQr).RenderPagePng(0, 96));
+
+            Assert.That(a, Is.GreaterThan(b + 200), "ô QR có nhiều điểm đen");
+        }
+
+        private static int DarkPixelsInTopLeft(byte[] png)
+        {
+            using (var bitmap = new Bitmap(new MemoryStream(png)))
+            {
+                var dark = 0;
+                for (var y = 48; y < 140; y++)
+                {
+                    for (var x = 55; x < 140; x++)
+                    {
+                        if (bitmap.GetPixel(x, y).GetBrightness() < 0.3f) dark++;
+                    }
+                }
+
+                return dark;
+            }
+        }
+
+        [Test]
+        public void TypeOfInvoiceTitle_FollowsTheFormSymbol_AndSurvivesAnUnknownOne()
+        {
+            foreach (var symbol in new[] { "1", "2", "5", "9", null })
+            {
+                var model = Model(1);
+                model.FormSymbol = symbol;
+
+                Assert.That(() => _renderer.Build(model).ToPdf(), Throws.Nothing, "ký hiệu mẫu số " + symbol);
+            }
+        }
+
+        [Test]
         public void EmptyModel_StillBuildsAPage_NothingIsInvented()
         {
             var document = _renderer.Build(new InvoicePrintModel());
@@ -155,6 +203,7 @@ namespace HoaDonDienTu.Infrastructure.Tests.Invoices
 
             Directory.CreateDirectory(dir);
             var document = _renderer.Build(Model(45));
+            File.WriteAllBytes(Path.Combine(dir, "hoa-don-nho.png"), _renderer.Build(Model(2, "Vé máy bay nội địa HAN-SGN")).RenderPagePng(0, 110));
             File.WriteAllBytes(Path.Combine(dir, "hoa-don-mau.pdf"), document.ToPdf());
             for (var i = 0; i < document.PageCount; i++) File.WriteAllBytes(Path.Combine(dir, "trang-" + (i + 1) + ".png"), document.RenderPagePng(i, 110));
         }

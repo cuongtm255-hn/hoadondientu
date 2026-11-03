@@ -78,6 +78,40 @@ namespace HoaDonDienTu.Application.Tests
         }
 
         [Test]
+        public void ReadsThePortalViewFields_StoreBudgetUnitPassportListQrFeeAndSignerName()
+        {
+            const string xml =
+                "<HDon><DLHDon><TTChung><SHDon>13</SHDon><SBKe>BK-01</SBKe><NBKe>2026-04-07</NBKe></TTChung><NDHDon>" +
+                "<NBan><Ten>Bên bán giả</Ten><MCHang>CH01</MCHang><TCHang>Cửa hàng giả</TCHang></NBan>" +
+                "<NMua><Ten>Bên mua giả</Ten><MDVQHNSach>1234567</MDVQHNSach><SHChieu>B1234567</SHChieu></NMua>" +
+                "<TToan><DSLPhi><LPhi><TLPhi>Phí A</TLPhi><TPhi>1000</TPhi></LPhi><LPhi><TLPhi>Phí B</TLPhi><TPhi>250.5</TPhi></LPhi></DSLPhi></TToan>" +
+                "</NDHDon></DLHDon><DLQRCode>0002019995003</DLQRCode>" +
+                "<DSCKS><NBan><Signature xmlns=\"http://www.w3.org/2000/09/xmldsig#\"><KeyInfo><X509Data><X509SubjectName>OID.0.9.2342.19200300.100.1.1=MST:0100000001, CN=CÔNG TY KÝ GIẢ, O=Giả</X509SubjectName></X509Data></KeyInfo>" +
+                "<Object><SignatureProperties><SignatureProperty><SigningTime>2026-04-08T20:56:58</SigningTime></SignatureProperty></SignatureProperties></Object></Signature></NBan></DSCKS></HDon>";
+
+            var m = Parse(xml);
+
+            Assert.That(m.ListNumber, Is.EqualTo("BK-01"));
+            Assert.That(m.ListDate, Is.EqualTo("2026-04-07"));
+            Assert.That(m.Seller.StoreCode, Is.EqualTo("CH01"));
+            Assert.That(m.Seller.StoreName, Is.EqualTo("Cửa hàng giả"));
+            Assert.That(m.Buyer.BudgetUnitCode, Is.EqualTo("1234567"));
+            Assert.That(m.Buyer.PassportNumber, Is.EqualTo("B1234567"));
+            Assert.That(m.QrPayload, Is.EqualTo("0002019995003"));
+            Assert.That(m.TotalFee, Is.EqualTo(1250.5m), "cộng các khoản phí khi không có TgTPhi");
+            Assert.That(m.SellerSignerName, Is.EqualTo("CÔNG TY KÝ GIẢ"));
+            Assert.That(m.SellerSignedAtText, Is.EqualTo("2026-04-08T20:56:58"));
+        }
+
+        [Test]
+        public void TotalFee_PrefersTheExplicitTotal()
+        {
+            var m = Parse("<HDon><DLHDon><NDHDon><TToan><TgTPhi>500</TgTPhi><DSLPhi><LPhi><TPhi>1</TPhi></LPhi></DSLPhi></TToan></NDHDon></DLHDon></HDon>");
+
+            Assert.That(m.TotalFee, Is.EqualTo(500m));
+        }
+
+        [Test]
         public void MissingParts_AreLeftEmpty_NotGuessed()
         {
             var m = Parse("<HDon><DLHDon><TTChung><SHDon>5</SHDon></TTChung><NDHDon></NDHDon></DLHDon></HDon>");

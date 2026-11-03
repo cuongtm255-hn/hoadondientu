@@ -29,19 +29,20 @@ của bên thứ ba. Ứng dụng nhắm net452 (ADR 0007), chạy được cả
 
 1. Dựng bản thể hiện từ chính file XML đã lưu: `InvoicePrintModelParser` đọc lược đồ TT78 (`HDon/DLHDon`, so khớp theo tên cục bộ, không DTD, không resolve tài nguyên ngoài) thành
    `InvoicePrintModel`; trường thiếu để trống, không tính lại số liệu.
-2. `PdfSharpInvoiceRenderer` (Infrastructure) dàn trang A4 thành danh sách lệnh vẽ theo trang rồi phát ra **PDF** (Arial nhúng Unicode), **ảnh PNG** (xem trước ~96 dpi, in ~300 dpi) —
+2. `PdfSharpInvoiceRenderer` (Infrastructure) dàn trang A4 thành danh sách lệnh vẽ theo trang rồi phát ra **PDF** (Times New Roman nhúng Unicode), **ảnh PNG** (xem trước ~96 dpi, in ~300 dpi) —
    cùng một bố cục nên ba đầu ra luôn giống nhau. Application chỉ biết `IInvoiceDocumentRenderer`/`IInvoiceDocument`.
+   **Bố cục theo trang xem hóa đơn của cổng** (đối chiếu ảnh chụp và HTML mẫu do người dùng cung cấp, 03/11/2026): khung viền đôi màu nâu, mã QR (từ `DLQRCode` trong XML, vẽ bằng QRCoder 1.6.0, MIT) ở góc trên trái, khối "Mẫu số / Ký hiệu / Số" bên phải, tiêu đề đầy đủ theo ký hiệu mẫu số (1 → HOÁ ĐƠN GIÁ TRỊ GIA TĂNG...), ngày, MCCQT, danh sách thông tin người bán/người mua (giữ cả các dòng không có giá trị như cổng), bảng 10 cột, bảng thuế suất và bảng tổng hợp, khối chữ ký, dòng "Cần kiểm tra, đối chiếu khi lập, nhận hóa đơn".
 3. **Không dựng khi không tin được XML**: file mất, quá lớn (>5 MB), không phải hóa đơn, hoặc **sai SHA-256** → tab PDF nêu lý do, In/Lưu PDF bị khóa (tránh in sai chứng từ, AC-10).
 4. PDF chỉ được ghi ra đĩa khi người dùng bấm **Lưu PDF**; in qua hộp thoại in của Windows (`PrintDocument`). Chưa lưu PDF vào kho và chưa có bảng `FileAsset` cho PDF: dựng lại mỗi lần
    xem (vài chục mili giây); sẽ thêm bộ nhớ đệm khi đo thấy cần.
-5. Trang PDF ghi rõ "bản thể hiện dựng từ XML; XML mới là chứng từ gốc; chữ ký số chỉ kiểm được trên file XML". Ứng dụng **không** kiểm chữ ký số.
+5. Khối chữ ký chỉ nói "XML có chữ ký số của người bán, ký bởi …, ký ngày …" và **không** in "Signature Valid"/dấu tích xanh như cổng, vì ứng dụng **không** kiểm chữ ký số; trang ghi rõ bản thể hiện dựng từ XML và XML mới là chứng từ gốc.
 
 ## Hệ quả
 
 - (+) Chạy offline, không gọi cổng, không JavaScript ngoài; kiểm thử được cả bố cục (ảnh trang) lẫn PDF.
 - (+) Một bố cục cho xem trước, in và PDF.
-- (−) Mẫu không có hình nền/dấu kiểm chữ ký như trình xem của cổng; có thể bổ sung sau nếu cần giống hệt.
-- (−) Phụ thuộc phông Arial của Windows (có sẵn trên mọi bản Windows mục tiêu); phông được nhúng vào PDF nên mở được ở máy khác.
+- (−) Chưa có hình nền hoa văn trống đồng và dấu kiểm chữ ký xanh của cổng (hình nền là tài sản của cổng, dấu kiểm sẽ ngụ ý đã xác minh chữ ký); các phần còn lại giống bố cục của cổng.
+- (−) Phụ thuộc phông Times New Roman của Windows (có sẵn trên mọi bản Windows mục tiêu); phông được nhúng vào PDF nên mở được ở máy khác.
 - (−) Chưa hỗ trợ các biến thể hóa đơn lạ (hóa đơn có nhiều bảng, phụ lục, mẫu đặc thù): hiển thị phần chung và để trống phần không hiểu.
 
 ## Chưa kiểm
