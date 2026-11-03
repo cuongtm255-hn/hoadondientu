@@ -28,7 +28,7 @@ Kiểm trên NuGet (03/11/2026, đọc metadata gói, không cài):
 ## Quyết định
 
 1. Dùng **CefSharp.WinForms 109.1.110** (ghim đúng phiên bản; nâng cấp phải thử lại đăng nhập trên cổng thật) làm WebView đăng nhập.
-2. **Nâng target framework của toàn bộ solution từ net45 lên net452.** net452 là bản nâng tại chỗ của net45 (cùng CLR 4), các thư viện net45 đang dùng
+2. **Nâng target framework của toàn bộ solution từ net45 lên net452** (đã làm ngày 03/11/2026: build sạch, 1178 test qua). net452 là bản nâng tại chỗ của net45 (cùng CLR 4), các thư viện net45 đang dùng
    (Krypton 5.500.2008, System.Data.SQLite.Core 1.0.118, Newtonsoft.Json) vẫn tham chiếu được; Windows 7 SP1 trở lên vẫn chạy được.
 3. Mọi API CefSharp nằm sau một cổng trong Infrastructure/WinForms (`IPortalLoginBrowser` đã có trong thiết kế); Application và Domain không biết CefSharp.
 4. Chỉ phát hành x86 và x64 riêng (CefSharp không dùng AnyCPU tự nhiên); chọn nền tảng theo máy khi đóng gói.

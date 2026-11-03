@@ -64,7 +64,7 @@ Cổng Thuế giới hạn một lần tra cứu trong phạm vi một tháng. �
 ## Công nghệ và ràng buộc
 
 - C#, Windows Forms.
-- .NET Framework 4.5 (`net45`).
+- .NET Framework 4.5.2 (`net452`, nâng từ net45 ngày 03/11/2026 để dùng CefSharp, [ADR 0007](docs/decisions/0007-webview-cefsharp.md)).
 - TLS 1.2 phải được bật rõ ràng.
 - WebView control phải được chọn sau technical spike trên cổng Thuế thật và ghi bằng ADR.
 - Endpoint/payload API phải được xác minh từ network traffic hợp lệ; không giả định cấu trúc chưa kiểm chứng.
@@ -95,11 +95,11 @@ Build và test (PowerShell; `msbuild`/`vstest` của Visual Studio 2022 không c
 ```powershell
 $vs = "C:\Program Files\Microsoft Visual Studio\2022\Community"
 & "$vs\MSBuild\Current\Bin\MSBuild.exe" src\HoaDonDienTu.sln -restore -v:m
-& "$vs\Common7\IDE\CommonExtensions\Microsoft\TestWindow\vstest.console.exe" (Get-ChildItem tests\*\bin\Debug\net45\*.Tests.dll).FullName
+& "$vs\Common7\IDE\CommonExtensions\Microsoft\TestWindow\vstest.console.exe" (Get-ChildItem tests\*\bin\Debug\net452\*.Tests.dll).FullName
 ```
 
 Test UI (`Category=UiSmoke`) mở cửa sổ thật nên cần desktop tương tác; trên máy không có desktop thêm `/TestCaseFilter:"TestCategory!=UiSmoke"` khi chạy `vstest`.
 
 Chạy thử bản Debug: `src\HoaDonDienTu.WinForms\bin\Debug\HoaDonDienTu.exe`. Đặt biến môi trường `HDDT_DEV_MODE` = `Standard` (mặc định), `StandardFirstRun`, `Service`, `ReadOnly` hoặc `Recovery` để thử từng chế độ với dữ liệu giả; `HDDT_DEV_JOB=1` giả lập tác vụ tải đang chạy. Các adapter giả chỉ được biên dịch ở cấu hình Debug.
 
-Máy build cần Visual Studio/MSBuild và .NET Framework 4.5 targeting pack. UI dùng Krypton Toolkit/Ribbon `5.500.2008` (bản cuối có build net45).
+Máy build cần Visual Studio/MSBuild và .NET Framework 4.5.2 targeting pack. UI dùng Krypton Toolkit/Ribbon `5.500.2008` (bản cuối có build net45).

@@ -8,7 +8,7 @@ Phase 1 in progress: solution under `src/` (Domain, Application, Infrastructure,
 
 ## Purpose
 
-Windows Forms desktop app (**.NET Framework 4.5**, C#) that wraps the Vietnamese tax authority e-invoice portal <https://hoadondientu.gdt.gov.vn/>. The portal limits invoice lookup to one month per query; this tool lets users search/export by **month, quarter, year, or a custom date range**, by splitting the range into monthly requests internally.
+Windows Forms desktop app (**.NET Framework 4.5.2**, C#) that wraps the Vietnamese tax authority e-invoice portal <https://hoadondientu.gdt.gov.vn/>. The portal limits invoice lookup to one month per query; this tool lets users search/export by **month, quarter, year, or a custom date range**, by splitting the range into monthly requests internally.
 
 Behaviour must mirror the portal ("Tra cứu" menu), plus the extensions below:
 
@@ -37,10 +37,10 @@ Planned layering (not yet created): UI (WinForms) → services (period splitting
 
 ## Constraints
 
-- Target framework is `net45`: no `async Main`, no modern C# runtime APIs; check package compatibility with .NET 4.5. TLS 1.2 must be enabled explicitly (`ServicePointManager.SecurityProtocol`) for the portal.
-- WebView: decided in [ADR 0007](docs/decisions/0007-webview-cefsharp.md) — CefSharp.WinForms **109.1.110** (last Chromium for Windows 7/8). CefSharp needs **net452**, so the solution is to be retargeted from net45 to net452 when the production login adapter (T01-16) is written; until then everything still builds as net45 and uses the development login adapter.
+- Target framework is `net452` (raised from net45 on 2026-11-03 for CefSharp, [ADR 0007](docs/decisions/0007-webview-cefsharp.md)): no `async Main`, no modern C# runtime APIs; check package compatibility with .NET 4.5.2 (a package with only a `net45` group is fine, one with only `net46x` is not). TLS 1.2 must be enabled explicitly (`ServicePointManager.SecurityProtocol`) for the portal.
+- WebView: decided in [ADR 0007](docs/decisions/0007-webview-cefsharp.md) — CefSharp.WinForms **109.1.110** (last Chromium for Windows 7/8). CefSharp needs **net452**, so the solution already targets net452; the CefSharp package itself is added with the production login adapter (T01-16) and until then login uses the development adapter.
 - Portal API contract (login JWT, RSQL search, detail, export-xml zip) is documented in `docs/api-samples/README.md`, taken from real traffic. Parts marked ⚠ there (purchase search, `state` paging) are still assumptions: verify against live traffic before relying on them. Never commit raw traffic captures (they contain passwords/tokens/cookies): name them `*.raw.*` (git-ignored) and commit only sanitized copies such as `docs/api-samples/sample-api-web.md`.
-- Build requires Visual Studio / MSBuild with the .NET Framework 4.5 targeting pack (`msbuild` is not on PATH in this environment; only the `dotnet` CLI is, which cannot build net45 WinForms projects without reference assemblies).
+- Build requires Visual Studio / MSBuild with the .NET Framework 4.5.2 targeting pack (`msbuild` is not on PATH in this environment; only the `dotnet` CLI is, which cannot build net452 WinForms projects without reference assemblies).
 
 ## Commands
 
@@ -50,8 +50,8 @@ MSBuild/vstest are not on PATH; use the VS 2022 copies (Git Bash paths):
 MSB="/c/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/MSBuild.exe"
 VT="/c/Program Files/Microsoft Visual Studio/2022/Community/Common7/IDE/CommonExtensions/Microsoft/TestWindow/vstest.console.exe"
 "$MSB" src/HoaDonDienTu.sln -restore -nologo -v:m   # build
-"$VT" tests/HoaDonDienTu.Domain.Tests/bin/Debug/net45/HoaDonDienTu.Domain.Tests.dll /TestCaseFilter:"Name~TryParse"   # tests (NUnit 3.13 + adapter 3.17)
-# all: pass every tests/*/bin/Debug/net45/*.Tests.dll (Domain, Application, Infrastructure, WinForms) to vstest
+"$VT" tests/HoaDonDienTu.Domain.Tests/bin/Debug/net452/HoaDonDienTu.Domain.Tests.dll /TestCaseFilter:"Name~TryParse"   # tests (NUnit 3.13 + adapter 3.17)
+# all: pass every tests/*/bin/Debug/net452/*.Tests.dll (Domain, Application, Infrastructure, WinForms) to vstest
 ```
 
 UI: Krypton Toolkit/Ribbon **5.500.2008** (last line with a net45 build; 60+ needs net462). The WinForms project is an old-style csproj (designer-friendly); forms follow `X.cs` + `X.Designer.cs` partial pairs. In `HoaDonDienTu.WinForms`, `Application` resolves to the `HoaDonDienTu.Application` namespace, so write `System.Windows.Forms.Application`.
@@ -60,7 +60,7 @@ UI: Krypton Toolkit/Ribbon **5.500.2008** (last line with a net45 build; 60+ nee
 
 - `src/` — application source (solution + WinForms project go here)
 - `tests/` — unit tests
-- `spikes/` — throwaway technical spikes (not in the solution), e.g. `spikes/SqliteSpike` that backs [ADR 0006](docs/decisions/0006-sqlite-provider.md): the SQLite provider for net45 is `System.Data.SQLite.Core` 1.0.118 (ship both `x86\` and `x64\` interop folders)
+- `spikes/` — throwaway technical spikes (not in the solution), e.g. `spikes/SqliteSpike` that backs [ADR 0006](docs/decisions/0006-sqlite-provider.md): the SQLite provider for net45/net452 is `System.Data.SQLite.Core` 1.0.118 (ship both `x86\` and `x64\` interop folders)
 - `docs/` — project context; see `docs/README.md` for the index (`requirements/` SRS + `FEATURE-LIST.md`, `detail-design/` one `DD-xx` per feature with an implement-progress table, `architecture/`, `decisions/` ADRs, `api-samples/`, `plans/PROJECT-PLAN.md` phase-level progress, `progress/` session handoff notes, `runbooks/`). Read `docs/plans/PROJECT-PLAN.md` then `docs/progress/` first when resuming work; record decisions in `docs/decisions/`. When a task changes state, update the DD's progress table and then the summary in `PROJECT-PLAN.md`.
 - `.claude/agents/`, `.claude/commands/`, `.claude/skills/`, `.claude/hooks/` — Claude Code harness extensions (empty; add project subagents, slash commands, skills, hooks here)
 
