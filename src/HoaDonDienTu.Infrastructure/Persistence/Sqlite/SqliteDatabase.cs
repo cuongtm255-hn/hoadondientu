@@ -92,6 +92,25 @@ namespace HoaDonDienTu.Infrastructure.Persistence.Sqlite
                 cancellationToken);
         }
 
+        /// <summary>Chạy <paramref name="work"/> khi giữ khóa ghi nhưng không mở kết nối, cho việc đổi chính file (khôi phục) mà không có lượt ghi nào xen vào.</summary>
+        public Task ExclusiveAsync(Action work, CancellationToken cancellationToken)
+        {
+            return Task.Run(
+                () =>
+                {
+                    _writeGate.Wait(cancellationToken);
+                    try
+                    {
+                        work();
+                    }
+                    finally
+                    {
+                        _writeGate.Release();
+                    }
+                },
+                cancellationToken);
+        }
+
         public static void Execute(SQLiteConnection connection, string sql)
         {
             using (var command = connection.CreateCommand())

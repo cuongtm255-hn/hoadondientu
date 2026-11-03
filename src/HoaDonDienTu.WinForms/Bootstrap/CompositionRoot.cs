@@ -303,7 +303,7 @@ namespace HoaDonDienTu.WinForms.Bootstrap
 
             var settingsServices = new SettingsServices(
                 new StorageStatisticsService(contextManager),
-                new BackupService(contextManager, jobs, entitlement, AppVersion),
+                new BackupService(contextManager, jobs, entitlement, AppVersion, null, new SqliteCompanyDatabaseBackup(databases, contextManager)),
                 connectivity, folderLauncher, new ExportSavePicker(), new OpenFilePicker(), Confirmation);
 
             var splitter = new PeriodSplitter();

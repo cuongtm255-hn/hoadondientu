@@ -245,7 +245,7 @@ namespace HoaDonDienTu.WinForms.Settings
 
         private static string BackupNote()
         {
-            return "Gói sao lưu gồm các file XML/PDF của doanh nghiệp này kèm manifest kiểm tra SHA-256. Khôi phục chỉ nhận gói đúng MST, không xóa file ngoài gói, và tự lưu một điểm sao lưu an toàn trước khi ghi.";
+            return "Gói sao lưu gồm bản chụp cơ sở dữ liệu (chỉ mục Kho hóa đơn, lịch sử tải), các file XML/PDF của doanh nghiệp này và manifest kiểm tra SHA-256. Khôi phục chỉ nhận gói đúng MST, không xóa file ngoài gói, và tự lưu một điểm sao lưu an toàn trước khi ghi.";
         }
 
         private void LoadStatistics()
@@ -401,7 +401,9 @@ namespace HoaDonDienTu.WinForms.Settings
                     Keep(
                         "Đã khôi phục: thêm " + result.Created.ToString("N0", Vi) + ", thay " + result.Overwritten.ToString("N0", Vi) + ", giữ nguyên " + result.Unchanged.ToString("N0", Vi) + " file."
                             + (result.SafetyBackupPath != null ? " Điểm sao lưu an toàn: " + result.SafetyBackupPath : string.Empty)
-                            + " Lưu ý: chỉ mục Kho hóa đơn lưu trong bộ nhớ nên chưa tự dựng lại từ các file này (ADR 0004).",
+                            + (result.DatabaseRestored
+                                ? " Đã khôi phục cả cơ sở dữ liệu: Kho hóa đơn và lịch sử tải khớp với bản sao lưu."
+                                : " Lưu ý: gói này không có cơ sở dữ liệu (định dạng cũ) nên chỉ mục Kho hóa đơn không đổi theo các file vừa khôi phục."),
                         false);
                     LoadStatistics();
                 }

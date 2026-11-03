@@ -48,7 +48,8 @@ namespace HoaDonDienTu.Application.Backup
     [DataContract]
     public sealed class BackupManifest
     {
-        public const int CurrentFormat = 1;
+        /// <summary>2: thêm bản chụp <c>company.db</c> (<see cref="Database"/>); định dạng 1 không có cơ sở dữ liệu vẫn đọc được.</summary>
+        public const int CurrentFormat = 2;
 
         [DataMember(Name = "formatVersion")]
         public int FormatVersion { get; set; }
@@ -65,9 +66,17 @@ namespace HoaDonDienTu.Application.Backup
         [DataMember(Name = "appVersion")]
         public string AppVersion { get; set; }
 
-        /// <summary>Chưa có cơ sở dữ liệu (ADR 0004): gói chỉ chứa file XML/PDF; chỉ mục cần dựng lại sau khi khôi phục.</summary>
+        /// <summary>Gói có bản chụp <c>company.db</c> (định dạng 2); gói cũ chỉ có XML/PDF nên chỉ mục cần dựng lại sau khi khôi phục.</summary>
         [DataMember(Name = "includesDatabase")]
         public bool IncludesDatabase { get; set; }
+
+        /// <summary>Bản chụp <c>company.db</c> (đường dẫn trong gói là <see cref="BackupService.DatabaseEntry"/>); null khi không có.</summary>
+        [DataMember(Name = "database")]
+        public BackupFileEntry Database { get; set; }
+
+        /// <summary>Phiên bản schema của bản chụp cơ sở dữ liệu; 0 khi gói không có.</summary>
+        [DataMember(Name = "schemaVersion")]
+        public int SchemaVersion { get; set; }
 
         [DataMember(Name = "files")]
         public List<BackupFileEntry> Files { get; set; }
@@ -120,6 +129,9 @@ namespace HoaDonDienTu.Application.Backup
         public int Overwritten { get; set; }
         public int Unchanged { get; set; }
 
+        /// <summary>Gói có company.db và đã được thay vào kho (chỉ mục, lịch sử tải khớp với bản sao lưu).</summary>
+        public bool DatabaseRestored { get; set; }
+
         /// <summary>Gói sao lưu tự động dữ liệu hiện hành trước khi khôi phục; null nếu kho chưa có file nào.</summary>
         public string SafetyBackupPath { get; set; }
 
@@ -151,6 +163,7 @@ namespace HoaDonDienTu.Application.Backup
     {
         public const string ManifestName = "manifest.json";
         public const string DataPrefix = "data/";
+        public const string DatabaseEntry = "database/company.db";
         public const string BackupsFolder = "Backups";
         public const string ExportsFolder = "Exports";
 
@@ -163,8 +176,10 @@ namespace HoaDonDienTu.Application.Backup
         private readonly IEntitlementService _entitlement;
         private readonly Func<DateTime> _utcNow;
         private readonly string _appVersion;
+        private readonly ICompanyDatabaseBackup _database;
 
-        public BackupService(ICompanyContextAccessor context, IActiveJobService jobs, IEntitlementService entitlement, string appVersion, Func<DateTime> utcNow = null)
+        /// <param name="database">Null khi chưa có cơ sở dữ liệu: gói chỉ gồm XML/PDF (định dạng 1).</param>
+        public BackupService(ICompanyContextAccessor context, IActiveJobService jobs, IEntitlementService entitlement, string appVersion, Func<DateTime> utcNow = null, ICompanyDatabaseBackup database = null)
         {
             if (context == null) throw new ArgumentNullException("context");
             if (jobs == null) throw new ArgumentNullException("jobs");
@@ -174,6 +189,7 @@ namespace HoaDonDienTu.Application.Backup
             _entitlement = entitlement;
             _appVersion = appVersion ?? string.Empty;
             _utcNow = utcNow ?? (() => DateTime.UtcNow);
+            _database = database;
         }
 
         // ---- Tạo gói ----
@@ -187,35 +203,57 @@ namespace HoaDonDienTu.Application.Backup
 
             var target = Path.GetFullPath(targetPath);
             if (File.Exists(target) && !overwrite) throw new BackupException("File sao lưu đã tồn tại: " + target);
-            return CreateCore(company, target, progress, cancellationToken);
+            return await CreateCoreAsync(company, target, progress, cancellationToken).ConfigureAwait(false);
         }
 
-        private BackupResult CreateCore(CompanyContext company, string target, IProgress<BackupProgress> progress, CancellationToken token)
+        private async Task<BackupResult> CreateCoreAsync(CompanyContext company, string target, IProgress<BackupProgress> progress, CancellationToken token)
         {
             var files = EnumerateStoreFiles(company.StorageRoot).ToList();
-            if (files.Count == 0) throw new BackupException("Kho chưa có file XML/PDF nào để sao lưu.");
+            if (files.Count == 0 && _database == null) throw new BackupException("Kho chưa có file XML/PDF nào để sao lưu.");
 
             var directory = Path.GetDirectoryName(target);
             if (!string.IsNullOrEmpty(directory)) Directory.CreateDirectory(directory);
             var temp = target + "." + Guid.NewGuid().ToString("N") + ".tmp";
+            var snapshot = temp + ".db";
             try
             {
                 var manifest = new BackupManifest
                 {
-                    FormatVersion = BackupManifest.CurrentFormat,
+                    FormatVersion = _database == null ? 1 : BackupManifest.CurrentFormat,
                     TaxCode = company.TaxCode.Value,
                     CompanyName = company.DisplayName,
                     CreatedAtUtcText = _utcNow().ToString("o", CultureInfo.InvariantCulture),
                     AppVersion = _appVersion,
-                    IncludesDatabase = false,
+                    IncludesDatabase = _database != null,
                     Files = new List<BackupFileEntry>()
                 };
 
+                // Bản chụp nhất quán của company.db được lấy trước khi mở gói để lỗi chụp không để lại gói dở.
+                if (_database != null) manifest.SchemaVersion = await _database.SnapshotAsync(snapshot, token).ConfigureAwait(false);
+
                 long total = 0;
+                var steps = files.Count + (_database != null ? 1 : 0);
                 using (var stream = new FileStream(temp, FileMode.CreateNew, FileAccess.Write, FileShare.None))
                 using (var zip = new ZipArchive(stream, ZipArchiveMode.Create))
                 {
                     var done = 0;
+                    if (_database != null)
+                    {
+                        token.ThrowIfCancellationRequested();
+                        var dbEntry = zip.CreateEntry(DatabaseEntry, CompressionLevel.Optimal);
+                        string sha;
+                        long size;
+                        using (var input = File.OpenRead(snapshot))
+                        using (var output = dbEntry.Open())
+                        {
+                            CopyAndHash(input, output, out sha, out size);
+                        }
+
+                        manifest.Database = new BackupFileEntry { Path = "company.db", Sha256 = sha, Size = size };
+                        total += size;
+                        if (progress != null) progress.Report(new BackupProgress(++done, steps));
+                    }
+
                     foreach (var relative in files)
                     {
                         token.ThrowIfCancellationRequested();
@@ -225,7 +263,7 @@ namespace HoaDonDienTu.Application.Backup
                         using (var s = entry.Open()) s.Write(bytes, 0, bytes.Length);
                         manifest.Files.Add(new BackupFileEntry { Path = name, Sha256 = Hex(bytes), Size = bytes.LongLength });
                         total += bytes.LongLength;
-                        if (progress != null) progress.Report(new BackupProgress(++done, files.Count));
+                        if (progress != null) progress.Report(new BackupProgress(++done, steps));
                     }
 
                     var manifestEntry = zip.CreateEntry(ManifestName, CompressionLevel.Optimal);
@@ -240,6 +278,29 @@ namespace HoaDonDienTu.Application.Backup
             {
                 DeleteQuietly(temp);
                 throw;
+            }
+            finally
+            {
+                DeleteQuietly(snapshot);
+            }
+        }
+
+        private static void CopyAndHash(Stream input, Stream output, out string sha256, out long size)
+        {
+            using (var sha = SHA256.Create())
+            {
+                var buffer = new byte[81920];
+                int read;
+                size = 0;
+                while ((read = input.Read(buffer, 0, buffer.Length)) > 0)
+                {
+                    sha.TransformBlock(buffer, 0, read, null, 0);
+                    output.Write(buffer, 0, read);
+                    size += read;
+                }
+
+                sha.TransformFinalBlock(buffer, 0, 0);
+                sha256 = HexOf(sha.Hash);
             }
         }
 
@@ -327,6 +388,8 @@ namespace HoaDonDienTu.Application.Backup
                             if (!string.Equals(actual, file.Sha256, StringComparison.OrdinalIgnoreCase)) problems.Add("Sai SHA-256: " + file.Path);
                         }
                     }
+
+                    VerifyDatabaseEntry(zip, manifest, problems);
                 }
             }
             catch (InvalidDataException)
@@ -339,6 +402,29 @@ namespace HoaDonDienTu.Application.Backup
             }
 
             return new BackupInspection { Manifest = manifest, Problems = problems };
+        }
+
+        private static void VerifyDatabaseEntry(ZipArchive zip, BackupManifest manifest, IList<string> problems)
+        {
+            if (manifest.IncludesDatabase != (manifest.Database != null))
+            {
+                problems.Add("manifest.json mô tả cơ sở dữ liệu không nhất quán.");
+                return;
+            }
+
+            if (manifest.Database == null) return;
+            var entry = zip.GetEntry(DatabaseEntry);
+            if (entry == null)
+            {
+                problems.Add("Thiếu cơ sở dữ liệu trong gói.");
+                return;
+            }
+
+            using (var s = entry.Open())
+            using (var sha = SHA256.Create())
+            {
+                if (!string.Equals(HexOf(sha.ComputeHash(s)), manifest.Database.Sha256, StringComparison.OrdinalIgnoreCase)) problems.Add("Sai SHA-256: cơ sở dữ liệu.");
+            }
         }
 
         // ---- Khôi phục ----
@@ -364,16 +450,59 @@ namespace HoaDonDienTu.Application.Backup
                     + " đang mở. Hãy chuyển sang doanh nghiệp đúng rồi thử lại.");
             }
 
+            var manifest = inspection.Manifest;
+            if (manifest.Database != null)
+            {
+                if (_database == null) throw new BackupException("Gói có cơ sở dữ liệu nhưng ứng dụng này chưa khôi phục được phần đó.");
+                if (manifest.SchemaVersion > _database.LatestSchemaVersion)
+                {
+                    throw new BackupException("Cơ sở dữ liệu trong gói có phiên bản schema " + manifest.SchemaVersion + " mới hơn ứng dụng; hãy cập nhật ứng dụng.");
+                }
+            }
+
+            var databaseStage = manifest.Database == null ? null : Path.Combine(company.StorageRoot, BackupsFolder, Guid.NewGuid().ToString("N") + ".db.tmp");
+            try
+            {
+                if (databaseStage != null)
+                {
+                    // Kiểm cơ sở dữ liệu trong gói TRƯỚC khi đụng vào dữ liệu hiện hành.
+                    ExtractEntry(backupPath, DatabaseEntry, databaseStage);
+                    await _database.ValidateAsync(databaseStage, cancellationToken).ConfigureAwait(false);
+                }
+
+                return await RestoreCoreAsync(company, backupPath, inspection, databaseStage, progress, cancellationToken).ConfigureAwait(false);
+            }
+            finally
+            {
+                if (databaseStage != null) DeleteQuietly(databaseStage);
+            }
+        }
+
+        private static void ExtractEntry(string backupPath, string entryName, string destination)
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(destination));
+            using (var zip = ZipFile.OpenRead(backupPath))
+            using (var input = zip.GetEntry(entryName).Open())
+            using (var output = new FileStream(destination, FileMode.Create, FileAccess.Write, FileShare.None))
+            {
+                input.CopyTo(output);
+            }
+        }
+
+        private async Task<RestoreResult> RestoreCoreAsync(
+            CompanyContext company, string backupPath, BackupInspection inspection, string databaseStage, IProgress<BackupProgress> progress, CancellationToken cancellationToken)
+        {
             var result = new RestoreResult();
-            var existing = EnumerateStoreFiles(company.StorageRoot).Any();
+            var existing = _database != null || EnumerateStoreFiles(company.StorageRoot).Any();
             if (existing)
             {
                 var safety = UniqueSafetyPath(company);
-                result.SafetyBackupPath = CreateCore(company, safety, null, cancellationToken).Path;
+                result.SafetyBackupPath = (await CreateCoreAsync(company, safety, null, cancellationToken).ConfigureAwait(false)).Path;
             }
 
             var created = new List<string>();
             var overwritten = new List<string>();
+            var databaseReplaced = false;
             try
             {
                 using (var zip = ZipFile.OpenRead(backupPath))
@@ -418,10 +547,18 @@ namespace HoaDonDienTu.Application.Backup
                         if (progress != null) progress.Report(new BackupProgress(++done, inspection.Manifest.Files.Count));
                     }
                 }
+
+                if (databaseStage != null)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    await _database.ReplaceAsync(databaseStage, cancellationToken).ConfigureAwait(false);
+                    databaseReplaced = true;
+                    result.DatabaseRestored = true;
+                }
             }
             catch (Exception ex)
             {
-                var rolledBack = TryRollback(company, created, overwritten, result.SafetyBackupPath);
+                var rolledBack = await TryRollbackAsync(company, created, overwritten, result.SafetyBackupPath, databaseReplaced).ConfigureAwait(false);
                 if (ex is OperationCanceledException) throw;
                 throw new BackupException(
                     "Khôi phục bị lỗi giữa chừng: " + ex.Message + (rolledBack ? " Dữ liệu đã được trả về trạng thái trước khi khôi phục." : " Không trả về được trạng thái cũ hoàn toàn; hãy dùng điểm sao lưu an toàn: " + result.SafetyBackupPath),
@@ -459,7 +596,7 @@ namespace HoaDonDienTu.Application.Backup
             }
         }
 
-        private static bool TryRollback(CompanyContext company, IList<string> created, IList<string> overwritten, string safetyPath)
+        private async Task<bool> TryRollbackAsync(CompanyContext company, IList<string> created, IList<string> overwritten, string safetyPath, bool databaseReplaced)
         {
             var ok = true;
             foreach (var path in created)
@@ -474,7 +611,7 @@ namespace HoaDonDienTu.Application.Backup
                 }
             }
 
-            if (overwritten.Count == 0) return ok;
+            if (overwritten.Count == 0 && !databaseReplaced) return ok;
             if (string.IsNullOrEmpty(safetyPath) || !File.Exists(safetyPath)) return false;
             try
             {
@@ -495,6 +632,20 @@ namespace HoaDonDienTu.Application.Backup
                             s.CopyTo(ms);
                             Replace(Path.Combine(company.StorageRoot, path.Replace('/', Path.DirectorySeparatorChar)), ms.ToArray());
                         }
+                    }
+                }
+
+                if (databaseReplaced)
+                {
+                    var stage = Path.Combine(company.StorageRoot, BackupsFolder, Guid.NewGuid().ToString("N") + ".db.tmp");
+                    try
+                    {
+                        ExtractEntry(safetyPath, DatabaseEntry, stage);
+                        await _database.ReplaceAsync(stage, CancellationToken.None).ConfigureAwait(false);
+                    }
+                    finally
+                    {
+                        DeleteQuietly(stage);
                     }
                 }
             }

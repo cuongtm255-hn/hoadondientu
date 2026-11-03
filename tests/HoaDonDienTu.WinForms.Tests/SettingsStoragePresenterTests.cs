@@ -320,6 +320,21 @@ namespace HoaDonDienTu.WinForms.Tests
         }
 
         [Test]
+        public void Restore_WithADatabaseInThePackage_SaysTheIndexWasRestoredToo()
+        {
+            _stats.Result = Stats();
+            _open.Result = @"D:\Backup\goi.zip";
+            _backup.Inspection = Good();
+            _backup.RestoreResult = new RestoreResult { Created = 1, DatabaseRestored = true };
+            Open();
+
+            _view.Click("restore");
+
+            Assert.That(WaitFor(() => _view.MessageText != null && _view.MessageText.StartsWith("Đã khôi phục")), Is.True, _view.MessageText);
+            Assert.That(_view.MessageText, Does.Contain("cả cơ sở dữ liệu").And.Not.Contain("không đổi theo"));
+        }
+
+        [Test]
         public void Restore_FailingHalfWay_ShowsTheRollbackMessage()
         {
             _stats.Result = Stats();

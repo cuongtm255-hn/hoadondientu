@@ -584,6 +584,160 @@ namespace HoaDonDienTu.Application.Tests
             }
         }
 
+        // ---- Gói có company.db (định dạng 2) ----
+
+        private BackupService WithDatabase(FakeDatabase db)
+        {
+            return new BackupService(_context, _jobs, _entitlement, "1.0 test", () => new DateTime(2026, 11, 2, 3, 0, 0, DateTimeKind.Utc), db);
+        }
+
+        [Test]
+        public async Task Create_WithADatabase_WritesAFormat2ManifestAndTheSnapshotEntry()
+        {
+            SeedStore();
+            var db = new FakeDatabase();
+
+            await WithDatabase(db).CreateAsync(Target(), false, null, CancellationToken.None);
+
+            var inspection = await WithDatabase(db).InspectAsync(Target(), CancellationToken.None);
+            Assert.That(inspection.IsValid, Is.True);
+            Assert.That(inspection.Manifest.FormatVersion, Is.EqualTo(2));
+            Assert.That(inspection.Manifest.IncludesDatabase, Is.True);
+            Assert.That(inspection.Manifest.Database.Sha256, Is.EqualTo(Sha(db.Content)));
+            Assert.That(inspection.Manifest.SchemaVersion, Is.EqualTo(db.Latest));
+            using (var zip = ZipFile.OpenRead(Target())) Assert.That(zip.GetEntry(BackupService.DatabaseEntry), Is.Not.Null);
+            Assert.That(Directory.GetFiles(Path.GetDirectoryName(Target()), "*.tmp*"), Is.Empty, "không để lại bản chụp tạm");
+        }
+
+        [Test]
+        public async Task Inspect_ADatabaseEntryThatWasTamperedWith_IsReported()
+        {
+            SeedStore();
+            await WithDatabase(new FakeDatabase()).CreateAsync(Target(), false, null, CancellationToken.None);
+            using (var zip = ZipFile.Open(Target(), ZipArchiveMode.Update))
+            {
+                zip.GetEntry(BackupService.DatabaseEntry).Delete();
+                var entry = zip.CreateEntry(BackupService.DatabaseEntry);
+                using (var s = entry.Open()) s.Write(new byte[] { 1, 2, 3 }, 0, 3);
+            }
+
+            var inspection = await WithDatabase(new FakeDatabase()).InspectAsync(Target(), CancellationToken.None);
+
+            Assert.That(inspection.IsValid, Is.False);
+            Assert.That(inspection.Problems.Single(), Does.Contain("cơ sở dữ liệu"));
+        }
+
+        [Test]
+        public async Task Restore_ReplacesTheDatabaseAndReportsIt()
+        {
+            SeedStore();
+            var db = new FakeDatabase { Content = new byte[] { 9, 9, 9 } };
+            var service = WithDatabase(db);
+            await service.CreateAsync(Target(), false, null, CancellationToken.None);
+            db.Content = new byte[] { 1 };
+
+            var result = await service.RestoreAsync(Target(), null, CancellationToken.None);
+
+            Assert.That(result.DatabaseRestored, Is.True);
+            Assert.That(db.Content, Is.EqualTo(new byte[] { 9, 9, 9 }));
+        }
+
+        [Test]
+        public async Task Restore_AFormat1Package_LeavesTheDatabaseAlone()
+        {
+            SeedStore();
+            await _service.CreateAsync(Target(), false, null, CancellationToken.None);
+            var db = new FakeDatabase { Content = new byte[] { 5 } };
+
+            var result = await WithDatabase(db).RestoreAsync(Target(), null, CancellationToken.None);
+
+            Assert.That(result.DatabaseRestored, Is.False);
+            Assert.That(db.ReplaceCalls, Is.EqualTo(0));
+            Assert.That(db.Content, Is.EqualTo(new byte[] { 5 }));
+        }
+
+        [Test]
+        public async Task Restore_ADatabaseWithANewerSchema_IsRejectedBeforeAnythingChanges()
+        {
+            SeedStore();
+            var db = new FakeDatabase();
+            await WithDatabase(db).CreateAsync(Target(), false, null, CancellationToken.None);
+            Put("2026/10/b.xml", "<HDon>b hiện tại</HDon>");
+            db.Latest = 1;
+
+            var ex = Assert.ThrowsAsync<BackupException>(() => WithDatabase(db).RestoreAsync(Target(), null, CancellationToken.None));
+
+            Assert.That(ex.Message, Does.Contain("mới hơn"));
+            Assert.That(Read("2026/10/b.xml"), Is.EqualTo("<HDon>b hiện tại</HDon>"));
+            Assert.That(db.ReplaceCalls, Is.EqualTo(0));
+        }
+
+        [Test]
+        public async Task Restore_ACorruptDatabaseInThePackage_IsRejectedBeforeAnythingChanges()
+        {
+            SeedStore();
+            var db = new FakeDatabase();
+            await WithDatabase(db).CreateAsync(Target(), false, null, CancellationToken.None);
+            Put("2026/10/b.xml", "<HDon>b hiện tại</HDon>");
+            db.ValidateFails = true;
+
+            Assert.ThrowsAsync<BackupException>(() => WithDatabase(db).RestoreAsync(Target(), null, CancellationToken.None));
+
+            Assert.That(Read("2026/10/b.xml"), Is.EqualTo("<HDon>b hiện tại</HDon>"));
+            Assert.That(db.ReplaceCalls, Is.EqualTo(0));
+            Assert.That(Directory.GetFiles(_root, "*.tmp", SearchOption.AllDirectories), Is.Empty);
+        }
+
+        [Test]
+        public async Task Restore_WhenTheDatabaseSwapFails_RollsBackTheFilesAndTheDatabase()
+        {
+            SeedStore();
+            var db = new FakeDatabase { Content = new byte[] { 9, 9, 9 } };
+            var service = WithDatabase(db);
+            await service.CreateAsync(Target(), false, null, CancellationToken.None);
+            Put("2026/10/a.xml", "<HDon>a hiện tại</HDon>");
+            Put("2026/10/moi.xml", "<HDon>mới</HDon>");
+            db.Content = new byte[] { 7 };
+            db.FailReplaceAt = 1;
+
+            var ex = Assert.ThrowsAsync<BackupException>(() => service.RestoreAsync(Target(), null, CancellationToken.None));
+
+            Assert.That(ex.Message, Does.Contain("trả về trạng thái trước"));
+            Assert.That(Read("2026/10/a.xml"), Is.EqualTo("<HDon>a hiện tại</HDon>"), "file trở lại như trước khi khôi phục");
+            Assert.That(db.Content, Is.EqualTo(new byte[] { 7 }), "cơ sở dữ liệu không bị đổi");
+        }
+
+        private sealed class FakeDatabase : ICompanyDatabaseBackup
+        {
+            public byte[] Content = new byte[] { 1, 2, 3, 4 };
+            public int Latest = 2;
+            public int ReplaceCalls;
+            public int FailReplaceAt;
+            public bool ValidateFails;
+
+            public int LatestSchemaVersion { get { return Latest; } }
+
+            public Task<int> SnapshotAsync(string destinationFile, CancellationToken cancellationToken)
+            {
+                File.WriteAllBytes(destinationFile, Content);
+                return Task.FromResult(2);
+            }
+
+            public Task ValidateAsync(string sourceFile, CancellationToken cancellationToken)
+            {
+                if (ValidateFails) throw new BackupException("Cơ sở dữ liệu trong gói không dùng được (giả).");
+                return Task.FromResult(0);
+            }
+
+            public Task ReplaceAsync(string sourceFile, CancellationToken cancellationToken)
+            {
+                ReplaceCalls++;
+                if (FailReplaceAt == ReplaceCalls) throw new BackupException("Không hoán đổi được (giả).");
+                Content = File.ReadAllBytes(sourceFile);
+                return Task.FromResult(0);
+            }
+        }
+
         private sealed class FakeContext : ICompanyContextAccessor
         {
             public bool HasCurrent { get { return Current != null; } }
