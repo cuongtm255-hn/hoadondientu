@@ -160,9 +160,9 @@ namespace HoaDonDienTu.WinForms.Dashboard
             {
                 TotalInvoices = s.TotalInvoices.ToString("N0", Vi),
                 TotalSub = "Mua vào " + s.PurchaseCount.ToString("N0", Vi) + " · Bán ra " + s.SoldCount.ToString("N0", Vi),
-                YearCaption = "TỔNG THANH TOÁN NĂM " + s.Year,
-                YearPayment = ArchivePresenter.Compact(s.YearPayment),
-                YearSub = "Theo dữ liệu đã tải",
+                YearCaption = "BÁN RA NĂM " + s.Year + " (VND)",
+                YearPayment = ArchivePresenter.Compact(s.YearPaymentSold),
+                YearSub = "Mua vào " + ArchivePresenter.Compact(s.YearPaymentPurchase) + " · không tính hóa đơn ngoại tệ",
                 AttentionValue = s.AttentionCount.ToString("N0", Vi),
                 AttentionSub = AttentionSub(s),
                 Attention = s.Attention.Select(Attention).ToList(),

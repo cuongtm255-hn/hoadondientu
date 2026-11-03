@@ -70,8 +70,11 @@ namespace HoaDonDienTu.Application.Dashboard
         public int SoldCount { get; set; }
         public int Year { get; set; }
 
-        /// <summary>Tổng thanh toán của hóa đơn có ngày lập trong <see cref="Year"/>.</summary>
-        public decimal YearPayment { get; set; }
+        /// <summary>Tổng thanh toán (VND) của hóa đơn bán ra có ngày lập trong <see cref="Year"/>.</summary>
+        public decimal YearPaymentSold { get; set; }
+
+        /// <summary>Tổng thanh toán (VND) của hóa đơn mua vào có ngày lập trong <see cref="Year"/>.</summary>
+        public decimal YearPaymentPurchase { get; set; }
 
         public DateTime? LastSyncAtUtc { get; set; }
         public DownloadSessionState? LastSyncState { get; set; }
@@ -139,7 +142,7 @@ namespace HoaDonDienTu.Application.Dashboard
             // Đếm, tổng năm và danh sách mới nhất tính trong kho dữ liệu: không nạp cả kho vào bộ nhớ mỗi lần mở Tổng quan.
             var overview = await _invoices.GetOverviewAsync(year, RecentCount, cancellationToken).ConfigureAwait(false);
             var recent = await _invoices.FindManyAsync(overview.RecentIds, cancellationToken).ConfigureAwait(false);
-            var sessions = await _history.QueryAsync(new HistoryQuery { PageSize = 500 }, cancellationToken).ConfigureAwait(false);
+            var sessions = await _history.QueryAsync(new HistoryQuery { PageSize = int.MaxValue }, cancellationToken).ConfigureAwait(false);
             var missingPurchase = await CountMissingAsync(InvoiceDirection.Purchase, cancellationToken).ConfigureAwait(false);
             var missingSold = await CountMissingAsync(InvoiceDirection.Sold, cancellationToken).ConfigureAwait(false);
 
@@ -149,7 +152,8 @@ namespace HoaDonDienTu.Application.Dashboard
                 PurchaseCount = overview.PurchaseCount,
                 SoldCount = overview.SoldCount,
                 Year = year,
-                YearPayment = overview.YearPayment,
+                YearPaymentSold = overview.YearPaymentSold,
+                YearPaymentPurchase = overview.YearPaymentPurchase,
                 MissingFileCount = missingPurchase + missingSold
             };
 

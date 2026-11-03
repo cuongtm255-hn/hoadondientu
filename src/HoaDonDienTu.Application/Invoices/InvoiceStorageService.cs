@@ -282,6 +282,14 @@ namespace HoaDonDienTu.Application.Invoices
             }
         }
 
+        private static decimal YearVnd(IEnumerable<StoredInvoice> all, InvoiceDirection direction, int year)
+        {
+            return all
+                .Where(s => s.Invoice.Direction == direction && s.Invoice.IssueDate.Year == year
+                    && (string.IsNullOrEmpty(s.Invoice.Currency) || string.Equals(s.Invoice.Currency, "VND", StringComparison.Ordinal)))
+                .Sum(s => s.Invoice.TotalPayment ?? 0m);
+        }
+
         public Task<InvoiceOverview> GetOverviewAsync(int year, int recentCount, CancellationToken cancellationToken)
         {
             lock (_gate)
@@ -292,7 +300,8 @@ namespace HoaDonDienTu.Application.Invoices
                     {
                         PurchaseCount = all.Count(s => s.Invoice.Direction == InvoiceDirection.Purchase),
                         SoldCount = all.Count(s => s.Invoice.Direction == InvoiceDirection.Sold),
-                        YearPayment = all.Where(s => s.Invoice.IssueDate.Year == year).Sum(s => s.Invoice.TotalPayment ?? 0m),
+                        YearPaymentPurchase = YearVnd(all, InvoiceDirection.Purchase, year),
+                        YearPaymentSold = YearVnd(all, InvoiceDirection.Sold, year),
                         RecentIds = all
                             .OrderByDescending(s => s.FirstSeenAtUtc)
                             .ThenByDescending(s => s.Invoice.IssueDate)

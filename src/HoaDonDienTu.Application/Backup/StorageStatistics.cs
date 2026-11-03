@@ -18,6 +18,12 @@ namespace HoaDonDienTu.Application.Backup
         public long BackupBytes { get; set; }
         public int BackupFiles { get; set; }
 
+        /// <summary>Cơ sở dữ liệu của kho (<c>Data\company.db</c> cùng tệp -wal/-shm).</summary>
+        public long DatabaseBytes { get; set; }
+
+        /// <summary>Bản sao cơ sở dữ liệu giữ lại trước mỗi lần nâng schema (<c>*.bak</c> trong <c>Data</c>).</summary>
+        public long UpgradeCopyBytes { get; set; }
+
         /// <summary>null khi không xác định được (ví dụ đường dẫn mạng).</summary>
         public long? FreeBytes { get; set; }
 
@@ -26,7 +32,7 @@ namespace HoaDonDienTu.Application.Backup
 
         public long TotalBytes
         {
-            get { return XmlBytes + PdfBytes + ExportBytes + BackupBytes; }
+            get { return XmlBytes + PdfBytes + ExportBytes + BackupBytes + DatabaseBytes + UpgradeCopyBytes; }
         }
     }
 
@@ -39,6 +45,9 @@ namespace HoaDonDienTu.Application.Backup
     /// <summary>Dung lượng thư mục kho của MST đang mở (FR-SET-004). Duyệt đĩa nên gọi ở luồng nền.</summary>
     public sealed class StorageStatisticsService : IStorageStatisticsService
     {
+        /// <summary>Thư mục chứa <c>company.db</c> trong kho (DD-06 mục 3).</summary>
+        public const string DataFolder = "Data";
+
         private readonly ICompanyContextAccessor _context;
 
         public StorageStatisticsService(ICompanyContextAccessor context)
@@ -71,6 +80,17 @@ namespace HoaDonDienTu.Application.Backup
                 {
                     stats.XmlBytes += size;
                     stats.XmlFiles++;
+                }
+            }
+
+            var data = Path.Combine(root, DataFolder);
+            if (Directory.Exists(data))
+            {
+                foreach (var file in Directory.EnumerateFiles(data, "*", SearchOption.TopDirectoryOnly))
+                {
+                    token.ThrowIfCancellationRequested();
+                    if (file.EndsWith(".bak", StringComparison.OrdinalIgnoreCase)) stats.UpgradeCopyBytes += Size(file);
+                    else stats.DatabaseBytes += Size(file);
                 }
             }
 

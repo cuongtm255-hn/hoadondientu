@@ -7,7 +7,7 @@ Mỗi lần review ghi lại commit cuối đã được xét. **Mốc hiện t�
 |---|---|---|---|
 | 02/11/2026 | `e91145c..f53c7d1` | `f53c7d1` | Các phát hiện đã sửa trong chính `f53c7d1` |
 | 03/11/2026 | `f53c7d1..78cc0f5` | `78cc0f5` | 10 phát hiện; đã sửa 1, 2, 3, 4, 5, 8, 9, 10 (7 là báo nhầm); còn lại chưa sửa: xem mục dưới |
-| 03/11/2026 (bổ sung) | Phần WinForms/Application còn lại của `f53c7d1..78cc0f5` | `78cc0f5` | 8 phát hiện; đã sửa 1, 2, 3, 4, 5; còn lại chưa sửa: xem mục "Bổ sung" |
+| 03/11/2026 (bổ sung) | Phần WinForms/Application còn lại của `f53c7d1..78cc0f5` | `78cc0f5` | 8 phát hiện; đã sửa cả 8 (1–8) |
 
 ## Review 03/11/2026 (`f53c7d1..78cc0f5`)
 
@@ -36,6 +36,6 @@ lướt các control còn lại chỉ để xem marshal sang UI thread (đều c
 3. ✅ Đã sửa (`TooLarge` + `ReadBytesAsync`). XML lớn hơn 5 MB: thông báo bảo "hãy lưu bản sao" nhưng `Bytes` là null nên nút Lưu bản sao bị khóa.
 4. ✅ Đã sửa (hộp xác nhận nêu rõ cơ sở dữ liệu bị thay). Hộp xác nhận khôi phục không nói cơ sở dữ liệu (chỉ mục, lịch sử tải) sẽ bị thay: hóa đơn tải sau lúc sao lưu biến mất khỏi Kho (điểm an toàn vẫn giữ được).
 5. ✅ Đã sửa (mỗi chiều một mục). Việc cần xử lý "XML thiếu" cộng cả hai chiều nhưng bấm vào chỉ lọc một chiều (mua vào nếu có).
-6. "Tổng thanh toán năm" cộng cả mua vào, bán ra và cộng lẫn ngoại tệ như một con số VND.
-7. `StorageStatistics` bỏ qua thư mục `Data` (company.db và các bản `.v<N>.bak`): dung lượng cơ sở dữ liệu không hiện.
-8. Tổng quan chỉ xét 500 phiên mới nhất (`PageSize = 500`) cho phiên đang chạy, phiên lỗi và lần đồng bộ cuối.
+6. ✅ Đã sửa (tách bán ra/mua vào, chỉ cộng VND). "Tổng thanh toán năm" cộng cả mua vào, bán ra và cộng lẫn ngoại tệ như một con số VND.
+7. ✅ Đã sửa (hiện cơ sở dữ liệu và bản sao trước nâng cấp). `StorageStatistics` bỏ qua thư mục `Data` (company.db và các bản `.v<N>.bak`): dung lượng cơ sở dữ liệu không hiện.
+8. ✅ Đã sửa (xét mọi phiên). Tổng quan chỉ xét 500 phiên mới nhất (`PageSize = 500`) cho phiên đang chạy, phiên lỗi và lần đồng bộ cuối.

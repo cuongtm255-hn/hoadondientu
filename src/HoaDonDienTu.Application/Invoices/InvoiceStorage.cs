@@ -99,8 +99,11 @@ namespace HoaDonDienTu.Application.Invoices
         public int PurchaseCount { get; set; }
         public int SoldCount { get; set; }
 
-        /// <summary>Tổng thanh toán của các hóa đơn lập trong năm được hỏi.</summary>
-        public decimal YearPayment { get; set; }
+        /// <summary>Tổng thanh toán (VND) của hóa đơn mua vào lập trong năm được hỏi; hóa đơn ngoại tệ không cộng vì không cùng đơn vị.</summary>
+        public decimal YearPaymentPurchase { get; set; }
+
+        /// <summary>Tổng thanh toán (VND) của hóa đơn bán ra lập trong năm được hỏi; hóa đơn ngoại tệ không cộng.</summary>
+        public decimal YearPaymentSold { get; set; }
 
         /// <summary>Mã các hóa đơn tải về gần nhất, mới nhất trước.</summary>
         public IList<Guid> RecentIds { get; set; }

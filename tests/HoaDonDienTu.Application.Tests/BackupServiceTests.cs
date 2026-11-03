@@ -549,6 +549,22 @@ namespace HoaDonDienTu.Application.Tests
         }
 
         [Test]
+        public async Task Statistics_CountTheDatabaseAndItsUpgradeCopies()
+        {
+            Put("2026/10/a.xml", new string('x', 100));
+            Directory.CreateDirectory(Path.Combine(_root, "Data"));
+            File.WriteAllBytes(Path.Combine(_root, "Data", "company.db"), new byte[400]);
+            File.WriteAllBytes(Path.Combine(_root, "Data", "company.db-wal"), new byte[40]);
+            File.WriteAllBytes(Path.Combine(_root, "Data", "company.db.v1.bak"), new byte[300]);
+
+            var stats = await new StorageStatisticsService(_context).GetAsync(CancellationToken.None);
+
+            Assert.That(stats.DatabaseBytes, Is.EqualTo(440));
+            Assert.That(stats.UpgradeCopyBytes, Is.EqualTo(300));
+            Assert.That(stats.TotalBytes, Is.EqualTo(100 + 440 + 300));
+        }
+
+        [Test]
         public async Task Statistics_OfAnEmptyOrMissingStore_AreZero()
         {
             Directory.Delete(_root, true);

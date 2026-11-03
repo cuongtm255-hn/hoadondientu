@@ -262,16 +262,19 @@ namespace HoaDonDienTu.WinForms.Settings
 
         public static IList<KeyValuePair<string, string>> StatisticsRows(StorageStatistics s)
         {
-            return new List<KeyValuePair<string, string>>
+            var rows = new List<KeyValuePair<string, string>>
             {
                 Row("Thư mục kho", s.Root),
                 Row("XML hóa đơn", FormatBytes(s.XmlBytes) + " (" + s.XmlFiles.ToString("N0", Vi) + " file)"),
                 Row("PDF đã tạo", FormatBytes(s.PdfBytes) + " (" + s.PdfFiles.ToString("N0", Vi) + " file)"),
+                Row("Cơ sở dữ liệu", FormatBytes(s.DatabaseBytes)),
                 Row("File xuất", FormatBytes(s.ExportBytes)),
-                Row("Bản sao lưu", FormatBytes(s.BackupBytes) + " (" + s.BackupFiles.ToString("N0", Vi) + " gói)"),
-                Row("Còn trống trên ổ", s.FreeBytes.HasValue ? FormatBytes(s.FreeBytes.Value) : "Không xác định"),
-                Row("Sao lưu gần nhất", s.LastBackupUtc.HasValue ? s.LastBackupUtc.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm", CultureInfo.InvariantCulture) + " · " + Path.GetFileName(s.LastBackupPath) : "Chưa có")
+                Row("Bản sao lưu", FormatBytes(s.BackupBytes) + " (" + s.BackupFiles.ToString("N0", Vi) + " gói)")
             };
+            if (s.UpgradeCopyBytes > 0) rows.Add(Row("Bản sao trước nâng cấp", FormatBytes(s.UpgradeCopyBytes) + " (có thể xóa khi đã dùng ổn định)"));
+            rows.Add(Row("Còn trống trên ổ", s.FreeBytes.HasValue ? FormatBytes(s.FreeBytes.Value) : "Không xác định"));
+            rows.Add(Row("Sao lưu gần nhất", s.LastBackupUtc.HasValue ? s.LastBackupUtc.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm", CultureInfo.InvariantCulture) + " · " + Path.GetFileName(s.LastBackupPath) : "Chưa có"));
+            return rows;
         }
 
         private static readonly CultureInfo Vi = CultureInfo.GetCultureInfo("vi-VN");

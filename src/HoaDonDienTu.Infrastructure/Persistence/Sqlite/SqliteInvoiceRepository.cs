@@ -222,9 +222,21 @@ namespace HoaDonDienTu.Infrastructure.Persistence.Sqlite
 
                     var firstDay = SqliteValues.Date(new DateTime(year, 1, 1));
                     var lastDay = SqliteValues.Date(new DateTime(year, 12, 31));
-                    using (var command = SqliteDatabase.Command(c, "SELECT COALESCE(SUM(total_payment), 0) FROM invoice WHERE issue_date >= @p0 AND issue_date <= @p1", firstDay, lastDay))
+                    // Chỉ cộng hóa đơn VND (hoặc chưa ghi đơn vị): cộng lẫn ngoại tệ cho ra con số vô nghĩa.
+                    using (var command = SqliteDatabase.Command(
+                        c,
+                        "SELECT direction, COALESCE(SUM(total_payment), 0) AS total FROM invoice " +
+                        "WHERE issue_date >= @p0 AND issue_date <= @p1 AND (currency IS NULL OR currency = '' OR currency = 'VND') GROUP BY direction",
+                        firstDay, lastDay))
+                    using (var reader = command.ExecuteReader())
                     {
-                        overview.YearPayment = SqliteValues.ParseMoney(command.ExecuteScalar()) ?? 0m;
+                        while (reader.Read())
+                        {
+                            var direction = (InvoiceDirection)SqliteValues.Int(reader["direction"]);
+                            var total = SqliteValues.ParseMoney(reader["total"]) ?? 0m;
+                            if (direction == InvoiceDirection.Purchase) overview.YearPaymentPurchase = total;
+                            else if (direction == InvoiceDirection.Sold) overview.YearPaymentSold = total;
+                        }
                     }
 
                     using (var command = SqliteDatabase.Command(c, "SELECT id FROM invoice ORDER BY first_seen_utc DESC, issue_date DESC, id ASC LIMIT @p0", recentCount))

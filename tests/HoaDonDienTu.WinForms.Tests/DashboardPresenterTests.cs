@@ -42,7 +42,7 @@ namespace HoaDonDienTu.WinForms.Tests
         {
             return new DashboardSnapshot
             {
-                TotalInvoices = 24862, PurchaseCount = 18421, SoldCount = 6441, Year = 2026, YearPayment = 18400000000m,
+                TotalInvoices = 24862, PurchaseCount = 18421, SoldCount = 6441, Year = 2026, YearPaymentSold = 18400000000m, YearPaymentPurchase = 9100000000m,
                 LastSyncAtUtc = new DateTime(2026, 10, 31, 6, 0, 0, DateTimeKind.Utc), LastSyncState = DownloadSessionState.Completed, LastSyncInvoices = 128,
                 Active = new List<DashboardSession>(), Attention = new List<AttentionItem>(), Recent = new List<RecentInvoice>()
             };
@@ -69,8 +69,9 @@ namespace HoaDonDienTu.WinForms.Tests
             var r = _view.Result;
             Assert.That(r.TotalInvoices, Is.EqualTo("24.862"));
             Assert.That(r.TotalSub, Is.EqualTo("Mua vào 18.421 · Bán ra 6.441"));
-            Assert.That(r.YearCaption, Is.EqualTo("TỔNG THANH TOÁN NĂM 2026"));
+            Assert.That(r.YearCaption, Is.EqualTo("BÁN RA NĂM 2026 (VND)"));
             Assert.That(r.YearPayment, Is.EqualTo("18,4 tỷ"));
+            Assert.That(r.YearSub, Is.EqualTo("Mua vào 9,1 tỷ · không tính hóa đơn ngoại tệ"));
             Assert.That(r.SyncValue, Is.EqualTo(new DateTime(2026, 10, 31, 6, 0, 0, DateTimeKind.Utc).ToLocalTime().ToString("dd/MM/yyyy")));
             Assert.That(r.SyncSub, Is.EqualTo("Hoàn tất · 128 hóa đơn"));
             Assert.That(r.AttentionValue, Is.EqualTo("0"));

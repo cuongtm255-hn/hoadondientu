@@ -179,7 +179,8 @@ namespace HoaDonDienTu.Infrastructure.Tests.Persistence
 
                 Assert.That(actual.PurchaseCount, Is.EqualTo(expected.PurchaseCount), "mua vào " + year);
                 Assert.That(actual.SoldCount, Is.EqualTo(expected.SoldCount), "bán ra " + year);
-                Assert.That(actual.YearPayment, Is.EqualTo(expected.YearPayment), "tổng năm " + year);
+                Assert.That(actual.YearPaymentPurchase, Is.EqualTo(expected.YearPaymentPurchase), "tổng năm mua vào " + year);
+                Assert.That(actual.YearPaymentSold, Is.EqualTo(expected.YearPaymentSold), "tổng năm bán ra " + year);
                 Assert.That(actual.RecentIds, Is.EqualTo(expected.RecentIds), "mới nhất " + year);
             }
         }
@@ -190,7 +191,7 @@ namespace HoaDonDienTu.Infrastructure.Tests.Persistence
             var overview = await _sqlite.GetOverviewAsync(2026, 5, CancellationToken.None);
 
             Assert.That(overview.PurchaseCount + overview.SoldCount, Is.EqualTo(0));
-            Assert.That(overview.YearPayment, Is.EqualTo(0m));
+            Assert.That(overview.YearPaymentPurchase + overview.YearPaymentSold, Is.EqualTo(0m));
             Assert.That(overview.RecentIds, Is.Empty);
         }
 

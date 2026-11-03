@@ -108,7 +108,8 @@ namespace HoaDonDienTu.Application.Tests
             var s = await _service.GetAsync(CancellationToken.None);
 
             Assert.That(s.TotalInvoices, Is.EqualTo(0));
-            Assert.That(s.YearPayment, Is.EqualTo(0m));
+            Assert.That(s.YearPaymentSold, Is.EqualTo(0m));
+            Assert.That(s.YearPaymentPurchase, Is.EqualTo(0m));
             Assert.That(s.LastSyncAtUtc, Is.Null);
             Assert.That(s.Active, Is.Empty);
             Assert.That(s.Attention, Is.Empty);
@@ -138,7 +139,21 @@ namespace HoaDonDienTu.Application.Tests
             Assert.That(s.PurchaseCount, Is.EqualTo(2));
             Assert.That(s.SoldCount, Is.EqualTo(2));
             Assert.That(s.Year, Is.EqualTo(2026));
-            Assert.That(s.YearPayment, Is.EqualTo(700m));
+            Assert.That(s.YearPaymentPurchase, Is.EqualTo(300m), "mua vào tách riêng, chỉ năm hiện tại");
+            Assert.That(s.YearPaymentSold, Is.EqualTo(400m), "bán ra tách riêng, chỉ năm hiện tại");
+        }
+
+        [Test]
+        public async Task YearPayment_LeavesOutForeignCurrencyInvoices()
+        {
+            await AddInvoiceAsync(InvoiceDirection.Sold, "1", new DateTime(2026, 5, 1), 400m);
+            var usd = await AddInvoiceAsync(InvoiceDirection.Sold, "2", new DateTime(2026, 5, 2), 999m);
+            usd.Invoice.Currency = "USD";
+            await _invoices.TouchAsync(usd.InvoiceId, DateTime.UtcNow, usd.Invoice, null, CancellationToken.None);
+
+            var s = await _service.GetAsync(CancellationToken.None);
+
+            Assert.That(s.YearPaymentSold, Is.EqualTo(400m));
         }
 
         [Test]
