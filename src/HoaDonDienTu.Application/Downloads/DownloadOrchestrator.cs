@@ -37,6 +37,12 @@ namespace HoaDonDienTu.Application.Downloads
 
         /// <summary>Phiên chưa hoàn tất của doanh nghiệp đang mở (FR-JOB-010).</summary>
         Task<IList<DownloadSessionSummary>> GetUnfinishedAsync(CancellationToken cancellationToken);
+
+        /// <summary>
+        /// Lúc mở doanh nghiệp: phiên còn ghi "đang chạy" nhưng không có lượt chạy nào (tiến trình đã thoát hoặc mất điện) được đưa về
+        /// tạm dừng cùng đoạn dở dang, giữ checkpoint để người dùng bấm Tiếp tục (FR-JOB-010, AC-07). Trả số phiên đã chuyển.
+        /// </summary>
+        Task<int> RecoverInterruptedAsync(CancellationToken cancellationToken);
     }
 
     /// <summary>
@@ -582,6 +588,34 @@ namespace HoaDonDienTu.Application.Downloads
             }
 
             return result;
+        }
+
+        public async Task<int> RecoverInterruptedAsync(CancellationToken cancellationToken)
+        {
+            if (!_context.HasCurrent) return 0;
+            var companyId = _context.Current.CompanyId;
+            var recovered = 0;
+            var sessions = await _repository.GetUnfinishedAsync(companyId, cancellationToken).ConfigureAwait(false);
+            foreach (var session in sessions)
+            {
+                // Phiên đang chạy thật (đang giữ trong _active) không được đụng tới; chỉ phiên mồ côi mới bị đưa về tạm dừng.
+                if (session.State != DownloadSessionState.Running || _active.ContainsKey(session.Id)) continue;
+
+                var segments = await _repository.GetSegmentsAsync(session.Id, cancellationToken).ConfigureAwait(false);
+                foreach (var segment in segments.Where(s => s.State == DownloadSegmentState.Running))
+                {
+                    segment.TransitionTo(DownloadSegmentState.Paused);
+                    await _repository.SaveSegmentAsync(segment, cancellationToken).ConfigureAwait(false);
+                }
+
+                session.TransitionTo(DownloadSessionState.PausedByUser, _clock.UtcNow);
+                await _repository.SaveSessionAsync(session, cancellationToken).ConfigureAwait(false);
+                await EventAsync(session, null, DownloadEventLevel.Warning, "INTERRUPTED",
+                    "Phiên bị ngắt giữa chừng khi ứng dụng tắt; đã tạm dừng, bấm Tiếp tục để chạy tiếp từ checkpoint.").ConfigureAwait(false);
+                recovered++;
+            }
+
+            return recovered;
         }
 
         // ---- Phiên đang chạy (cho chuyển MST / đóng ứng dụng) ----

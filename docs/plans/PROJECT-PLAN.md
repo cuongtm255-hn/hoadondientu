@@ -143,14 +143,15 @@ Số task lấy từ bảng theo dõi trong từng DD (cập nhật khi đổi t
 | FT-03 Doanh nghiệp | [DD-02](../detail-design/DD-02-COMPANY-MANAGEMENT.md) | 2 | 10 | 6 | 3 | 0 | T02-08 chờ DD-03; 486 test pass |
 | FT-04 Licence | [DD-03](../detail-design/DD-03-LICENSING.md) | 2 | 8 | 5 | 3 | 0 | Lõi + SCR-12 + HTTP client + nạp cấu hình xong; khóa/hợp đồng thật chờ G-06 |
 | FT-05 Chọn kỳ | [DD-04](../detail-design/DD-04-PERIOD-DOWNLOAD-CONFIG.md) | 3 | 10 | 10 | 0 | 0 | Bộ lọc bán ra và mua vào khớp mẫu thật (mua vào: `ttxly` 5/6/8, có CCCD); đã nối SCR-03 → SCR-04 |
-| FT-06 Hàng đợi tải | [DD-05](../detail-design/DD-05-DOWNLOAD-ENGINE.md) | 3 | 12 | 9 | 2 | 1 | Chạy toàn tuyến trên cổng giả (SCR-03 → engine → kho file → SCR-04); còn SQLite (G-08), khôi phục lúc khởi động, T05-04 chờ G-05, UAT cổng thật |
+| FT-06 Hàng đợi tải | [DD-05](../detail-design/DD-05-DOWNLOAD-ENGINE.md) | 3 | 12 | 10 | 1 | 1 | Chạy toàn tuyến trên cổng giả (SCR-03 → engine → kho file → SCR-04) với SQLite; phiên bị ngắt được đưa về tạm dừng lúc mở doanh nghiệp; còn T05-04 chờ G-05, UAT cổng thật |
 | FT-07 Lưu trữ | [DD-06](../detail-design/DD-06-INVOICE-STORAGE.md) | 3 (T06-02 sớm ở 2) | 9 | 4 | 3 | 0 | Lõi lưu trữ, kho file thật, schema và repository SQLite xong (metadata bền vững); còn quét file mồ côi (T06-06), kiểm tra kho (T06-07) |
 | FT-08 Kho hóa đơn | [DD-07](../detail-design/DD-07-INVOICE-ARCHIVE.md) | 4 | 9 | 9 | 0 | 0 | SCR-05 truy vấn bằng SQL (lọc, sắp xếp, nạp một trang); 100.000 hóa đơn mở trang đầu ≈ 0,5 s; còn đo `File.Exists` thật trên kho lớn |
+| 03/11/2026 | T05-09: phiên tải bị ngắt giữa chừng (tắt ứng dụng, mất điện) được đưa về tạm dừng mỗi khi mở doanh nghiệp (`RecoverInterruptedAsync` + `InterruptedSessionRecovery`), checkpoint giữ nguyên, Tiếp tục chạy từ đó. Còn: `company.db` trong gói sao lưu, đo `File.Exists` thật trên kho lớn, thử kill/mở lại ứng dụng thật (UAT) |
 | FT-09 Chi tiết/viewer | [DD-08](../detail-design/DD-08-INVOICE-DETAIL-VIEWER.md) | 4 | 8 | 3 | 3 | 1 | SCR-06 và XML SCR-07 xong; PDF/in chờ G-03, G-09 |
 | FT-10 Xuất | [DD-09](../detail-design/DD-09-EXPORT.md) | 5 | 7 | 4 | 3 | 0 | Excel (bộ ghi xlsx tự viết, đã mở thử bằng Excel) và ZIP chạy từ SCR-05; hỗ trợ xuất theo dòng chọn; còn ExportRecord (chờ SQLite) và xuất từ SCR-06/07 |
 | FT-11 Tổng quan/lịch sử | [DD-10](../detail-design/DD-10-DASHBOARD-HISTORY.md) | 5 | 7 | 6 | 0 | 0 | SCR-02/SCR-08 chạy trên dữ liệu bộ nhớ; còn T10-05 |
 | FT-12 Cài đặt/sao lưu | [DD-11](../detail-design/DD-11-SETTINGS-BACKUP.md) | 5 | 8 | 4 | 4 | 0 | Sao lưu/khôi phục XML/PDF (có điểm an toàn + rollback), dung lượng, kiểm tra kết nối; gói chưa có database (ADR 0004) |
-| **Tổng** | | | **116** | **78** | **25** | **2** | Còn 11 task chưa bắt đầu; số liệu đếm tự động từ các bảng DD ngày 02/11/2026 |
+| **Tổng** | | | **116** | **79** | **24** | **2** | Còn 11 task chưa bắt đầu; số liệu đếm tự động từ các bảng DD ngày 02/11/2026 |
 
 ## 5. Phụ thuộc quan trọng
 

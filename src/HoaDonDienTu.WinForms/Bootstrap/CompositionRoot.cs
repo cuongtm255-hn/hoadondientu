@@ -283,6 +283,7 @@ namespace HoaDonDienTu.WinForms.Bootstrap
                 orchestrator = concrete;
                 starter = new OrchestratorSessionStarter(concrete);
                 if (!developmentJobs) jobs = new DownloadJobService(concrete);
+                new InterruptedSessionRecovery(contextManager, concrete, Logger).Attach();
             }
             else if (starter == null)
             {

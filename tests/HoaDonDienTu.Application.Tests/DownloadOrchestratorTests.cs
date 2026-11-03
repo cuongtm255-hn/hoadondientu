@@ -768,6 +768,123 @@ namespace HoaDonDienTu.Application.Tests
             Assert.That(await _orchestrator.GetUnfinishedAsync(CancellationToken.None), Is.Empty);
         }
 
+        // ---- Khôi phục phiên bị ngắt lúc khởi động (T05-09) ----
+
+        [Test]
+        public async Task RecoverInterrupted_PausesOrphanRunningSession_AndItsRunningSegment_KeepingCheckpoint()
+        {
+            _client.AddPage("2026-10-01", null, Invoices("A", 2), null);
+            var id = await CreateAsync(PeriodSpec.ForMonth(2026, 10));
+            await MakeInterruptedAsync(id);
+
+            var recovered = await _orchestrator.RecoverInterruptedAsync(CancellationToken.None);
+
+            Assert.That(recovered, Is.EqualTo(1));
+            Assert.That((await SessionAsync(id)).State, Is.EqualTo(DownloadSessionState.PausedByUser));
+            var segment = (await SegmentsAsync(id)).Single();
+            Assert.That(segment.State, Is.EqualTo(DownloadSegmentState.Paused));
+            Assert.That(segment.ItemOffset, Is.EqualTo(1), "Checkpoint được giữ");
+            var events = await _repo.GetEventsAsync(id, CancellationToken.None);
+            Assert.That(events.Any(e => e.Code == "INTERRUPTED"), Is.True);
+
+            await _orchestrator.RunAsync(id, null, CancellationToken.None);
+            Assert.That((await SessionAsync(id)).State, Is.EqualTo(DownloadSessionState.Completed));
+            Assert.That(_client.XmlRequests, Is.EqualTo(new[] { "A2" }), "Tiếp tục từ checkpoint, không tải lại hóa đơn đầu");
+        }
+
+        [Test]
+        public async Task RecoverInterrupted_LeavesOtherStatesAlone()
+        {
+            var draft = await CreateAsync(PeriodSpec.ForMonth(2026, 10));
+            var waiting = await CreateAsync(PeriodSpec.ForMonth(2026, 9));
+            var session = await SessionAsync(waiting);
+            session.TransitionTo(DownloadSessionState.Running, DateTime.UtcNow);
+            session.TransitionTo(DownloadSessionState.WaitingForLogin, DateTime.UtcNow);
+            await _repo.SaveSessionAsync(session, CancellationToken.None);
+
+            var recovered = await _orchestrator.RecoverInterruptedAsync(CancellationToken.None);
+
+            Assert.That(recovered, Is.EqualTo(0));
+            Assert.That((await SessionAsync(draft)).State, Is.EqualTo(DownloadSessionState.Draft));
+            Assert.That((await SessionAsync(waiting)).State, Is.EqualTo(DownloadSessionState.WaitingForLogin));
+        }
+
+        [Test]
+        public async Task RecoverInterrupted_DoesNotTouchSessionThatIsReallyRunning()
+        {
+            _client.AddPage("2026-10-01", null, Invoices("A", 2), null);
+            var id = await CreateAsync(PeriodSpec.ForMonth(2026, 10));
+            var gate = new TaskCompletionSource<bool>();
+            _client.SearchGate = gate.Task;
+            var run = _orchestrator.RunAsync(id, null, CancellationToken.None);
+            Assert.That(_orchestrator.HasActiveRun(Id), Is.True);
+
+            var recovered = await _orchestrator.RecoverInterruptedAsync(CancellationToken.None);
+            gate.SetResult(true);
+            await run;
+
+            Assert.That(recovered, Is.EqualTo(0));
+            Assert.That((await SessionAsync(id)).State, Is.EqualTo(DownloadSessionState.Completed));
+        }
+
+        [Test]
+        public async Task RecoverInterrupted_WithoutCompany_DoesNothing()
+        {
+            var id = await CreateAsync(PeriodSpec.ForMonth(2026, 10));
+            await MakeInterruptedAsync(id);
+            _context.Current = null;
+
+            Assert.That(await _orchestrator.RecoverInterruptedAsync(CancellationToken.None), Is.EqualTo(0));
+        }
+
+        [Test]
+        public async Task InterruptedSessionRecovery_RunsWhenACompanyIsOpened_AndSkipsWhenClosed()
+        {
+            var id = await CreateAsync(PeriodSpec.ForMonth(2026, 10));
+            await MakeInterruptedAsync(id);
+            var manager = new FakeContextManager(_context);
+            var recovery = new InterruptedSessionRecovery(manager, _orchestrator, new NullLogger());
+            recovery.Attach();
+
+            var current = _context.Current;
+            _context.Current = null;
+            manager.Raise();
+            Assert.That(recovery.LastRun, Is.Null, "Đóng doanh nghiệp thì không khôi phục");
+
+            _context.Current = current;
+            manager.Raise();
+            await recovery.LastRun;
+
+            Assert.That((await SessionAsync(id)).State, Is.EqualTo(DownloadSessionState.PausedByUser));
+        }
+
+        [Test]
+        public async Task InterruptedSessionRecovery_SwallowsFailures()
+        {
+            var manager = new FakeContextManager(_context);
+            var recovery = new InterruptedSessionRecovery(manager, new ThrowingOrchestrator(), new NullLogger());
+            recovery.Attach();
+
+            manager.Raise();
+
+            Assert.That(async () => await recovery.LastRun, Throws.Nothing);
+            await Task.Yield();
+        }
+
+        /// <summary>Mô phỏng tiến trình thoát giữa chừng: phiên Running, đoạn Running (đã nhận 1 hóa đơn), không có lượt chạy nào.</summary>
+        private async Task MakeInterruptedAsync(Guid id)
+        {
+            var session = await SessionAsync(id);
+            session.TransitionTo(DownloadSessionState.Running, DateTime.UtcNow);
+            await _repo.SaveSessionAsync(session, CancellationToken.None);
+            var segment = (await SegmentsAsync(id)).First();
+            segment.TransitionTo(DownloadSegmentState.Running);
+            segment.ReceivedCount = 1;
+            segment.XmlSavedCount = 1;
+            segment.ItemOffset = 1;
+            await _repo.SaveSegmentAsync(segment, CancellationToken.None);
+        }
+
         // ---- Chính sách thử lại ----
 
         [TestCase(PortalErrorKind.AuthExpired)]
@@ -951,6 +1068,39 @@ namespace HoaDonDienTu.Application.Tests
         {
             public bool HasCurrent { get { return Current != null; } }
             public CompanyContext Current { get; set; }
+        }
+
+        private sealed class FakeContextManager : ICompanyContextManager
+        {
+            private readonly FakeContext _inner;
+
+            public FakeContextManager(FakeContext inner)
+            {
+                _inner = inner;
+            }
+
+            public event EventHandler ContextChanged;
+            public bool HasCurrent { get { return _inner.HasCurrent; } }
+            public CompanyContext Current { get { return _inner.Current; } }
+            public Task<CompanyContext> OpenAsync(CompanyProfile target, CancellationToken cancellationToken) { throw new NotSupportedException(); }
+            public void CloseCurrent() { }
+
+            public void Raise()
+            {
+                var handler = ContextChanged;
+                if (handler != null) handler(this, EventArgs.Empty);
+            }
+        }
+
+        private sealed class ThrowingOrchestrator : IDownloadOrchestrator
+        {
+            public Task<Guid> CreateSessionAsync(DownloadPlan plan, CancellationToken cancellationToken) { throw new NotSupportedException(); }
+            public Task RunAsync(Guid sessionId, IProgress<DownloadProgress> progress, CancellationToken cancellationToken) { throw new NotSupportedException(); }
+            public Task PauseAsync(Guid sessionId, CancellationToken cancellationToken) { throw new NotSupportedException(); }
+            public Task CancelAsync(Guid sessionId, CancellationToken cancellationToken) { throw new NotSupportedException(); }
+            public Task RetrySegmentAsync(Guid sessionId, Guid segmentId, IProgress<DownloadProgress> progress, CancellationToken cancellationToken) { throw new NotSupportedException(); }
+            public Task<IList<DownloadSessionSummary>> GetUnfinishedAsync(CancellationToken cancellationToken) { throw new NotSupportedException(); }
+            public Task<int> RecoverInterruptedAsync(CancellationToken cancellationToken) { throw new InvalidOperationException("Kho hỏng (giả)"); }
         }
 
         private sealed class FakePortalSession : IPortalSessionStore
