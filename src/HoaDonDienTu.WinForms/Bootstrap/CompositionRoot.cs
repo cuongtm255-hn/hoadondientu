@@ -119,6 +119,9 @@ namespace HoaDonDienTu.WinForms.Bootstrap
             if (runner != null) runner.Dispose();
             if (SessionStore != null) SessionStore.Clear();
             if (ContextManager != null) ContextManager.CloseCurrent();
+#if !DEBUG
+            CefRuntimeHost.Shutdown();
+#endif
         }
 
         /// <summary>Đọc portal-api.json: bản của người dùng trong %LOCALAPPDATA% ưu tiên, rồi bản cạnh file chạy, rồi bản nháp mặc định.</summary>
@@ -205,9 +208,10 @@ namespace HoaDonDienTu.WinForms.Bootstrap
 #else
             dataDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "HoaDonDienTu", "data");
             jobs = new IdleActiveJobService();
-            // Tải bật ở Release từ khi metadata nằm trong SQLite (ADR 0006); đăng nhập cổng thật vẫn chờ G-01 nên chưa có phiên để tải.
+            // Tải bật ở Release từ khi metadata nằm trong SQLite (ADR 0006); đăng nhập thật qua CefSharp (ADR 0007), người dùng tự nhập mật khẩu và CAPTCHA.
             downloadsEnabled = true;
-            loginBrowser = () => new UnavailablePortalLoginBrowser();
+            var loginTraffic = new PortalLoginTraffic(portalConfig.BaseUrl, portalConfig.Auth.AuthenticatePath);
+            loginBrowser = () => new CefPortalLoginBrowser(loginTraffic);
             var licenseSettings = LicenseApiSettingsLoader.TryLoad(LocateConfigFile("license-api.json"));
             if (licenseSettings == null)
             {

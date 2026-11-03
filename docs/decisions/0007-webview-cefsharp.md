@@ -45,6 +45,13 @@ Kiểm trên NuGet (03/11/2026, đọc metadata gói, không cài):
 - (−) Test host hiện chạy x86 và CefSharp cần x86/x64 rõ ràng: test UI cho phần đăng nhập thật phải chạy trên cổng giả hoặc trình duyệt giả, không khởi tạo Chromium.
 - (−) Nếu sau này cần Chromium mới, phải bỏ hỗ trợ Windows 7/8 và nâng lên net462+ (khi đó cân nhắc WebView2).
 
+## Đã cài đặt (03/11/2026)
+
+- Solution nâng net452; `HoaDonDienTu.exe` build **x86** (CefSharp không chạy AnyCPU; test host vốn x86); Debug không chép Chromium (`CefSharpBuildAction=NoAction`), Release chép đủ.
+- `CefPortalLoginBrowser` sau `IPortalLoginBrowser`; `PortalLoginTraffic` chứa phần thuần (giới hạn điều hướng, nhận ra lời gọi đăng nhập, gom phản hồi) và có test.
+- Spike [`spikes/CefSpike`](../../spikes/CefSpike/Program.cs): Chromium `109.0.5414.87` khởi động, `RequestContext` riêng trong bộ nhớ, cookie manager và JavaScript hoạt động (trang `data:` cục bộ).
+- Bản Release nặng khoảng 264 MB (chủ yếu `libcef.dll` và thư mục `locales`); giữ lại chỉ `vi`/`en-US` trong `locales` là việc đóng gói còn lại (P6-05).
+
 ## Chưa kiểm
 
 Các mục 3-7 của G-01 phải được chứng minh bằng một lần người dùng đăng nhập tay trên cổng thật (ngoại lệ duy nhất của [ADR 0005](0005-mock-only-testing-policy.md)):

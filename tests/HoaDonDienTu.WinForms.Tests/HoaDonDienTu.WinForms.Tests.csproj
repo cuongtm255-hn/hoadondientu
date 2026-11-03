@@ -5,6 +5,9 @@
     <LangVersion>7.3</LangVersion>
     <RootNamespace>HoaDonDienTu.WinForms.Tests</RootNamespace>
     <AssemblyName>HoaDonDienTu.WinForms.Tests</AssemblyName>
+    <!-- Ứng dụng tham chiếu CefSharp (ADR 0007) nên cần nền tảng rõ ràng; test host vốn đã là x86. Test không khởi tạo Chromium nên không chép bản Chromium. -->
+    <PlatformTarget>x86</PlatformTarget>
+    <CefSharpBuildAction>NoAction</CefSharpBuildAction>
   </PropertyGroup>
 
   <ItemGroup>
