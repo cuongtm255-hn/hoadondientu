@@ -295,7 +295,7 @@ namespace HoaDonDienTu.Application.Exports
                     foreach (var stored in invoices)
                     {
                         cancellationToken.ThrowIfCancellationRequested();
-                        var line = Pack(zip, root, stored, usedNames);
+                        var line = Pack(zip, root, stored, usedNames, invoices.Count == 1);
                         manifest.Add(line);
                         if (line.Problem != null) problems.Add(line.Problem);
                         else exported++;
@@ -313,7 +313,7 @@ namespace HoaDonDienTu.Application.Exports
                     }
 
                     if (exported == 0) throw new InvoiceStorageException("Không có hóa đơn nào có file XML hợp lệ để xuất.");
-                    WriteManifest(zip, manifest);
+                    if (invoices.Count > 1) WriteManifest(zip, manifest);
                 }
 
                 Commit(temp, request);
@@ -334,7 +334,7 @@ namespace HoaDonDienTu.Application.Exports
             public ExportProblem Problem;
         }
 
-        private ManifestLine Pack(ZipArchive zip, string root, StoredInvoice stored, HashSet<string> usedNames)
+        private ManifestLine Pack(ZipArchive zip, string root, StoredInvoice stored, HashSet<string> usedNames, bool single)
         {
             var line = new ManifestLine { Invoice = stored };
             var current = stored.Current;
@@ -373,11 +373,17 @@ namespace HoaDonDienTu.Application.Exports
                 return line;
             }
 
-            line.FileName = UniqueName(Path.GetFileName(current.RelativePath), usedNames);
-            var entry = zip.CreateEntry(line.FileName, CompressionLevel.Optimal);
-            using (var s = entry.Open())
+            // Gói giống gói "Xuất xml" của cổng: invoice.xml + invoice.html + details.js + sign-check.jpg + viewinvoice-bg.jpg. Một hóa đơn thì năm file nằm ngay trong zip như cổng;
+            // nhiều hóa đơn thì mỗi hóa đơn một thư mục (tên theo file XML trong kho) để trang xem của hóa đơn nào mở được ngay trong thư mục của nó.
+            var folder = single ? string.Empty : UniqueName(Path.GetFileNameWithoutExtension(current.RelativePath), usedNames) + "/";
+            line.FileName = folder + InvoiceViewerPackage.XmlName;
+            foreach (var file in InvoiceViewerPackage.Files(bytes))
             {
-                s.Write(bytes, 0, bytes.Length);
+                var entry = zip.CreateEntry(folder + file.Name, CompressionLevel.Optimal);
+                using (var s = entry.Open())
+                {
+                    s.Write(file.Content, 0, file.Content.Length);
+                }
             }
 
             return line;

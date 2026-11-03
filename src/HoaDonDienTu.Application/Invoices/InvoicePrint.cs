@@ -254,7 +254,9 @@ namespace HoaDonDienTu.Application.Invoices
         private static decimal? SumFees(XElement total)
         {
             var fees = Children(Child(total, "DSLPhi"), "LPhi").Select(f => Number(Text(f, "TPhi"))).Where(v => v.HasValue).ToList();
-            return fees.Count == 0 ? (decimal?)null : fees.Sum(v => v.Value);
+
+            // Cổng in "Tổng tiền phí" là 0 khi hóa đơn không có khoản phí nào (khác "Tổng tiền chiết khấu thương mại" để trống).
+            return total == null ? (decimal?)null : fees.Sum(v => v.Value);
         }
 
         private static string SigningTimeText(XElement signer)

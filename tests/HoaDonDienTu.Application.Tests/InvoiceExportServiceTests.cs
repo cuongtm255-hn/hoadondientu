@@ -136,6 +136,12 @@ namespace HoaDonDienTu.Application.Tests
             }
         }
 
+        /// <summary>Năm file của gói xem hóa đơn (như gói "Xuất xml" của cổng) trong một thư mục của ZIP.</summary>
+        private static string[] ViewerEntries(string folder)
+        {
+            return new[] { "invoice.xml", "invoice.html", "details.js", "sign-check.jpg", "viewinvoice-bg.jpg" }.Select(n => folder + n).ToArray();
+        }
+
         private static Dictionary<string, byte[]> ReadZip(string path)
         {
             var result = new Dictionary<string, byte[]>();
@@ -424,8 +430,8 @@ namespace HoaDonDienTu.Application.Tests
             Assert.That(result.Exported, Is.EqualTo(2));
             Assert.That(result.Skipped, Is.Empty);
             var entries = ReadZip(request.TargetPath);
-            Assert.That(entries.Keys, Is.EquivalentTo(new[] { "Purchase1_v3.xml", "Purchase2_v1.xml", "manifest.csv" }));
-            Assert.That(entries["Purchase1_v3.xml"], Is.EqualTo(Encoding.UTF8.GetBytes(string.Format(Xml, "1-v3"))), "Chỉ phiên bản hiện hành, nguyên byte");
+            Assert.That(entries.Keys, Is.EquivalentTo(ViewerEntries("Purchase1_v3/").Concat(ViewerEntries("Purchase2_v1/")).Concat(new[] { "manifest.csv" })));
+            Assert.That(entries["Purchase1_v3/invoice.xml"], Is.EqualTo(Encoding.UTF8.GetBytes(string.Format(Xml, "1-v3"))), "Chỉ phiên bản hiện hành, nguyên byte");
 
             var manifest = Encoding.UTF8.GetString(entries["manifest.csv"]).TrimStart('\uFEFF').Split(new[] { "\r\n" }, StringSplitOptions.RemoveEmptyEntries);
             Assert.That(manifest[0], Is.EqualTo("so_hoa_don,ky_hieu,ngay_lap,mst_nguoi_ban,ten_file,sha256,trang_thai,ly_do"));
@@ -469,7 +475,7 @@ namespace HoaDonDienTu.Application.Tests
             Assert.That(result.Exported, Is.EqualTo(1));
             Assert.That(result.Skipped.Single().InvoiceNumber, Is.EqualTo("2"));
             var entries = ReadZip(request.TargetPath);
-            Assert.That(entries.Keys, Is.EquivalentTo(new[] { "Purchase1_v1.xml", "manifest.csv" }));
+            Assert.That(entries.Keys, Is.EquivalentTo(ViewerEntries("Purchase1_v1/").Concat(new[] { "manifest.csv" })));
             var manifest = Encoding.UTF8.GetString(entries["manifest.csv"]);
             Assert.That(manifest, Does.Contain("BO_QUA"));
             Assert.That(manifest, Does.Contain("File XML không còn trong thư mục kho"));
@@ -498,7 +504,7 @@ namespace HoaDonDienTu.Application.Tests
 
             Assert.That(result.Skipped.Single().Kind, Is.EqualTo(ExportProblemKind.HashMismatch));
             var entries = ReadZip(Path.Combine(_dir, "e.zip"));
-            Assert.That(entries.Keys, Does.Not.Contain("Purchase1_v1.xml"));
+            Assert.That(entries.Keys, Does.Not.Contain("Purchase1_v1/invoice.xml"));
             Assert.That(Encoding.UTF8.GetString(entries["manifest.csv"]), Does.Contain("sai SHA-256"));
         }
 
@@ -531,13 +537,28 @@ namespace HoaDonDienTu.Application.Tests
 
             await _service.ExportZipAsync(request, ZipFailurePolicy.Ask, null, CancellationToken.None);
 
-            Assert.That(ReadZip(request.TargetPath).Keys, Is.EquivalentTo(new[] { "same.xml", "same_2.xml", "manifest.csv" }));
+            Assert.That(ReadZip(request.TargetPath).Keys, Is.EquivalentTo(ViewerEntries("same/").Concat(ViewerEntries("same_2/")).Concat(new[] { "manifest.csv" })));
+        }
+
+        [Test]
+        public async Task Zip_OneInvoice_IsTheSameFiveFilesAsThePortalsExportXml_WithoutAFolderOrManifest()
+        {
+            await AddAsync("1", new DateTime(2026, 1, 1));
+            var request = Req(All(), "one.zip");
+
+            await _service.ExportZipAsync(request, ZipFailurePolicy.Ask, null, CancellationToken.None);
+
+            var entries = ReadZip(request.TargetPath);
+            Assert.That(entries.Keys, Is.EquivalentTo(new[] { "invoice.xml", "invoice.html", "details.js", "sign-check.jpg", "viewinvoice-bg.jpg" }));
+            Assert.That(entries["invoice.xml"], Is.EqualTo(Encoding.UTF8.GetBytes(string.Format(Xml, "1-v1"))));
+            Assert.That(Encoding.UTF8.GetString(entries["invoice.html"]), Does.Contain("Số: 1-v1"));
         }
 
         [Test]
         public async Task Zip_ManifestCellsStartingWithAFormulaCharacterAreDefused_AndCommasQuoted()
         {
             await AddAsync("=1+1", new DateTime(2026, 1, 1), tweak: i => i.InvoiceSymbol = "A,\"B\"");
+            await AddAsync("2", new DateTime(2026, 1, 2));
 
             await _service.ExportZipAsync(Req(All(), "h.zip"), ZipFailurePolicy.Ask, null, CancellationToken.None);
 

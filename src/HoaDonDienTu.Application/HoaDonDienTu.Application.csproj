@@ -14,4 +14,12 @@
     <Reference Include="System.Security" />
   </ItemGroup>
 
+  <!-- Trang xem hóa đơn của cổng Thuế (gói xuất XML): script, ảnh nền trống đồng, dấu kiểm chữ ký và phần đầu (CSS) của invoice.html. -->
+  <ItemGroup>
+    <EmbeddedResource Include="Invoices\Viewer\details.js" LogicalName="HoaDonDienTu.Viewer.details.js" />
+    <EmbeddedResource Include="Invoices\Viewer\sign-check.jpg" LogicalName="HoaDonDienTu.Viewer.sign-check.jpg" />
+    <EmbeddedResource Include="Invoices\Viewer\viewinvoice-bg.jpg" LogicalName="HoaDonDienTu.Viewer.viewinvoice-bg.jpg" />
+    <EmbeddedResource Include="Invoices\Viewer\invoice.head.html" LogicalName="HoaDonDienTu.Viewer.invoice.head.html" />
+  </ItemGroup>
+
 </Project>

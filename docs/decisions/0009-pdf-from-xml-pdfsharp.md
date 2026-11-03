@@ -46,6 +46,10 @@ của bên thứ ba. Ứng dụng nhắm net452 (ADR 0007), chạy được cả
 - (−) Phụ thuộc phông Times New Roman của Windows (có sẵn trên mọi bản Windows mục tiêu); phông được nhúng vào PDF nên mở được ở máy khác.
 - (−) Chưa hỗ trợ các biến thể hóa đơn lạ (hóa đơn có nhiều bảng, phụ lục, mẫu đặc thù): hiển thị phần chung và để trống phần không hiểu.
 
+## Cập nhật 04/11/2026: gói xem hóa đơn (`invoice.html`)
+
+Gói "Xuất xml" của cổng có `invoice.xml` + `invoice.html` + `details.js` + `sign-check.jpg` + `viewinvoice-bg.jpg`. `invoice.html` của cổng đã **dựng sẵn dữ liệu** (không đọc XML lúc mở; `details.js` chỉ vẽ mã QR từ `qrcodeContent` và rút chuỗi chứng thư thành CN), nên không thể chép nguyên cho hóa đơn khác. Ứng dụng giữ nguyên phần đầu (CSS, script) của file mẫu làm tài nguyên nhúng và dựng phần thân từ `InvoicePrintModel` (`InvoiceViewerPackage.Html`), cùng một mô hình với PDF. Test so chữ hiển thị với `invoice.html` mẫu của cổng: giống nhau (chỉ khác chuỗi chứng thư đã rút về CN). Hai chỗ khác cổng có chủ ý: nhãn chữ ký lấy theo kết quả kiểm thật ("Signature Valid" chỉ khi hợp lệ), và không in các thẻ lạ `<HHDVu>`, `<LTSuat>` mà cổng để lọt vào HTML. Ảnh nền trống đồng dùng chung cho PDF và HTML (một bản nhúng trong Application). Thứ tự dòng người mua ở PDF theo bản PDF in của cổng, còn HTML theo trang HTML của cổng; hai nguồn của cổng vốn khác nhau ở chỗ này.
+
 ## Chưa kiểm
 
 - Đối chiếu bố cục với nhiều hóa đơn thật (bán hàng, GTGT nhiều thuế suất, ngoại tệ, hóa đơn từ máy tính tiền, hóa đơn điều chỉnh/thay thế). Mới kiểm bằng hóa đơn giả theo cấu trúc TT78 và cấu trúc của một file XML thật đã có trong `docs/api-samples/invoice.zip`.

@@ -154,14 +154,8 @@ namespace HoaDonDienTu.Infrastructure.Invoices
             {
                 try
                 {
-                    using (var resource = typeof(PdfSharpInvoiceRenderer).Assembly.GetManifestResourceStream("HoaDonDienTu.Invoices.viewinvoice-bg.jpg"))
-                    {
-                        if (resource == null) return null;
-                        var memory = new MemoryStream();
-                        resource.CopyTo(memory);
-                        memory.Position = 0;
-                        return XImage.FromStream(memory);
-                    }
+                    var bytes = InvoiceViewerPackage.Background();
+                    return bytes == null ? null : XImage.FromStream(new MemoryStream(bytes));
                 }
                 catch (Exception)
                 {
@@ -253,29 +247,12 @@ namespace HoaDonDienTu.Infrastructure.Invoices
 
             private static string TitleOf(InvoicePrintModel m)
             {
-                // Tên loại hóa đơn theo ký hiệu mẫu số (TT78): cổng thể hiện tên đầy đủ chứ không phải tên viết tắt trong XML.
-                switch (m.FormSymbol)
-                {
-                    case "1": return "HOÁ ĐƠN GIÁ TRỊ GIA TĂNG";
-                    case "2": return "HOÁ ĐƠN BÁN HÀNG";
-                    case "3": return "HOÁ ĐƠN BÁN TÀI SẢN CÔNG";
-                    case "4": return "HOÁ ĐƠN BÁN HÀNG DỰ TRỮ QUỐC GIA";
-                    case "5": return "TEM, VÉ, THẺ ĐIỆN TỬ LÀ HOÁ ĐƠN";
-                    case "6": return "PHIẾU XUẤT KHO KIÊM VẬN CHUYỂN NỘI BỘ";
-                    default: return string.IsNullOrEmpty(m.Title) ? "HOÁ ĐƠN" : m.Title.ToUpper(Vi);
-                }
+                return InvoiceViewerPackage.TitleOf(m);
             }
 
             private static string KindOf(string code)
             {
-                switch (code)
-                {
-                    case "1": return "Hàng hóa, dịch vụ";
-                    case "2": return "Khuyến mại";
-                    case "3": return "Chiết khấu thương mại";
-                    case "4": return "Ghi chú, diễn giải";
-                    default: return code ?? string.Empty;
-                }
+                return InvoiceViewerPackage.KindOf(code);
             }
 
             private sealed class Builder
@@ -498,10 +475,12 @@ namespace HoaDonDienTu.Infrastructure.Invoices
                     Row("CCCD người mua:", b.IdNumber);
                     Row("Số hộ chiếu:", b.PassportNumber);
                     Row("Địa chỉ:", b.Address);
-                    Row("Điện thoại:", b.Phone);
-                    Row("Số tài khoản:", Account(b));
+
+                    // Thứ tự theo bản PDF in của cổng (trang HTML của cổng đảo số tài khoản lên trước hình thức thanh toán); điện thoại người mua chỉ in khi XML có.
+                    if (!string.IsNullOrEmpty(b.Phone)) Row("Điện thoại:", b.Phone);
                     Row("Hình thức thanh toán:", _m.PaymentMethod);
-                    Row("Đơn vị tiền tệ:" , _m.Currency + (!string.IsNullOrEmpty(_m.Currency) && _m.Currency != "VND" && _m.ExchangeRate.HasValue ? " (tỷ giá " + Number(_m.ExchangeRate) + ")" : string.Empty));
+                    Row("Số tài khoản:", Account(b));
+                    Row("Đơn vị tiền tệ:" ,_m.Currency + (!string.IsNullOrEmpty(_m.Currency) && _m.Currency != "VND" && _m.ExchangeRate.HasValue ? " (tỷ giá " + Number(_m.ExchangeRate) + ")" : string.Empty));
                     if (_y + LineStep(BodySize) > BottomLimit) NewPage();
                     Text(Margin, _y, 250, "Số bảng kê: " + (_m.ListNumber ?? string.Empty), BodySize, XFontStyle.Regular, Align.Left);
                     var listHeight = Text(Margin + 250, _y, ContentWidth - 250, "Ngày bảng kê: " + (_m.ListDate ?? string.Empty), BodySize, XFontStyle.Regular, Align.Left);
