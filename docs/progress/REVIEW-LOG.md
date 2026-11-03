@@ -6,7 +6,7 @@ Mỗi lần review ghi lại commit cuối đã được xét. Lần sau review 
 | Ngày | Phạm vi | Mốc (commit cuối đã review) | Kết quả |
 |---|---|---|---|
 | 02/11/2026 | `e91145c..f53c7d1` | `f53c7d1` | Các phát hiện đã sửa trong chính `f53c7d1` |
-| 03/11/2026 | `f53c7d1..78cc0f5` | `78cc0f5` | 10 phát hiện, chưa sửa: xem mục dưới |
+| 03/11/2026 | `f53c7d1..78cc0f5` | `78cc0f5` | 10 phát hiện; đã sửa 1, 2, 5; còn lại chưa sửa: xem mục dưới |
 
 ## Review 03/11/2026 (`f53c7d1..78cc0f5`)
 
@@ -14,11 +14,11 @@ Mỗi lần review ghi lại commit cuối đã được xét. Lần sau review 
 `DownloadOrchestrator.RecoverInterruptedAsync`. Chỉ lướt: `InvoiceExportService`, `InvoiceExcelWriter`. **Chưa review**: các presenter/control
 WinForms (Dashboard, Detail, Archive, Settings), `Dashboard.cs`, `InvoiceDetail.cs`, `StorageStatistics.cs`.
 
-1. Khôi phục không kiểm lại SHA-256 của byte đọc ở lượt ghi (`BackupService`, vòng ghi trong `RestoreAsync`).
-2. `Replace` xóa file đích rồi mới `Move`: tắt máy giữa hai bước mất file; nên dùng `File.Replace`.
+1. ✅ Đã sửa. Khôi phục không kiểm lại SHA-256 của byte đọc ở lượt ghi (`BackupService`, vòng ghi trong `RestoreAsync`).
+2. ✅ Đã sửa (`File.Replace`). `Replace` xóa file đích rồi mới `Move`: tắt máy giữa hai bước mất file; nên dùng `File.Replace`.
 3. Gói sao lưu không chứa `company.db`: khôi phục lên máy mới có XML nhưng Kho hóa đơn trống (đã biết, chờ formatVersion 2).
 4. `RecoverInterruptedAsync` có thể đua với một lượt chạy vừa bắt đầu giữa lúc đọc và ghi trạng thái.
-5. Tên điểm sao lưu an toàn chỉ chính xác đến giây; `CreateCore` ghi đè file cùng tên.
+5. ✅ Đã sửa (tên duy nhất). Tên điểm sao lưu an toàn chỉ chính xác đến giây; `CreateCore` ghi đè file cùng tên.
 6. Truy vấn Kho gọi `File.Exists` cho mọi hóa đơn khớp (đã biết, chưa đo trên đĩa thật).
 7. Manifest CSV khi xuất không vô hiệu hóa ô bắt đầu bằng `= + - @` (dữ liệu từ cổng Thuế).
 8. `SqliteValues.Time` coi `DateTime` kiểu Unspecified là giờ local rồi đổi sang UTC.

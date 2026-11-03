@@ -368,7 +368,7 @@ namespace HoaDonDienTu.Application.Backup
             var existing = EnumerateStoreFiles(company.StorageRoot).Any();
             if (existing)
             {
-                var safety = Path.Combine(company.StorageRoot, BackupsFolder, "truoc-khoi-phuc_" + company.TaxCode.Value + "_" + _utcNow().ToLocalTime().ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture) + ".zip");
+                var safety = UniqueSafetyPath(company);
                 result.SafetyBackupPath = CreateCore(company, safety, null, cancellationToken).Path;
             }
 
@@ -389,6 +389,12 @@ namespace HoaDonDienTu.Application.Backup
                         {
                             s.CopyTo(ms);
                             bytes = ms.ToArray();
+                        }
+
+                        // Byte đọc ở lượt ghi phải khớp manifest: gói có thể đổi giữa lúc kiểm tra và lúc ghi.
+                        if (!string.Equals(Hex(bytes), file.Sha256, StringComparison.OrdinalIgnoreCase))
+                        {
+                            throw new InvalidDataException("Sai SHA-256 khi ghi: " + file.Path);
                         }
 
                         if (File.Exists(target))
@@ -425,6 +431,16 @@ namespace HoaDonDienTu.Application.Backup
             return result;
         }
 
+        /// <summary>Tên điểm an toàn không bao giờ trùng một điểm đã có, kể cả hai lần khôi phục trong cùng một giây.</summary>
+        private string UniqueSafetyPath(CompanyContext company)
+        {
+            var stamp = _utcNow().ToLocalTime().ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture);
+            var baseName = Path.Combine(company.StorageRoot, BackupsFolder, "truoc-khoi-phuc_" + company.TaxCode.Value + "_" + stamp);
+            var candidate = baseName + ".zip";
+            for (var n = 2; File.Exists(candidate); n++) candidate = baseName + "_" + n.ToString(CultureInfo.InvariantCulture) + ".zip";
+            return candidate;
+        }
+
         /// <summary>Ghi qua file tạm cùng thư mục rồi đổi tên, nên file đích không bao giờ ở trạng thái ghi dở.</summary>
         private static void Replace(string target, byte[] bytes)
         {
@@ -432,8 +448,9 @@ namespace HoaDonDienTu.Application.Backup
             try
             {
                 File.WriteAllBytes(temp, bytes);
-                if (File.Exists(target)) File.Delete(target);
-                File.Move(temp, target);
+                // File.Replace đổi file đích trong một bước nên không có lúc nào thiếu file nếu mất điện giữa chừng.
+                if (File.Exists(target)) File.Replace(temp, target, null);
+                else File.Move(temp, target);
             }
             catch
             {

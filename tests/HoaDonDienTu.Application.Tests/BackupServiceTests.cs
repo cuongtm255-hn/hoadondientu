@@ -358,6 +358,37 @@ namespace HoaDonDienTu.Application.Tests
         }
 
         [Test]
+        public async Task Restore_TwiceInTheSameSecond_KeepsBothSafetyBackups()
+        {
+            SeedStore();
+            await _service.CreateAsync(Target(), false, null, CancellationToken.None);
+            Put("2026/10/b.xml", "<HDon>b lần một</HDon>");
+            var first = await _service.RestoreAsync(Target(), null, CancellationToken.None);
+            Put("2026/10/b.xml", "<HDon>b lần hai</HDon>");
+
+            var second = await _service.RestoreAsync(Target(), null, CancellationToken.None);
+
+            Assert.That(second.SafetyBackupPath, Is.Not.EqualTo(first.SafetyBackupPath));
+            Assert.That(File.Exists(first.SafetyBackupPath), Is.True, "Điểm an toàn đầu không bị ghi đè");
+            using (var zip = ZipFile.OpenRead(first.SafetyBackupPath))
+            using (var r = new StreamReader(zip.GetEntry("data/2026/10/b.xml").Open())) Assert.That(r.ReadToEnd(), Is.EqualTo("<HDon>b lần một</HDon>"));
+        }
+
+        [Test]
+        public async Task Restore_OverwritingAnExistingFile_LeavesNoTempFile()
+        {
+            SeedStore();
+            await _service.CreateAsync(Target(), false, null, CancellationToken.None);
+            var original = Read("2026/10/a.xml");
+            Put("2026/10/a.xml", "<HDon>bị sửa</HDon>");
+
+            await _service.RestoreAsync(Target(), null, CancellationToken.None);
+
+            Assert.That(Read("2026/10/a.xml"), Is.EqualTo(original));
+            Assert.That(Directory.GetFiles(_root, "*.tmp", SearchOption.AllDirectories), Is.Empty);
+        }
+
+        [Test]
         public async Task Restore_IntoAnEmptyStore_NeedsNoSafetyBackup()
         {
             SeedStore();
