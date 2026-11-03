@@ -188,6 +188,7 @@
       <DependentUpon>MainShellForm.cs</DependentUpon>
     </Compile>
     <Compile Include="Shell\MainShellPresenter.cs" />
+    <Compile Include="Shell\NavigationIcons.cs" />
     <Compile Include="Shell\NavigationRequestedEventArgs.cs" />
     <Compile Include="Shell\PlaceholderScreenControl.cs">
       <SubType>Component</SubType>

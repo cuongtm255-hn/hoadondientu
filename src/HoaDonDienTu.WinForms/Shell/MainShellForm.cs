@@ -21,9 +21,60 @@ namespace HoaDonDienTu.WinForms.Shell
             {
                 navDashboard, navDownload, navInvoiceArchive, navDownloadHistory, navCompanies, navSettings
             };
+            StyleNavigationButtons();
 #if DEBUG
             ApplyTestMarker();
 #endif
+        }
+
+        private static readonly System.Drawing.Color NavActiveText = System.Drawing.Color.White;
+        private static readonly System.Drawing.Color NavDisabledText = System.Drawing.Color.FromArgb(120, 134, 150);
+        private static readonly System.Drawing.Color NavHoverBack = System.Drawing.Color.FromArgb(60, 78, 98);
+        private static readonly System.Drawing.Color NavCheckedBack = System.Drawing.Color.FromArgb(31, 111, 178);
+
+        /// <summary>Icon theo màn hình, chữ đậm khi đang chọn, hover rõ, mục bị khóa xám hẳn và có icon xám.</summary>
+        private void StyleNavigationButtons()
+        {
+            foreach (var button in _navButtons)
+            {
+                var screen = (ScreenId)button.Tag;
+                var normalIcon = NavigationIcons.Create(screen, NavActiveText);
+                var disabledIcon = NavigationIcons.Create(screen, NavDisabledText);
+
+                button.StateCommon.Content.Padding = new Padding(14, 0, 0, 0);
+                button.StateCommon.Content.AdjacentGap = 12;
+                button.StateCommon.Content.ShortText.Font = new System.Drawing.Font("Segoe UI Semibold", 10.5F);
+                button.StateCommon.Content.ShortText.Color1 = NavActiveText;
+                button.StateCommon.Content.Image.ImageH = PaletteRelativeAlign.Near;
+
+                button.StateTracking.Back.Color1 = NavHoverBack;
+                button.StateTracking.Back.Color2 = NavHoverBack;
+                button.StatePressed.Back.Color1 = NavHoverBack;
+                button.StatePressed.Back.Color2 = NavHoverBack;
+                button.StateCheckedNormal.Back.Color1 = NavCheckedBack;
+                button.StateCheckedNormal.Back.Color2 = NavCheckedBack;
+                button.StateCheckedTracking.Back.Color1 = NavCheckedBack;
+                button.StateCheckedTracking.Back.Color2 = NavCheckedBack;
+                button.StateCheckedPressed.Back.Color1 = NavCheckedBack;
+                button.StateCheckedPressed.Back.Color2 = NavCheckedBack;
+                button.StateDisabled.Back.Color1 = System.Drawing.Color.FromArgb(47, 62, 78);
+                button.StateDisabled.Back.Color2 = System.Drawing.Color.FromArgb(47, 62, 78);
+                button.StateDisabled.Content.ShortText.Color1 = NavDisabledText;
+                button.StateDisabled.Content.ShortText.Font = new System.Drawing.Font("Segoe UI", 10.5F, System.Drawing.FontStyle.Italic);
+
+                var captured = button;
+                EventHandler refresh = delegate
+                {
+                    captured.Values.Image = captured.Enabled ? normalIcon : disabledIcon;
+                };
+                button.EnabledChanged += refresh;
+                refresh(button, EventArgs.Empty);
+                button.Disposed += delegate
+                {
+                    normalIcon.Dispose();
+                    disabledIcon.Dispose();
+                };
+            }
         }
 
 #if DEBUG

@@ -252,7 +252,7 @@ namespace HoaDonDienTu.WinForms.Login
         }
 
         /// <summary>Thời gian chờ trước khi coi việc đóng hộp thoại đăng nhập là hủy: đăng nhập thành công cũng làm hộp thoại đóng.</summary>
-        public TimeSpan ClosedDialogGrace { get; set; } = TimeSpan.FromMilliseconds(1500);
+        public TimeSpan ClosedDialogGrace { get; set; } = TimeSpan.FromMilliseconds(400);
 
         private async void OnLoginDialogClosed(object sender, EventArgs e)
         {

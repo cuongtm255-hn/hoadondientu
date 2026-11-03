@@ -61,7 +61,7 @@ namespace HoaDonDienTu.WinForms.Login
         private readonly PortalLoginTraffic.ResponseBuffer _response = new PortalLoginTraffic.ResponseBuffer();
         private ChromiumWebBrowser _browser;
         private IRequestContext _context;
-        private readonly System.Windows.Forms.Timer _closeWatch = new System.Windows.Forms.Timer { Interval = 500 };
+        private readonly System.Windows.Forms.Timer _closeWatch = new System.Windows.Forms.Timer { Interval = 250 };
         private bool _disposed;
         private bool _watching;
 
