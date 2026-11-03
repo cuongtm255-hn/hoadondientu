@@ -130,7 +130,7 @@ namespace HoaDonDienTu.Infrastructure.Portal.Config
                     StatusKinds = new Dictionary<int, string>(),
                     RetryAfterHeader = "Retry-After"
                 },
-                RateLimit = new RateLimitConfig { MinIntervalMs = 500 }
+                RateLimit = new RateLimitConfig { MinIntervalMs = 3000 }
             };
         }
 

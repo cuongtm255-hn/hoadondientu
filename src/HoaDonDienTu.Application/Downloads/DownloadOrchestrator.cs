@@ -300,7 +300,6 @@ namespace HoaDonDienTu.Application.Downloads
                     var control = CheckControl(state.Entry);
                     if (control.HasValue) return await StopSegmentAsync(state, segment, control.Value).ConfigureAwait(false);
 
-                    await _rateLimiter.WaitAsync(ct).ConfigureAwait(false);
                     var request = new InvoiceSearchRequest(session.Direction, segment.Range.Start, segment.Range.End)
                     {
                         Filter = FilterFor(session, segment),
@@ -432,6 +431,8 @@ namespace HoaDonDienTu.Application.Downloads
             {
                 try
                 {
+                    // Mọi lời gọi sang cổng Thuế (tra cứu, tải XML từng hóa đơn và cả lần thử lại) đều qua bộ giãn nhịp, không chỉ lời gọi tra cứu.
+                    await _rateLimiter.WaitAsync(ct).ConfigureAwait(false);
                     IPortalInvoiceClient client;
                     try
                     {

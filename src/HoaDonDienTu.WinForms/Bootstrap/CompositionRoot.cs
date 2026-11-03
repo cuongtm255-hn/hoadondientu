@@ -279,7 +279,8 @@ namespace HoaDonDienTu.WinForms.Bootstrap
                 // Cổng giả không cần giãn nhịp 500 ms như cổng thật; giữ nhỏ để thử nghiệm nhanh.
                 var interval = Math.Min(portalConfig.RateLimit.MinIntervalMs, 20);
 #else
-                var interval = portalConfig.RateLimit.MinIntervalMs;
+                // Release: ít nhất 3 giây giữa hai lời gọi liên tiếp sang cổng Thuế, dù cấu hình ghi thấp hơn.
+                var interval = PortalOptions.EffectiveIntervalMs(portalConfig.RateLimit.MinIntervalMs);
 #endif
                 var concrete = new DownloadOrchestrator(
                     downloadRepository, contextManager, SessionStore, () => ApiClientProvider.GetClient(), invoiceStore,

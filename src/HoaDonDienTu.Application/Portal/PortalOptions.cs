@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using HoaDonDienTu.Domain.Invoices;
@@ -28,6 +29,14 @@ namespace HoaDonDienTu.Application.Portal
     /// </summary>
     public static class PortalOptions
     {
+        /// <summary>Khoảng cách tối thiểu giữa hai lời gọi liên tiếp sang cổng Thuế ở bản Release; cấu hình thấp hơn bị nâng lên mức này để không gọi dồn dập.</summary>
+        public const int MinimumSafeIntervalMs = 3000;
+
+        public static int EffectiveIntervalMs(int configuredMs)
+        {
+            return Math.Max(configuredMs, MinimumSafeIntervalMs);
+        }
+
         public const string All = "Tất cả";
 
         /// <summary>Trạng thái hóa đơn, tham số <c>tthai</c>.</summary>

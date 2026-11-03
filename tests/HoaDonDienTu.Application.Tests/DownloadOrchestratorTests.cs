@@ -96,6 +96,7 @@ namespace HoaDonDienTu.Application.Tests
         private List<TimeSpan> _delays;
         private DownloadOrchestrator _orchestrator;
         private ProgressLog _progress;
+        private NoLimit _limiter;
 
         [SetUp]
         public void SetUp()
@@ -111,13 +112,14 @@ namespace HoaDonDienTu.Application.Tests
             _clock = new TestClock();
             _delays = new List<TimeSpan>();
             _progress = new ProgressLog();
+            _limiter = new NoLimit();
             Build(DefaultRetryPolicy.Standard);
         }
 
         private void Build(IRetryPolicy retry)
         {
             _orchestrator = new DownloadOrchestrator(
-                _repo, _context, _portal, () => { if (_factoryThrows) throw new InvalidOperationException("session removed"); return _client; }, _flaky, new NoLimit(), retry, _entitlement, _clock, new NullLogger(),
+                _repo, _context, _portal, () => { if (_factoryThrows) throw new InvalidOperationException("session removed"); return _client; }, _flaky, _limiter, retry, _entitlement, _clock, new NullLogger(),
                 (span, token) =>
                 {
                     _delays.Add(span);
@@ -905,6 +907,46 @@ namespace HoaDonDienTu.Application.Tests
             await _repo.SaveSegmentAsync(segment, CancellationToken.None);
         }
 
+        // ---- Giãn nhịp mọi lời gọi sang cổng Thuế ----
+
+        [Test]
+        public async Task EveryPortalCall_GoesThroughTheRateLimiter_SearchesAndEachInvoiceXmlAlike()
+        {
+            _client.AddPage("2026-10-01", null, Invoices("A", 2), null);
+            _client.AddPage("2026-11-01", null, Invoices("B", 3), null);
+            var id = await CreateAsync(PeriodSpec.Custom(new DateTime(2026, 10, 1), new DateTime(2026, 11, 30)));
+
+            await _orchestrator.RunAsync(id, null, CancellationToken.None);
+
+            Assert.That(_client.SearchCursors, Has.Count.EqualTo(2), "mỗi tháng một lần tra cứu khi chỉ có một trang");
+            Assert.That(_client.XmlRequests, Has.Count.EqualTo(5), "mỗi hóa đơn một lần tải XML");
+            Assert.That(_limiter.Waits, Is.EqualTo(_client.SearchCursors.Count + _client.XmlRequests.Count), "mọi lời gọi đều phải chờ giãn nhịp");
+        }
+
+        [TestCase(0, 3000)]
+        [TestCase(500, 3000)]
+        [TestCase(2999, 3000)]
+        [TestCase(3000, 3000)]
+        [TestCase(5000, 5000)]
+        public void ReleaseInterval_IsAtLeastThreeSeconds_EvenIfConfiguredLower(int configured, int expected)
+        {
+            Assert.That(PortalOptions.EffectiveIntervalMs(configured), Is.EqualTo(expected));
+            Assert.That(PortalOptions.MinimumSafeIntervalMs, Is.EqualTo(3000));
+        }
+
+        [Test]
+        public async Task Retries_AreAlsoRateLimited()
+        {
+            _client.AddPage("2026-10-01", null, Invoices("A", 1), null);
+            _client.FailSearch(PortalErrorKind.Transient, 2);
+            var id = await CreateAsync(PeriodSpec.ForMonth(2026, 10));
+
+            await _orchestrator.RunAsync(id, null, CancellationToken.None);
+
+            Assert.That(_client.SearchCursors, Has.Count.EqualTo(3), "hai lần lỗi tạm thời rồi một lần thành công");
+            Assert.That(_limiter.Waits, Is.EqualTo(_client.SearchCursors.Count + _client.XmlRequests.Count));
+        }
+
         // ---- Chính sách thử lại ----
 
         [TestCase(PortalErrorKind.AuthExpired)]
@@ -1078,8 +1120,11 @@ namespace HoaDonDienTu.Application.Tests
 
         private sealed class NoLimit : IRateLimiter
         {
+            public int Waits;
+
             public Task WaitAsync(CancellationToken cancellationToken)
             {
+                Waits++;
                 return Task.FromResult(0);
             }
         }

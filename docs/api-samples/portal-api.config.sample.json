@@ -146,6 +146,6 @@
     "retryAfterHeader": "Retry-After"
   },
   "rateLimit": {
-    "minIntervalMs": 500
+    "minIntervalMs": 3000
   }
 }
