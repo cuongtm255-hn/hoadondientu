@@ -157,6 +157,9 @@ namespace HoaDonDienTu.Application.Invoices
         /// <summary>Vấn đề do lần kiểm tra file gần nhất ghi lại; null khi chưa kiểm hoặc file nguyên vẹn.</summary>
         public IntegrityProblemKind? StoredProblem { get; set; }
 
+        /// <summary>Thời điểm (UTC) lần kiểm tra file gần nhất của hóa đơn này; null khi chưa kiểm.</summary>
+        public DateTime? CheckedAtUtc { get; set; }
+
         public decimal TotalBeforeTax { get; set; }
         public decimal TotalTax { get; set; }
         public decimal TotalPayment { get; set; }

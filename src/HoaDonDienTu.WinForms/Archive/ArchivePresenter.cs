@@ -410,7 +410,7 @@ namespace HoaDonDienTu.WinForms.Archive
                 _store.Save(company, filter, _query);
                 _view.ShowResult(Build(page, filter));
                 ResetSelection();
-                var problems = page.Summary.ProblemCount;
+                var problems = page.Summary.ProblemCount - page.Summary.DamagedCount;
                 var existence = problems == 0 ? "Đã kiểm tra: mọi file XML đều còn trên đĩa." : "Đã kiểm tra: " + problems + " hóa đơn thiếu file XML. Lọc theo \"Lỗi/thiếu file\" để xem.";
                 _view.ShowMessage(existence, problems > 0);
 
@@ -551,11 +551,12 @@ namespace HoaDonDienTu.WinForms.Archive
                 CounterpartyIdCaption = purchase ? "MST người bán" : "MST người mua",
                 CounterpartyNameCaption = purchase ? "Tên người bán" : "Tên người mua",
                 ResultCount = page.TotalCount.ToString("N0", Vi),
-                ResultSub = "Hóa đơn " + scope + year + (page.Summary.ProblemCount > 0 ? " · " + page.Summary.ProblemCount + " thiếu file" : string.Empty),
+                ResultSub = "Hóa đơn " + scope + year + (page.Summary.ProblemCount - page.Summary.DamagedCount > 0 ? " · " + (page.Summary.ProblemCount - page.Summary.DamagedCount) + " thiếu file" : string.Empty)
+                    + (page.Summary.DamagedCount > 0 ? " · " + page.Summary.DamagedCount + " lỗi nội dung" : string.Empty),
                 TotalBeforeTax = Compact(page.Summary.TotalBeforeTax),
                 TotalTax = Compact(page.Summary.TotalTax),
                 TotalPayment = Compact(page.Summary.TotalPayment),
-                FooterText = page.TotalCount == 0 ? "Không có hóa đơn nào khớp." : "Hiển thị " + first.ToString("N0", Vi) + "–" + last.ToString("N0", Vi) + " / " + page.TotalCount.ToString("N0", Vi),
+                FooterText = (page.TotalCount == 0 ? "Không có hóa đơn nào khớp." : "Hiển thị " + first.ToString("N0", Vi) + "–" + last.ToString("N0", Vi) + " / " + page.TotalCount.ToString("N0", Vi)) + LastCheckText(page.Summary),
                 PageText = "Trang " + (page.PageIndex + 1) + "/" + page.PageCount,
                 CanPrevious = page.PageIndex > 0,
                 CanNext = page.PageIndex < page.PageCount - 1,
@@ -585,6 +586,13 @@ namespace HoaDonDienTu.WinForms.Archive
                 Tax = Money(i.TotalTax),
                 Payment = Money(i.TotalPayment)
             };
+        }
+
+        private static string LastCheckText(ArchiveSummary summary)
+        {
+            return summary.LastFileCheckUtc.HasValue
+                ? " · Kiểm tra file lần cuối: " + summary.LastFileCheckUtc.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm", Vi)
+                : string.Empty;
         }
 
         public static string FileText(ArchiveRow row)

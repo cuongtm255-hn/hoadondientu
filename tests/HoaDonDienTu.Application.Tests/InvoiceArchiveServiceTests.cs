@@ -275,6 +275,21 @@ namespace HoaDonDienTu.Application.Tests
             Assert.That(all.Rows.Select(r => r.FileState), Is.EqualTo(new[] { ArchiveFileState.Ok, ArchiveFileState.Damaged, ArchiveFileState.Missing }));
             Assert.That(problems.Rows.Count, Is.EqualTo(2));
             Assert.That(all.Summary.ProblemCount, Is.EqualTo(2));
+            Assert.That(all.Summary.DamagedCount, Is.EqualTo(1));
+        }
+
+        [Test]
+        public async Task TheSummary_CarriesTheLatestFileCheckTime_OrNullWhenNeverChecked()
+        {
+            await AddAsync(InvoiceDirection.Purchase, "1", new DateTime(2026, 1, 1));
+            await AddAsync(InvoiceDirection.Purchase, "2", new DateTime(2026, 1, 2));
+            Assert.That((await _service.QueryAsync(Q(), CancellationToken.None)).Summary.LastFileCheckUtc, Is.Null);
+
+            var ids = (await _repo.ListAsync(CancellationToken.None)).Select(x => x.InvoiceId).ToList();
+            await _repo.SaveIntegrityAsync(new Dictionary<Guid, IntegrityProblemKind?> { { ids[0], null } }, new DateTime(2026, 11, 3, 8, 0, 0, DateTimeKind.Utc), CancellationToken.None);
+            await _repo.SaveIntegrityAsync(new Dictionary<Guid, IntegrityProblemKind?> { { ids[1], null } }, new DateTime(2026, 11, 4, 9, 30, 0, DateTimeKind.Utc), CancellationToken.None);
+
+            Assert.That((await _service.QueryAsync(Q(), CancellationToken.None)).Summary.LastFileCheckUtc, Is.EqualTo(new DateTime(2026, 11, 4, 9, 30, 0, DateTimeKind.Utc)));
         }
 
         [Test]

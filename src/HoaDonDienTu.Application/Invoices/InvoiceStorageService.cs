@@ -192,6 +192,7 @@ namespace HoaDonDienTu.Application.Invoices
         private readonly object _gate = new object();
         private readonly Dictionary<string, StoredInvoice> _byKey = new Dictionary<string, StoredInvoice>(StringComparer.Ordinal);
         private readonly Dictionary<Guid, IntegrityProblemKind> _problems = new Dictionary<Guid, IntegrityProblemKind>();
+        private readonly Dictionary<Guid, DateTime> _checkedAt = new Dictionary<Guid, DateTime>();
 
         public Task SaveIntegrityAsync(IDictionary<Guid, IntegrityProblemKind?> results, DateTime checkedAtUtc, CancellationToken cancellationToken)
         {
@@ -199,6 +200,7 @@ namespace HoaDonDienTu.Application.Invoices
             {
                 foreach (var result in results)
                 {
+                    _checkedAt[result.Key] = checkedAtUtc;
                     if (result.Value.HasValue) _problems[result.Key] = result.Value.Value;
                     else _problems.Remove(result.Key);
                 }
@@ -280,7 +282,13 @@ namespace HoaDonDienTu.Application.Invoices
         public Task<IList<InvoiceFileRef>> ListFileRefsAsync(ArchiveCriteria criteria, CancellationToken cancellationToken)
         {
             Dictionary<Guid, IntegrityProblemKind> problems;
-            lock (_gate) problems = new Dictionary<Guid, IntegrityProblemKind>(_problems);
+            Dictionary<Guid, DateTime> checkedAt;
+            lock (_gate)
+            {
+                problems = new Dictionary<Guid, IntegrityProblemKind>(_problems);
+                checkedAt = new Dictionary<Guid, DateTime>(_checkedAt);
+            }
+
             IList<InvoiceFileRef> refs = Matched(criteria).Select(
                 s => new InvoiceFileRef
                 {
@@ -288,6 +296,7 @@ namespace HoaDonDienTu.Application.Invoices
                     RelativePath = s.Current == null ? null : s.Current.RelativePath,
                     VersionCount = s.Versions.Count,
                     StoredProblem = problems.ContainsKey(s.InvoiceId) ? problems[s.InvoiceId] : (IntegrityProblemKind?)null,
+                    CheckedAtUtc = checkedAt.ContainsKey(s.InvoiceId) ? checkedAt[s.InvoiceId] : (DateTime?)null,
                     TotalBeforeTax = s.Invoice.TotalBeforeTax ?? 0m,
                     TotalTax = s.Invoice.TotalTax ?? 0m,
                     TotalPayment = s.Invoice.TotalPayment ?? 0m

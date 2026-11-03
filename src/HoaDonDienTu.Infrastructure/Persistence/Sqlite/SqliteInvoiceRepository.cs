@@ -155,7 +155,7 @@ namespace HoaDonDienTu.Infrastructure.Persistence.Sqlite
                 {
                     IList<InvoiceFileRef> refs = new List<InvoiceFileRef>();
                     var sql =
-                        "SELECT i.id, i.total_before_tax, i.total_tax, i.total_payment, i.current_path AS relative_path, i.version_count, i.file_problem " +
+                        "SELECT i.id, i.total_before_tax, i.total_tax, i.total_payment, i.current_path AS relative_path, i.version_count, i.file_problem, i.file_checked_utc " +
                         "FROM invoice i WHERE " + filter.Where + " ORDER BY " + OrderBy(criteria);
                     using (var command = SqliteDatabase.Command(c, sql, filter.Values.ToArray()))
                     using (var reader = command.ExecuteReader())
@@ -169,6 +169,7 @@ namespace HoaDonDienTu.Infrastructure.Persistence.Sqlite
                                     RelativePath = SqliteValues.Text(reader["relative_path"]),
                                     VersionCount = SqliteValues.Int(reader["version_count"]),
                                     StoredProblem = reader["file_problem"] is DBNull ? (IntegrityProblemKind?)null : (IntegrityProblemKind)SqliteValues.Int(reader["file_problem"]),
+                                    CheckedAtUtc = SqliteValues.ParseTimeOrNull(reader["file_checked_utc"]),
                                     TotalBeforeTax = SqliteValues.ParseMoney(reader["total_before_tax"]) ?? 0m,
                                     TotalTax = SqliteValues.ParseMoney(reader["total_tax"]) ?? 0m,
                                     TotalPayment = SqliteValues.ParseMoney(reader["total_payment"]) ?? 0m

@@ -96,6 +96,12 @@ namespace HoaDonDienTu.Application.Invoices
         public decimal TotalTax { get; set; }
         public decimal TotalPayment { get; set; }
         public int ProblemCount { get; set; }
+
+        /// <summary>Trong <see cref="ProblemCount"/>: file còn nhưng lỗi nội dung theo lần kiểm tra file gần nhất.</summary>
+        public int DamagedCount { get; set; }
+
+        /// <summary>Lần kiểm tra file gần nhất (UTC) của các hóa đơn khớp; null khi chưa kiểm lần nào.</summary>
+        public DateTime? LastFileCheckUtc { get; set; }
     }
 
     public sealed class ArchivePage
@@ -207,6 +213,9 @@ namespace HoaDonDienTu.Application.Invoices
                 summary.TotalTax += matched[n].TotalTax;
                 summary.TotalPayment += matched[n].TotalPayment;
                 if (matchedStates[n] == ArchiveFileState.Missing || matchedStates[n] == ArchiveFileState.Damaged) summary.ProblemCount++;
+                if (matchedStates[n] == ArchiveFileState.Damaged) summary.DamagedCount++;
+                var checkedAt = matched[n].CheckedAtUtc;
+                if (checkedAt.HasValue && (!summary.LastFileCheckUtc.HasValue || checkedAt.Value > summary.LastFileCheckUtc.Value)) summary.LastFileCheckUtc = checkedAt;
             }
 
             return new ArchivePage { Rows = rows, TotalCount = matched.Count, PageIndex = pageIndex, PageSize = pageSize, Summary = summary };
