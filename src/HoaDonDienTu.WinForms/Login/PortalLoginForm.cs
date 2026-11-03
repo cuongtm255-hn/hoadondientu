@@ -16,14 +16,13 @@ namespace HoaDonDienTu.WinForms.Login
 
         public event EventHandler ViewShown;
         public event EventHandler RetryRequested;
-        public event EventHandler ClearSessionRequested;
         public event EventHandler CancelRequested;
 
         public void ShowRequest(string companyName, string expectedTaxCode)
         {
             lblCompanyName.Values.Text = companyName;
             lblExpectedTaxCode.Values.Text = "MST cần đăng nhập: " + expectedTaxCode;
-            lblFooter.Values.Text = "MST cấu hình: " + expectedTaxCode + " · Kết nối TLS 1.2 · Token chỉ lưu trong bộ nhớ";
+            lblFooter.Values.Text = "MST cần đăng nhập: " + expectedTaxCode;
         }
 
         public void ShowState(PortalLoginViewState state)
@@ -32,7 +31,6 @@ namespace HoaDonDienTu.WinForms.Login
             lblStateMessage.ForeColor = state.IsError ? Color.FromArgb(170, 40, 30) : SystemColors.ControlText;
             progressLogin.Visible = state.IsBusy;
             btnRetry.Visible = state.CanRetry;
-            btnClearSession.Enabled = !state.IsBusy;
         }
 
         public void HostBrowser(Control browserView)
@@ -76,11 +74,6 @@ namespace HoaDonDienTu.WinForms.Login
         private void OnRetryClick(object sender, EventArgs e)
         {
             Raise(RetryRequested);
-        }
-
-        private void OnClearSessionClick(object sender, EventArgs e)
-        {
-            Raise(ClearSessionRequested);
         }
 
         private void OnCancelClick(object sender, EventArgs e)

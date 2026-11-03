@@ -204,6 +204,40 @@ namespace HoaDonDienTu.WinForms.Tests
             Assert.That(Go(ScreenId.Download).Reason, Does.Contain("không cho phép"));
         }
 
+        private static HoaDonDienTu.Application.Authentication.PortalSession SessionOf(HoaDonDienTu.Application.Companies.CompanyContext company)
+        {
+            return new HoaDonDienTu.Application.Authentication.PortalSession(
+                company.CompanyId, company.TaxCode, new HoaDonDienTu.Application.Authentication.PortalSessionMaterial(null, null, "t"), System.DateTime.UtcNow);
+        }
+
+        [Test]
+        public void Download_NeedsAPortalSessionForTheOpenCompany_ButProgressAndOtherScreensDoNot()
+        {
+            var store = new HoaDonDienTu.Infrastructure.Portal.InMemoryPortalSessionStore();
+            var navigation = new NavigationService(_factory, _view, _entitlement, _context, new RecordingLogger(), store);
+
+            Assert.That(navigation.CanNavigate(ScreenId.Download), Is.False);
+            Assert.That(navigation.NavigateAsync(ScreenId.Download, null, CancellationToken.None).GetAwaiter().GetResult().Reason, Does.Contain("đăng nhập cổng Thuế"));
+            Assert.That(navigation.CanNavigate(ScreenId.DownloadProgress), Is.True, "xem tiến độ không cần phiên");
+            Assert.That(navigation.CanNavigate(ScreenId.InvoiceArchive), Is.True);
+
+            store.Set(SessionOf(_context.Current));
+            Assert.That(navigation.CanNavigate(ScreenId.Download), Is.True);
+
+            store.Clear();
+            Assert.That(navigation.CanNavigate(ScreenId.Download), Is.False);
+        }
+
+        [Test]
+        public void Download_ASessionOfAnotherCompany_DoesNotCount()
+        {
+            var store = new HoaDonDienTu.Infrastructure.Portal.InMemoryPortalSessionStore();
+            var navigation = new NavigationService(_factory, _view, _entitlement, _context, new RecordingLogger(), store);
+            store.Set(SessionOf(FakeContextAccessor.Context("0109999999")));
+
+            Assert.That(navigation.CanNavigate(ScreenId.Download), Is.False);
+        }
+
         [Test]
         public void Dispose_CancelsAndDisposesCurrentScreen()
         {

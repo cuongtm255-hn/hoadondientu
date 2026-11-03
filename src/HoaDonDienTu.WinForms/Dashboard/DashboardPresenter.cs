@@ -243,7 +243,11 @@ namespace HoaDonDienTu.WinForms.Dashboard
 
         private void Go(string name, ScreenId target, object parameter)
         {
-            Run(name, token => _navigation.NavigateAsync(target, parameter, token));
+            Run(name, async token =>
+            {
+                var result = await _navigation.NavigateAsync(target, parameter, token);
+                if (!result.Succeeded && !string.IsNullOrEmpty(result.Reason)) _view.ShowMessage(result.Reason, true);
+            });
         }
 
         private async void Run(string name, Func<CancellationToken, Task> operation)

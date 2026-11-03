@@ -34,7 +34,6 @@ namespace HoaDonDienTu.WinForms.Login
     {
         event EventHandler ViewShown;
         event EventHandler RetryRequested;
-        event EventHandler ClearSessionRequested;
         event EventHandler CancelRequested;
 
         void ShowRequest(string companyName, string expectedTaxCode);

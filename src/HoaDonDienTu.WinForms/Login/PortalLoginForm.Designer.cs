@@ -29,7 +29,6 @@ namespace HoaDonDienTu.WinForms.Login
             this.lblStep = new ComponentFactory.Krypton.Toolkit.KryptonLabel();
             this.pnlActions = new ComponentFactory.Krypton.Toolkit.KryptonPanel();
             this.lblFooter = new ComponentFactory.Krypton.Toolkit.KryptonLabel();
-            this.btnClearSession = new ComponentFactory.Krypton.Toolkit.KryptonButton();
             this.btnCancel = new ComponentFactory.Krypton.Toolkit.KryptonButton();
             this.pnlHeader = new ComponentFactory.Krypton.Toolkit.KryptonPanel();
             this.lblExpectedTaxCode = new ComponentFactory.Krypton.Toolkit.KryptonLabel();
@@ -134,7 +133,6 @@ namespace HoaDonDienTu.WinForms.Login
             // pnlActions
             //
             this.pnlActions.Controls.Add(this.lblFooter);
-            this.pnlActions.Controls.Add(this.btnClearSession);
             this.pnlActions.Controls.Add(this.btnCancel);
             this.pnlActions.Dock = System.Windows.Forms.DockStyle.Bottom;
             this.pnlActions.Name = "pnlActions";
@@ -147,17 +145,7 @@ namespace HoaDonDienTu.WinForms.Login
             this.lblFooter.Name = "lblFooter";
             this.lblFooter.Size = new System.Drawing.Size(400, 22);
             this.lblFooter.TabIndex = 0;
-            this.lblFooter.Values.Text = "Kết nối TLS 1.2 · Token chỉ lưu trong bộ nhớ";
-            //
-            // btnClearSession
-            //
-            this.btnClearSession.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnClearSession.Location = new System.Drawing.Point(740, 8);
-            this.btnClearSession.Name = "btnClearSession";
-            this.btnClearSession.Size = new System.Drawing.Size(140, 32);
-            this.btnClearSession.TabIndex = 1;
-            this.btnClearSession.Values.Text = "Xóa phiên trình duyệt";
-            this.btnClearSession.Click += new System.EventHandler(this.OnClearSessionClick);
+            this.lblFooter.Values.Text = "";
             //
             // btnCancel
             //
@@ -257,7 +245,6 @@ namespace HoaDonDienTu.WinForms.Login
         private ComponentFactory.Krypton.Toolkit.KryptonLabel lblStep;
         private ComponentFactory.Krypton.Toolkit.KryptonPanel pnlActions;
         private ComponentFactory.Krypton.Toolkit.KryptonLabel lblFooter;
-        private ComponentFactory.Krypton.Toolkit.KryptonButton btnClearSession;
         private ComponentFactory.Krypton.Toolkit.KryptonButton btnCancel;
         private ComponentFactory.Krypton.Toolkit.KryptonPanel pnlHeader;
         private ComponentFactory.Krypton.Toolkit.KryptonLabel lblExpectedTaxCode;

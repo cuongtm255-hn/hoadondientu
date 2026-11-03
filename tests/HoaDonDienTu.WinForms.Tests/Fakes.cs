@@ -127,6 +127,7 @@ namespace HoaDonDienTu.WinForms.Tests
         }
 
         public event EventHandler<BrowserNavigationEventArgs> NavigationChanged { add { } remove { } }
+        public event EventHandler LoginDialogClosed;
 
         public event EventHandler<BrowserFailureEventArgs> BrowserFailed
         {
@@ -169,6 +170,12 @@ namespace HoaDonDienTu.WinForms.Tests
             if (handler != null) handler(this, new LoginCandidateEventArgs());
         }
 
+        public void RaiseDialogClosed()
+        {
+            var handler = LoginDialogClosed;
+            if (handler != null) handler(this, EventArgs.Empty);
+        }
+
         public void RaiseFailure()
         {
             var handler = _failed;
@@ -194,14 +201,13 @@ namespace HoaDonDienTu.WinForms.Tests
 
         public event EventHandler ViewShown;
         public event EventHandler RetryRequested;
-        public event EventHandler ClearSessionRequested;
         public event EventHandler CancelRequested;
 
         public int Listeners
         {
             get
             {
-                return Count(ViewShown) + Count(RetryRequested) + Count(ClearSessionRequested) + Count(CancelRequested);
+                return Count(ViewShown) + Count(RetryRequested) + Count(CancelRequested);
             }
         }
 
@@ -225,7 +231,6 @@ namespace HoaDonDienTu.WinForms.Tests
 
         public void RaiseShown() { Raise(ViewShown); }
         public void RaiseRetry() { Raise(RetryRequested); }
-        public void RaiseClearSession() { Raise(ClearSessionRequested); }
         public void RaiseCancel() { Raise(CancelRequested); }
 
         private void Raise(EventHandler handler)

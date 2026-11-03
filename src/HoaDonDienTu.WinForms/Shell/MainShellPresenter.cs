@@ -124,7 +124,7 @@ namespace HoaDonDienTu.WinForms.Shell
                 CanAddCompany = _baseMode.CanAddCompany,
                 LicenseLabel = _baseMode.LicenseLabel,
                 CanPortalLogin = _baseMode.CanPortalLogin && has,
-                CanDownload = _baseMode.CanDownload && has
+                CanDownload = _baseMode.CanDownload && has && _sessionStore.HasSessionFor(_context)
             });
         }
 
@@ -169,6 +169,8 @@ namespace HoaDonDienTu.WinForms.Shell
 
         private void OnSessionChanged(object sender, EventArgs e)
         {
+            // Tải hóa đơn chỉ mở khi đã đăng nhập cổng Thuế: đăng nhập xong thì mở, hết phiên hoặc đổi MST thì khóa lại.
+            ApplyModeWithContext();
             RefreshPortalSession();
         }
 

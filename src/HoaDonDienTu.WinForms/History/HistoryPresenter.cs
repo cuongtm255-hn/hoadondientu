@@ -174,7 +174,11 @@ namespace HoaDonDienTu.WinForms.History
 
         private void OnNewSession(object sender, EventArgs e)
         {
-            Run("Tạo phiên tải mới", token => _navigation.NavigateAsync(ScreenId.Download, null, token));
+            Run("Tạo phiên tải mới", async token =>
+            {
+                var result = await _navigation.NavigateAsync(ScreenId.Download, null, token);
+                if (!result.Succeeded && !string.IsNullOrEmpty(result.Reason)) _view.ShowMessage(result.Reason, true);
+            });
         }
 
         // ---- Tra cứu và hiển thị ----

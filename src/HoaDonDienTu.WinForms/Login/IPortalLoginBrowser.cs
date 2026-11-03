@@ -41,6 +41,9 @@ namespace HoaDonDienTu.WinForms.Login
         event EventHandler<BrowserNavigationEventArgs> NavigationChanged;
         event EventHandler<BrowserFailureEventArgs> BrowserFailed;
 
+        /// <summary>Người dùng đóng hộp thoại đăng nhập của trang (nút X) khi chưa đăng nhập.</summary>
+        event EventHandler LoginDialogClosed;
+
         Task InitializeAsync(CancellationToken cancellationToken);
         Task ClearSessionAsync(CancellationToken cancellationToken);
         Task NavigateToLoginAsync(CancellationToken cancellationToken);

@@ -102,13 +102,13 @@ namespace HoaDonDienTu.WinForms.Tests
         }
 
         [Test]
-        public void Standard_StartsOnDashboard_LoginAndDownloadAvailable()
+        public void Standard_StartsOnDashboard_LoginAvailable_DownloadWaitsForPortalLogin()
         {
             Start("Standard");
 
             Assert.That(ContentTitle(), Is.EqualTo("Tổng quan"));
             Assert.That(Control<KryptonButton>("btnPortalLogin").Enabled, Is.True);
-            Assert.That(Control<KryptonCheckButton>("navDownload").Enabled, Is.True);
+            Assert.That(Control<KryptonCheckButton>("navDownload").Enabled, Is.False, "Chưa đăng nhập cổng Thuế thì chưa tải được");
             Assert.That(Control<KryptonCheckButton>("navCompanies").Visible, Is.False, "Standard ẩn menu doanh nghiệp");
             Assert.That(Control<KryptonButton>("btnCompanyContext").Values.Text, Does.StartWith("CÔNG TY MẪU"));
         }
@@ -243,6 +243,12 @@ namespace HoaDonDienTu.WinForms.Tests
             Assert.That(WaitFor(() => Control<KryptonLabel>("lblStat1Value").Values.Text == "0"), Is.True);
             Assert.That(Control<DataGridView>("gridSessions").Rows.Count, Is.EqualTo(0));
 
+            Click("btnNewSession");
+
+            Assert.That(ContentTitle(), Is.EqualTo("Lịch sử tải"), "Chưa đăng nhập cổng Thuế thì chưa mở được màn hình tải");
+            Assert.That(WaitFor(() => Control<System.Windows.Forms.Control>("lblMessage").Text.Contains("đăng nhập cổng Thuế")), Is.True);
+
+            ClickOpeningDialog("btnPortalLogin", dialog => PressText(dialog, "Đăng nhập đúng MST"));
             Click("btnNewSession");
 
             Assert.That(WaitFor(() => ContentTitle() == "Tải hóa đơn"), Is.True);
@@ -412,16 +418,32 @@ namespace HoaDonDienTu.WinForms.Tests
         }
 
         [Test]
-        public void Download_NotLoggedIn_StartDisabled_WithReasonNextToButton()
+        public void Download_IsLockedUntilPortalLogin_AndOpensAfterIt()
         {
             Start("Standard");
+            Assert.That(Control<KryptonCheckButton>("navDownload").Enabled, Is.False);
 
+            ClickOpeningDialog("btnPortalLogin", dialog => PressText(dialog, "Đăng nhập đúng MST"));
+
+            Assert.That(Control<KryptonCheckButton>("navDownload").Enabled, Is.True);
             Click("navDownload");
             Assert.That(WaitFor(() => ContentTitle() == "Tải hóa đơn"), Is.True);
+            Assert.That(Control<KryptonButton>("btnStartDownload").Enabled, Is.True);
+        }
 
+        [Test]
+        public void Download_SessionLostWhileOpen_LocksStart_AndLoginUnlocksItAgain()
+        {
+            LoginAndOpenDownload();
+
+            _root.SessionStore.Clear();
             Assert.That(Control<KryptonButton>("btnStartDownload").Enabled, Is.False);
             Assert.That(Control<System.Windows.Forms.Control>("lblStartReason").Text, Does.Contain("đăng nhập"));
-            Assert.That(PlanRows(), Is.EqualTo(DateTime.Today.Month), "Kế hoạch (cả năm hiện tại, chỉ tới hôm nay) vẫn xem trước được khi chưa đăng nhập");
+            Assert.That(Control<KryptonCheckButton>("navDownload").Enabled, Is.False);
+
+            ClickOpeningDialog("btnPortalLogin", dialog => PressText(dialog, "Đăng nhập đúng MST"));
+
+            Assert.That(Control<KryptonButton>("btnStartDownload").Enabled, Is.True, "Đăng nhập xong khi đang ở màn hình tải thì nút bắt đầu bật lại");
         }
 
         [Test]

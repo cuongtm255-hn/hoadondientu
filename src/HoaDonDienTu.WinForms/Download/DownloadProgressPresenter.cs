@@ -197,7 +197,11 @@ namespace HoaDonDienTu.WinForms.Download
 
         private void OnNewDownload(object sender, EventArgs e)
         {
-            Guard("Mở màn hình tải", token => _navigation().NavigateAsync(ScreenId.Download, null, token));
+            Guard("Mở màn hình tải", async token =>
+            {
+                var result = await _navigation().NavigateAsync(ScreenId.Download, null, token);
+                if (!result.Succeeded && !string.IsNullOrEmpty(result.Reason)) _view.ShowMessage(result.Reason, true);
+            });
         }
 
         private void OnRetrySegment(object sender, SegmentRetryEventArgs e)

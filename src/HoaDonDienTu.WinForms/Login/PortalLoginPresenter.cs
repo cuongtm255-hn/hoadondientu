@@ -63,10 +63,10 @@ namespace HoaDonDienTu.WinForms.Login
             _initialized = true;
             _view.ViewShown += OnViewShown;
             _view.RetryRequested += OnRetryRequested;
-            _view.ClearSessionRequested += OnRetryRequested;
             _view.CancelRequested += OnCancelRequested;
             _browser.LoginCandidateDetected += OnLoginCandidateDetected;
             _browser.BrowserFailed += OnBrowserFailed;
+            _browser.LoginDialogClosed += OnLoginDialogClosed;
 
             var company = _context.HasCurrent ? _context.Current.DisplayName : string.Empty;
             _view.ShowRequest(company, _request.ExpectedTaxCode.Value);
@@ -80,10 +80,10 @@ namespace HoaDonDienTu.WinForms.Login
                 _initialized = false;
                 _view.ViewShown -= OnViewShown;
                 _view.RetryRequested -= OnRetryRequested;
-                _view.ClearSessionRequested -= OnRetryRequested;
                 _view.CancelRequested -= OnCancelRequested;
                 _browser.LoginCandidateDetected -= OnLoginCandidateDetected;
                 _browser.BrowserFailed -= OnBrowserFailed;
+                _browser.LoginDialogClosed -= OnLoginDialogClosed;
             }
 
             _cancellation.Cancel();
@@ -109,7 +109,7 @@ namespace HoaDonDienTu.WinForms.Login
             {
                 if (initializeBrowser)
                 {
-                    SetState(PortalLoginState.InitializingBrowser, "Bước 1/4", "Đang khởi tạo trình duyệt...", true, false, false);
+                    SetState(PortalLoginState.InitializingBrowser, "Bước 1/4", "Đang chuẩn bị đăng nhập...", true, false, false);
                     await _browser.InitializeAsync(token).ConfigureAwait(true);
                     _view.HostBrowser(_browser.View);
                     _browserReady = true;
@@ -122,13 +122,13 @@ namespace HoaDonDienTu.WinForms.Login
             catch (Exception ex)
             {
                 _logger.Error("Không khởi tạo được trình duyệt đăng nhập", ex);
-                SetState(PortalLoginState.BrowserUnavailable, "Lỗi", "Không khởi tạo được trình duyệt đăng nhập.", false, true, true);
+                SetState(PortalLoginState.BrowserUnavailable, "Lỗi", "Không mở được màn hình đăng nhập. Thử lại hoặc khởi động lại ứng dụng.", false, true, true);
                 return;
             }
 
             try
             {
-                SetState(PortalLoginState.ClearingPreviousSession, "Bước 2/4", "Đang xóa phiên cũ...", true, false, false);
+                SetState(PortalLoginState.ClearingPreviousSession, "Bước 2/4", "Đang làm mới phiên đăng nhập...", true, false, false);
                 await _browser.ClearSessionAsync(token).ConfigureAwait(true);
                 _sessionStore.Clear();
 
@@ -251,11 +251,31 @@ namespace HoaDonDienTu.WinForms.Login
             }
         }
 
+        /// <summary>Thời gian chờ trước khi coi việc đóng hộp thoại đăng nhập là hủy: đăng nhập thành công cũng làm hộp thoại đóng.</summary>
+        public TimeSpan ClosedDialogGrace { get; set; } = TimeSpan.FromMilliseconds(1500);
+
+        private async void OnLoginDialogClosed(object sender, EventArgs e)
+        {
+            if (_finished || _disposed || State != PortalLoginState.WaitingForUser) return;
+            try
+            {
+                if (ClosedDialogGrace > TimeSpan.Zero) await Task.Delay(ClosedDialogGrace, _cancellation.Token).ConfigureAwait(true);
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+
+            // Đã thấy phản hồi đăng nhập trong thời gian chờ (đang xác minh hoặc đã xong) thì không hủy.
+            if (_finished || _disposed || State != PortalLoginState.WaitingForUser) return;
+            OnCancelRequested(this, EventArgs.Empty);
+        }
+
         private void OnBrowserFailed(object sender, BrowserFailureEventArgs e)
         {
             if (_finished) return;
             _logger.Warning("Trình duyệt đăng nhập báo lỗi");
-            SetState(PortalLoginState.BrowserUnavailable, "Lỗi", "Trình duyệt đăng nhập gặp sự cố.", false, true, true);
+            SetState(PortalLoginState.BrowserUnavailable, "Lỗi", "Không mở được trang đăng nhập cổng Thuế. Kiểm tra kết nối mạng rồi thử lại.", false, true, true);
         }
 
         private async Task ClearBrowserSessionQuietlyAsync()

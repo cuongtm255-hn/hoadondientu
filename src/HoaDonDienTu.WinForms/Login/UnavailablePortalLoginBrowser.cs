@@ -41,6 +41,12 @@ namespace HoaDonDienTu.WinForms.Login
 
         public event EventHandler<BrowserFailureEventArgs> BrowserFailed;
 
+        public event EventHandler LoginDialogClosed
+        {
+            add { }
+            remove { }
+        }
+
         public Task InitializeAsync(CancellationToken cancellationToken)
         {
             var handler = BrowserFailed;

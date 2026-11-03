@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using HoaDonDienTu.Application.Abstractions;
+using HoaDonDienTu.Application.Authentication;
 using HoaDonDienTu.Application.Companies;
 using HoaDonDienTu.Application.Licensing;
 using HoaDonDienTu.Application.Navigation;
@@ -21,6 +22,7 @@ namespace HoaDonDienTu.WinForms.Navigation
         private readonly IEntitlementService _entitlement;
         private readonly ICompanyContextAccessor _context;
         private readonly IApplicationLogger _logger;
+        private readonly IPortalSessionStore _session;
         private readonly SemaphoreSlim _gate = new SemaphoreSlim(1, 1);
         private IScreen _current;
 
@@ -29,7 +31,8 @@ namespace HoaDonDienTu.WinForms.Navigation
             INavigationView view,
             IEntitlementService entitlement,
             ICompanyContextAccessor context,
-            IApplicationLogger logger)
+            IApplicationLogger logger,
+            IPortalSessionStore session = null)
         {
             if (factory == null) throw new ArgumentNullException("factory");
             if (view == null) throw new ArgumentNullException("view");
@@ -41,6 +44,7 @@ namespace HoaDonDienTu.WinForms.Navigation
             _entitlement = entitlement;
             _context = context;
             _logger = logger;
+            _session = session;
             CurrentScreen = ScreenId.Initializing;
         }
 
@@ -130,9 +134,15 @@ namespace HoaDonDienTu.WinForms.Navigation
                 case ScreenId.Download:
                 case ScreenId.DownloadProgress:
                     if (!_context.HasCurrent) return "Hãy chọn doanh nghiệp trước khi mở màn hình này.";
-                    return _entitlement.IsAllowed(AppFeature.NewDownload)
-                        ? null
-                        : "Chế độ hiện tại không cho phép tải hóa đơn mới.";
+                    if (!_entitlement.IsAllowed(AppFeature.NewDownload)) return "Chế độ hiện tại không cho phép tải hóa đơn mới.";
+
+                    // Màn hình tiến độ vẫn mở được khi phiên hết hạn giữa chừng để xem và tiếp tục sau khi đăng nhập lại.
+                    if (target == ScreenId.Download && _session != null && !_session.HasSessionFor(_context))
+                    {
+                        return "Cần đăng nhập cổng Thuế cho MST " + _context.Current.TaxCode.Value + " trước khi tải hóa đơn.";
+                    }
+
+                    return null;
 
                 default:
                     return _context.HasCurrent ? null : "Hãy chọn doanh nghiệp trước khi mở màn hình này.";

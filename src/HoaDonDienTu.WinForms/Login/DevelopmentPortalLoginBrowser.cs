@@ -36,6 +36,7 @@ namespace HoaDonDienTu.WinForms.Login
         public event EventHandler<LoginCandidateEventArgs> LoginCandidateDetected;
         public event EventHandler<BrowserNavigationEventArgs> NavigationChanged;
         public event EventHandler<BrowserFailureEventArgs> BrowserFailed;
+        public event EventHandler LoginDialogClosed;
 
         public Task InitializeAsync(CancellationToken cancellationToken)
         {
@@ -45,7 +46,7 @@ namespace HoaDonDienTu.WinForms.Login
         public Task ClearSessionAsync(CancellationToken cancellationToken)
         {
             _simulatedTaxCode = null;
-            _status.Values.Text = "Phiên trình duyệt đã được xóa.";
+            _status.Values.Text = "Phiên đăng nhập đã được làm mới.";
             return Task.FromResult(true);
         }
 
@@ -113,6 +114,13 @@ namespace HoaDonDienTu.WinForms.Login
             _simulatedTaxCode = taxCode;
             var handler = LoginCandidateDetected;
             if (handler != null) handler(this, new LoginCandidateEventArgs());
+        }
+
+        /// <summary>Mô phỏng người dùng bấm nút đóng hộp thoại đăng nhập của trang.</summary>
+        public void RaiseDialogClosed()
+        {
+            var handler = LoginDialogClosed;
+            if (handler != null) handler(this, EventArgs.Empty);
         }
 
         /// <summary>Dùng để thử đường lỗi trình duyệt từ test/dev.</summary>

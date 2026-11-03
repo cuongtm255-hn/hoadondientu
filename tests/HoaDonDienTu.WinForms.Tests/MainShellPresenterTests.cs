@@ -55,6 +55,21 @@ namespace HoaDonDienTu.WinForms.Tests
         }
 
         [Test]
+        public void DownloadIsEnabledOnlyWhileThereIsAPortalSessionForTheOpenCompany()
+        {
+            _presenter.SetMode(new ShellModeViewState { CanDownload = true, CanPortalLogin = true });
+            Assert.That(_view.LastMode.CanDownload, Is.False, "chưa đăng nhập cổng Thuế");
+            Assert.That(_view.LastMode.CanPortalLogin, Is.True, "vẫn đăng nhập được");
+
+            _store.Set(new PortalSession(
+                _contextManager.Current.CompanyId, _contextManager.Current.TaxCode, new PortalSessionMaterial(null, null, "t"), DateTime.UtcNow));
+            Assert.That(_view.LastMode.CanDownload, Is.True);
+
+            _store.Clear();
+            Assert.That(_view.LastMode.CanDownload, Is.False);
+        }
+
+        [Test]
         public void NavigationRequested_ShowsScreen_AndSelectsNavigation()
         {
             _view.RaiseNavigation(ScreenId.InvoiceArchive);
@@ -322,7 +337,8 @@ namespace HoaDonDienTu.WinForms.Tests
                 }
             }
 
-            public void ApplyMode(ShellModeViewState state) { }
+            public ShellModeViewState LastMode;
+            public void ApplyMode(ShellModeViewState state) { LastMode = state; }
             public void ShowCompany(CompanyHeaderViewState state) { }
             public void ShowPortalSession(PortalSessionViewState state) { LastSession = state; }
             public void ShowOperation(OperationViewState state) { Operations.Add(state); }

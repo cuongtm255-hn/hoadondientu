@@ -26,6 +26,21 @@ namespace HoaDonDienTu.Infrastructure.Tests
         }
 
         [Test]
+        public void AListenerThatThrows_DoesNotStopSet_NorTheOtherListeners()
+        {
+            var store = new InMemoryPortalSessionStore();
+            var later = 0;
+            store.SessionChanged += (s, e) => { throw new InvalidOperationException("màn hình lỗi"); };
+            store.SessionChanged += (s, e) => later++;
+
+            Assert.DoesNotThrow(() => store.Set(NewSession("0101234561")));
+            Assert.DoesNotThrow(() => store.Clear());
+
+            Assert.That(later, Is.EqualTo(2));
+            Assert.That(store.HasActiveSession, Is.False);
+        }
+
+        [Test]
         public void Set_ReplacesSession_AndBumpsGeneration()
         {
             var store = new InMemoryPortalSessionStore();

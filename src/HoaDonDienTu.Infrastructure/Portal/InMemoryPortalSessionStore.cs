@@ -66,7 +66,21 @@ namespace HoaDonDienTu.Infrastructure.Portal
         private void RaiseChanged()
         {
             var handler = SessionChanged;
-            if (handler != null) handler(this, EventArgs.Empty);
+            if (handler == null) return;
+
+            // Mỗi nơi nghe được báo độc lập: một màn hình lỗi khi cập nhật không được làm đăng nhập dang dở (form không đóng)
+            // hoặc làm các màn hình còn lại không biết phiên đã đổi.
+            foreach (EventHandler listener in handler.GetInvocationList())
+            {
+                try
+                {
+                    listener(this, EventArgs.Empty);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Trace.TraceError("Lỗi khi cập nhật theo phiên đăng nhập: " + ex.GetType().Name);
+                }
+            }
         }
     }
 }

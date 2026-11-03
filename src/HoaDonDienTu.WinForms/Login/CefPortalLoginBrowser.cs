@@ -61,12 +61,15 @@ namespace HoaDonDienTu.WinForms.Login
         private readonly PortalLoginTraffic.ResponseBuffer _response = new PortalLoginTraffic.ResponseBuffer();
         private ChromiumWebBrowser _browser;
         private IRequestContext _context;
+        private readonly System.Windows.Forms.Timer _closeWatch = new System.Windows.Forms.Timer { Interval = 500 };
         private bool _disposed;
+        private bool _watching;
 
         public CefPortalLoginBrowser(PortalLoginTraffic traffic)
         {
             if (traffic == null) throw new ArgumentNullException("traffic");
             _traffic = traffic;
+            _closeWatch.Tick += OnCloseWatchTick;
         }
 
         public Control View
@@ -77,6 +80,7 @@ namespace HoaDonDienTu.WinForms.Login
         public event EventHandler<LoginCandidateEventArgs> LoginCandidateDetected;
         public event EventHandler<BrowserNavigationEventArgs> NavigationChanged;
         public event EventHandler<BrowserFailureEventArgs> BrowserFailed;
+        public event EventHandler LoginDialogClosed;
 
         public Task InitializeAsync(CancellationToken cancellationToken)
         {
@@ -135,6 +139,8 @@ namespace HoaDonDienTu.WinForms.Login
         {
             if (_disposed) return;
             _disposed = true;
+            _closeWatch.Stop();
+            _closeWatch.Dispose();
             _response.Clear();
             if (_browser != null)
             {
@@ -172,6 +178,7 @@ namespace HoaDonDienTu.WinForms.Login
                     e.Frame.ExecuteJavaScriptAsync(PortalLoginPageScript.Source);
                 }
             };
+            _closeWatch.Start();
             _browser.LoadError += (sender, e) =>
             {
                 if (e.ErrorCode != CefErrorCode.Aborted && e.FailedUrl != null && _traffic.IsNavigationAllowed(e.FailedUrl) && !e.FailedUrl.StartsWith("about:", StringComparison.Ordinal))
@@ -179,6 +186,30 @@ namespace HoaDonDienTu.WinForms.Login
                     Raise(BrowserFailed, new BrowserFailureEventArgs("Không tải được trang cổng Thuế (" + e.ErrorText + "). Kiểm tra kết nối mạng."));
                 }
             };
+        }
+
+        /// <summary>Hỏi trang xem người dùng đã đóng hộp thoại đăng nhập chưa (cờ do <see cref="PortalLoginPageScript"/> đặt).</summary>
+        private async void OnCloseWatchTick(object sender, EventArgs e)
+        {
+            var browser = _browser;
+            if (_watching || _disposed || browser == null || !browser.CanExecuteJavascriptInMainFrame) return;
+            _watching = true;
+            try
+            {
+                var flag = await browser.EvaluateScriptAsync("window.__hddtLoginClosed === true").ConfigureAwait(true);
+                if (_disposed || !flag.Success || !(flag.Result is bool) || !(bool)flag.Result) return;
+
+                browser.ExecuteScriptAsync("window.__hddtLoginClosed = false");
+                Raise(LoginDialogClosed, EventArgs.Empty);
+            }
+            catch (Exception)
+            {
+                // Trang đang chuyển hướng hoặc trình duyệt đang đóng: lần sau hỏi lại.
+            }
+            finally
+            {
+                _watching = false;
+            }
         }
 
         private void OnAuthenticateResponse()
@@ -191,6 +222,11 @@ namespace HoaDonDienTu.WinForms.Login
 
         private void Raise<T>(EventHandler<T> handler, T args)
             where T : EventArgs
+        {
+            if (handler != null) handler(this, args);
+        }
+
+        private void Raise(EventHandler handler, EventArgs args)
         {
             if (handler != null) handler(this, args);
         }

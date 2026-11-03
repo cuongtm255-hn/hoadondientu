@@ -193,6 +193,55 @@ namespace HoaDonDienTu.WinForms.Tests
         }
 
         [Test]
+        public void ClosingTheLoginDialogOnThePage_CancelsAndClosesTheForm()
+        {
+            _presenter.ClosedDialogGrace = TimeSpan.Zero;
+            _view.RaiseShown();
+
+            _browser.RaiseDialogClosed();
+
+            Assert.That(_presenter.Result.Outcome, Is.EqualTo(PortalLoginOutcome.Cancelled));
+            Assert.That(_view.CloseCalls, Is.EqualTo(1));
+            Assert.That(_store.HasActiveSession, Is.False);
+        }
+
+        [Test]
+        public void TheDialogClosingBecauseLoginSucceeded_IsNotACancel()
+        {
+            _presenter.ClosedDialogGrace = TimeSpan.Zero;
+            _view.RaiseShown();
+
+            _browser.RaiseCandidate();
+            _browser.RaiseDialogClosed();
+
+            Assert.That(_presenter.Result.Succeeded, Is.True);
+            Assert.That(_view.CloseCalls, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void ClosingTheDialog_WhileTheLoginIsBeingChecked_IsIgnored()
+        {
+            _presenter.ClosedDialogGrace = TimeSpan.Zero;
+            _auth.Handler = (c, m) => { _browser.RaiseDialogClosed(); return FakeAuth.SuccessFor(c, m); };
+            _view.RaiseShown();
+
+            _browser.RaiseCandidate();
+
+            Assert.That(_presenter.Result.Succeeded, Is.True);
+        }
+
+        [Test]
+        public void ClosingTheDialog_BeforeTheFormIsReady_IsIgnored()
+        {
+            _presenter.ClosedDialogGrace = TimeSpan.Zero;
+
+            _browser.RaiseDialogClosed();
+
+            Assert.That(_presenter.Result, Is.Null);
+            Assert.That(_view.CloseCalls, Is.EqualTo(0));
+        }
+
+        [Test]
         public void CandidateIgnored_WhenNotWaitingForUser()
         {
             _browser.RaiseCandidate();
