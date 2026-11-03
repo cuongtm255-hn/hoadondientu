@@ -176,15 +176,18 @@ namespace HoaDonDienTu.Application.Tests
         }
 
         [Test]
-        public async Task MissingFiles_PreferPurchase_WhenBothDirectionsHaveThem()
+        public async Task MissingFiles_WhenBothDirectionsHaveThem_GetOneItemEachWithTheirOwnCount()
         {
             await AddInvoiceAsync(InvoiceDirection.Sold, "1", new DateTime(2026, 1, 1), fileExists: false);
+            await AddInvoiceAsync(InvoiceDirection.Sold, "3", new DateTime(2026, 1, 3), fileExists: false);
             await AddInvoiceAsync(InvoiceDirection.Purchase, "2", new DateTime(2026, 1, 2), fileExists: false);
 
             var s = await _service.GetAsync(CancellationToken.None);
 
-            Assert.That(s.MissingFileCount, Is.EqualTo(2));
-            Assert.That(s.Attention.Single().Direction, Is.EqualTo(InvoiceDirection.Purchase));
+            Assert.That(s.MissingFileCount, Is.EqualTo(3));
+            Assert.That(s.AttentionCount, Is.EqualTo(3));
+            Assert.That(s.Attention.Select(a => a.Direction), Is.EqualTo(new[] { InvoiceDirection.Purchase, InvoiceDirection.Sold }));
+            Assert.That(s.Attention.Select(a => a.Count), Is.EqualTo(new[] { 1, 2 }));
         }
 
         [Test]

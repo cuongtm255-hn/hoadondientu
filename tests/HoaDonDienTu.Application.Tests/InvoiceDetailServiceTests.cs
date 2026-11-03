@@ -203,6 +203,31 @@ namespace HoaDonDienTu.Application.Tests
 
             Assert.That(view.Problem, Does.Contain("quá lớn"));
             Assert.That(view.Bytes, Is.Null);
+            Assert.That(view.TooLarge, Is.True);
+        }
+
+        [Test]
+        public async Task ReadBytes_TooLargeFile_IsReadWithoutALimit_ForSavingACopy()
+        {
+            var stored = await AddInvoiceAsync(new[] { Xml });
+            _files.TooLarge.Add(stored.Versions[0].RelativePath);
+
+            var bytes = await _service.ReadBytesAsync(stored.InvoiceId, 1, CancellationToken.None);
+
+            Assert.That(Encoding.UTF8.GetString(bytes), Is.EqualTo(Xml));
+        }
+
+        [Test]
+        public async Task ReadBytes_MissingFileOrVersion_IsReportedInVietnamese()
+        {
+            var stored = await AddInvoiceAsync(new[] { Xml });
+            _files.Remove(stored.Versions[0].RelativePath);
+
+            var missing = Assert.ThrowsAsync<InvoiceStorageException>(() => _service.ReadBytesAsync(stored.InvoiceId, 1, CancellationToken.None));
+            var noVersion = Assert.ThrowsAsync<InvoiceStorageException>(() => _service.ReadBytesAsync(stored.InvoiceId, 9, CancellationToken.None));
+
+            Assert.That(missing.Message, Does.Contain("không còn trong thư mục kho"));
+            Assert.That(noVersion.Message, Does.Contain("Không có phiên bản 9"));
         }
 
         [Test]
@@ -280,9 +305,14 @@ namespace HoaDonDienTu.Application.Tests
                 _content[path] = bytes;
             }
 
+            public void Remove(string path)
+            {
+                _content.Remove(path);
+            }
+
             public byte[] Read(string storageRoot, string relativePath, long maxBytes)
             {
-                if (TooLarge.Contains(relativePath)) throw new InvoiceFileTooLargeException(maxBytes + 1, maxBytes);
+                if (TooLarge.Contains(relativePath) && maxBytes != long.MaxValue) throw new InvoiceFileTooLargeException(maxBytes, maxBytes);
                 byte[] found;
                 if (!_content.TryGetValue(relativePath, out found)) throw new FileNotFoundException("missing", relativePath);
                 return found;

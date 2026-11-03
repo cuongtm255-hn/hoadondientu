@@ -179,15 +179,10 @@ namespace HoaDonDienTu.Application.Dashboard
             }
 
             var attention = new List<AttentionItem>();
-            if (snapshot.MissingFileCount > 0)
-            {
-                attention.Add(new AttentionItem
-                {
-                    Kind = AttentionKind.MissingFiles,
-                    Count = snapshot.MissingFileCount,
-                    Direction = missingPurchase > 0 ? InvoiceDirection.Purchase : InvoiceDirection.Sold
-                });
-            }
+
+            // Mỗi chiều một mục để số đếm khớp đúng danh sách mở ra ở Kho hóa đơn.
+            if (missingPurchase > 0) attention.Add(new AttentionItem { Kind = AttentionKind.MissingFiles, Count = missingPurchase, Direction = InvoiceDirection.Purchase });
+            if (missingSold > 0) attention.Add(new AttentionItem { Kind = AttentionKind.MissingFiles, Count = missingSold, Direction = InvoiceDirection.Sold });
 
             var failed = sessions.Rows
                 .Where(r => r.State == DownloadSessionState.CompletedWithErrors || r.State == DownloadSessionState.Failed)

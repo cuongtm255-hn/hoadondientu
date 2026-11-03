@@ -104,6 +104,9 @@ namespace HoaDonDienTu.Application.Invoices
 
         public bool HashMatches { get; set; }
 
+        /// <summary>File quá lớn để hiển thị nên không nạp vào bộ nhớ; vẫn lưu bản sao được qua <see cref="IInvoiceDetailService.ReadBytesAsync"/>.</summary>
+        public bool TooLarge { get; set; }
+
         /// <summary>Cảnh báo bằng tiếng Việt; null khi file đủ, đọc được và đúng hash.</summary>
         public string Problem { get; set; }
     }
@@ -116,6 +119,10 @@ namespace HoaDonDienTu.Application.Invoices
 
         /// <exception cref="InvoiceStorageException">Hóa đơn hoặc phiên bản không tồn tại.</exception>
         Task<InvoiceXmlView> OpenXmlAsync(Guid invoiceId, int versionNo, CancellationToken cancellationToken);
+
+        /// <summary>Byte nguyên văn của file XML, không giới hạn cỡ: dùng cho "Lưu bản sao" khi file quá lớn để hiển thị.</summary>
+        /// <exception cref="InvoiceStorageException">Hóa đơn, phiên bản hoặc file không còn.</exception>
+        Task<byte[]> ReadBytesAsync(Guid invoiceId, int versionNo, CancellationToken cancellationToken);
     }
 
     public sealed class InvoiceDetailService : IInvoiceDetailService
@@ -223,6 +230,7 @@ namespace HoaDonDienTu.Application.Invoices
             }
             catch (InvoiceFileTooLargeException)
             {
+                view.TooLarge = true;
                 view.Problem = "File XML quá lớn để hiển thị (giới hạn " + MaxDisplayBytes / (1024 * 1024) + " MB). Hãy lưu bản sao để mở bằng ứng dụng khác.";
                 return view;
             }
@@ -244,6 +252,27 @@ namespace HoaDonDienTu.Application.Invoices
 
             if (!view.HashMatches) view.Problem = "Nội dung file khác với lúc tải về (sai SHA-256). Hãy tải lại hóa đơn để thay thế file này.";
             return view;
+        }
+
+        public async Task<byte[]> ReadBytesAsync(Guid invoiceId, int versionNo, CancellationToken cancellationToken)
+        {
+            var root = RequireRoot();
+            var stored = await _repository.FindByIdAsync(invoiceId, cancellationToken).ConfigureAwait(false);
+            if (stored == null) throw new InvoiceStorageException("Hóa đơn không còn trong kho.");
+            var version = stored.Versions.FirstOrDefault(v => v.VersionNo == versionNo);
+            if (version == null) throw new InvoiceStorageException("Không có phiên bản " + versionNo + " của hóa đơn này.");
+            try
+            {
+                return _reader.Read(root, version.RelativePath, long.MaxValue);
+            }
+            catch (FileNotFoundException)
+            {
+                throw new InvoiceStorageException("File XML của phiên bản " + versionNo + " không còn trong thư mục kho.");
+            }
+            catch (DirectoryNotFoundException)
+            {
+                throw new InvoiceStorageException("File XML của phiên bản " + versionNo + " không còn trong thư mục kho.");
+            }
         }
 
         private string RequireRoot()

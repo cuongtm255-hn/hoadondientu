@@ -212,7 +212,7 @@ namespace HoaDonDienTu.WinForms.Dashboard
                 {
                     Badge = "File thiếu",
                     Tone = DashboardTone.Bad,
-                    Text = item.Count.ToString("N0", Vi) + " XML không còn trong thư mục kho",
+                    Text = item.Count.ToString("N0", Vi) + " XML " + (item.Direction == InvoiceDirection.Purchase ? "mua vào" : "bán ra") + " không còn trong thư mục kho",
                     ActionText = "Kiểm tra"
                 };
             }

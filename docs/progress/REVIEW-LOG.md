@@ -7,7 +7,7 @@ Mỗi lần review ghi lại commit cuối đã được xét. **Mốc hiện t�
 |---|---|---|---|
 | 02/11/2026 | `e91145c..f53c7d1` | `f53c7d1` | Các phát hiện đã sửa trong chính `f53c7d1` |
 | 03/11/2026 | `f53c7d1..78cc0f5` | `78cc0f5` | 10 phát hiện; đã sửa 1, 2, 3, 4, 5, 8, 9, 10 (7 là báo nhầm); còn lại chưa sửa: xem mục dưới |
-| 03/11/2026 (bổ sung) | Phần WinForms/Application còn lại của `f53c7d1..78cc0f5` | `78cc0f5` | 8 phát hiện, chưa sửa: xem mục "Bổ sung" |
+| 03/11/2026 (bổ sung) | Phần WinForms/Application còn lại của `f53c7d1..78cc0f5` | `78cc0f5` | 8 phát hiện; đã sửa 3, 4, 5; còn lại chưa sửa: xem mục "Bổ sung" |
 
 ## Review 03/11/2026 (`f53c7d1..78cc0f5`)
 
@@ -33,9 +33,9 @@ lướt các control còn lại chỉ để xem marshal sang UI thread (đều c
 
 1. `DashboardService.GetAsync` nạp mọi hóa đơn kèm mọi phiên bản (`ListAsync`) và quét `File.Exists` hai lần mỗi lần mở Tổng quan; vi phạm tinh thần T07-02 ở 100.000 hóa đơn.
 2. `InvoiceViewerControl.ShowResult` gọi `TreeView.ExpandAll()` trên tới 50.000 nút ở luồng UI: treo giao diện với XML lớn.
-3. XML lớn hơn 5 MB: thông báo bảo "hãy lưu bản sao" nhưng `Bytes` là null nên nút Lưu bản sao bị khóa.
-4. Hộp xác nhận khôi phục không nói cơ sở dữ liệu (chỉ mục, lịch sử tải) sẽ bị thay: hóa đơn tải sau lúc sao lưu biến mất khỏi Kho (điểm an toàn vẫn giữ được).
-5. Việc cần xử lý "XML thiếu" cộng cả hai chiều nhưng bấm vào chỉ lọc một chiều (mua vào nếu có).
+3. ✅ Đã sửa (`TooLarge` + `ReadBytesAsync`). XML lớn hơn 5 MB: thông báo bảo "hãy lưu bản sao" nhưng `Bytes` là null nên nút Lưu bản sao bị khóa.
+4. ✅ Đã sửa (hộp xác nhận nêu rõ cơ sở dữ liệu bị thay). Hộp xác nhận khôi phục không nói cơ sở dữ liệu (chỉ mục, lịch sử tải) sẽ bị thay: hóa đơn tải sau lúc sao lưu biến mất khỏi Kho (điểm an toàn vẫn giữ được).
+5. ✅ Đã sửa (mỗi chiều một mục). Việc cần xử lý "XML thiếu" cộng cả hai chiều nhưng bấm vào chỉ lọc một chiều (mua vào nếu có).
 6. "Tổng thanh toán năm" cộng cả mua vào, bán ra và cộng lẫn ngoại tệ như một con số VND.
 7. `StorageStatistics` bỏ qua thư mục `Data` (company.db và các bản `.v<N>.bak`): dung lượng cơ sở dữ liệu không hiện.
 8. Tổng quan chỉ xét 500 phiên mới nhất (`PageSize = 500`) cho phiên đang chạy, phiên lỗi và lần đồng bộ cuối.

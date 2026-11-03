@@ -160,7 +160,7 @@ namespace HoaDonDienTu.WinForms.Tests
             Assert.That(r.AttentionValue, Is.EqualTo("3"));
             Assert.That(r.AttentionSub, Is.EqualTo("2 XML thiếu · 1 phiên lỗi"));
             Assert.That(r.Attention[0].Badge, Is.EqualTo("File thiếu"));
-            Assert.That(r.Attention[0].Text, Is.EqualTo("2 XML không còn trong thư mục kho"));
+            Assert.That(r.Attention[0].Text, Is.EqualTo("2 XML bán ra không còn trong thư mục kho"));
             Assert.That(r.Attention[0].ActionText, Is.EqualTo("Kiểm tra"));
             Assert.That(r.Attention[1].Badge, Is.EqualTo("Phiên lỗi"));
             Assert.That(r.Attention[1].Text, Is.EqualTo("Tháng 05/2026 cần thử lại"));

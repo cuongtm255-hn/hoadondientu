@@ -386,6 +386,9 @@ namespace HoaDonDienTu.WinForms.Settings
                 var message = "Khôi phục dữ liệu cho:\r\n" + company.DisplayName + "\r\nMST " + company.TaxCode.Value + "\r\n\r\n"
                     + "Gói tạo lúc " + created + ", " + manifest.Files.Count.ToString("N0", Vi) + " file.\r\n"
                     + "File trùng tên nhưng khác nội dung sẽ bị thay bằng bản trong gói; file không có trong gói được giữ nguyên. "
+                    + (manifest.IncludesDatabase
+                        ? "\r\n\r\nGói có cả cơ sở dữ liệu: chỉ mục Kho hóa đơn và lịch sử tải sẽ được thay bằng bản trong gói. Hóa đơn tải sau lúc tạo gói sẽ không còn trong Kho (file XML của chúng vẫn được giữ trên đĩa).\r\n\r\n"
+                        : string.Empty)
                     + "Ứng dụng tự lưu một điểm sao lưu an toàn trước khi ghi và quay lại nếu có lỗi.\r\n\r\nTiếp tục?";
                 if (!_services.Confirmation.Confirm("Khôi phục dữ liệu", message))
                 {

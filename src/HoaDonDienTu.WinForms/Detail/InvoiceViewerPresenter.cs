@@ -119,18 +119,20 @@ namespace HoaDonDienTu.WinForms.Detail
         {
             var xml = _xml;
             var detail = _detail;
-            if (xml == null || xml.Bytes == null || detail == null) return;
+            if (xml == null || (xml.Bytes == null && !xml.TooLarge) || detail == null) return;
 
-            Run("Lưu bản sao XML", token =>
+            Run("Lưu bản sao XML", async token =>
             {
                 var name = SuggestedName(detail.Invoice, xml.VersionNo);
                 var path = _picker.Pick(name);
-                if (path == null) return Task.FromResult(0);
+                if (path == null) return;
+
+                // File quá lớn để hiển thị không được nạp sẵn; chỉ đọc ra khi người dùng thật sự lưu bản sao.
+                var bytes = xml.Bytes ?? await _service.ReadBytesAsync(_invoiceId, xml.VersionNo, token);
 
                 // Hộp thoại lưu đã hỏi xác nhận nếu trùng tên; ở đây chỉ ghi đúng byte nguyên văn, không biến đổi.
-                File.WriteAllBytes(path, xml.Bytes);
+                File.WriteAllBytes(path, bytes);
                 _view.ShowMessage("Đã lưu bản sao XML: " + path, false);
-                return Task.FromResult(0);
             });
         }
 
@@ -159,7 +161,7 @@ namespace HoaDonDienTu.WinForms.Detail
                 SelectedVersion = xml.VersionNo,
                 Tree = xml.Tree == null ? null : ToNode(xml.Tree),
                 RawText = xml.RawText,
-                CanSaveCopy = xml.Bytes != null
+                CanSaveCopy = xml.Bytes != null || xml.TooLarge
             };
         }
 

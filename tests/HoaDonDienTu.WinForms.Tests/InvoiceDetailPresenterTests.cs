@@ -310,6 +310,23 @@ namespace HoaDonDienTu.WinForms.Tests
         }
 
         [Test]
+        public void Viewer_TooLargeXml_CanStillBeSavedAsACopy_WithTheFullBytes()
+        {
+            var target = Path.Combine(_tempDir, "lon.xml");
+            _picker.Result = target;
+            _service.LargeBytes = Encoding.UTF8.GetBytes("<HDon>rất lớn</HDon>");
+            _service.Xml[2] = new InvoiceXmlView { InvoiceId = InvoiceId, VersionNo = 2, Sha256 = "x", TooLarge = true, Problem = "File XML quá lớn để hiển thị. Hãy lưu bản sao." };
+            OpenViewer();
+            Assert.That(WaitFor(() => _viewerView.Result != null), Is.True);
+            Assert.That(_viewerView.Result.CanSaveCopy, Is.True, "thông báo bảo lưu bản sao thì nút phải dùng được");
+
+            _viewerView.RaiseSaveCopy();
+
+            Assert.That(WaitFor(() => File.Exists(target)), Is.True);
+            Assert.That(File.ReadAllBytes(target), Is.EqualTo(_service.LargeBytes));
+        }
+
+        [Test]
         public void Viewer_BrokenXmlStillShowsTheRawText()
         {
             _service.Xml[2] = new InvoiceXmlView
@@ -428,6 +445,13 @@ namespace HoaDonDienTu.WinForms.Tests
                 GetCalls++;
                 if (Fail) throw new InvalidOperationException("boom");
                 return Task.FromResult(Detail);
+            }
+
+            public byte[] LargeBytes;
+
+            public Task<byte[]> ReadBytesAsync(Guid invoiceId, int versionNo, CancellationToken cancellationToken)
+            {
+                return Task.FromResult(LargeBytes);
             }
 
             public Task<InvoiceXmlView> OpenXmlAsync(Guid invoiceId, int versionNo, CancellationToken cancellationToken)
