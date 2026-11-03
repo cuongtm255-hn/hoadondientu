@@ -122,6 +122,9 @@ namespace HoaDonDienTu.Application.Invoices
         /// <summary>Thời điểm người bán ký đúng như trong XML (ví dụ <c>2026-04-08T20:56:58</c>).</summary>
         public string SellerSignedAtText { get; set; }
 
+        /// <summary>Kết quả kiểm chữ ký số của người bán trên file XML (<see cref="InvoiceSignatureVerifier"/>).</summary>
+        public InvoiceSignatureStatus SellerSignatureStatus { get; set; }
+
         /// <summary>Tên người ký lấy từ chứng thư số của người bán (CN của <c>X509SubjectName</c>); null khi không có.</summary>
         public string SellerSignerName { get; set; }
     }
@@ -187,6 +190,7 @@ namespace HoaDonDienTu.Application.Invoices
                 QrPayload = Text(root, "DLQRCode") ?? Text(data, "DLQRCode")
             };
 
+            model.SellerSignatureStatus = InvoiceSignatureVerifier.VerifySeller(xml);
             ReadParty(Child(content, "NBan"), model.Seller);
             ReadParty(Child(content, "NMua"), model.Buyer);
 

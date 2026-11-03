@@ -60,6 +60,13 @@ namespace HoaDonDienTu.Infrastructure.Invoices
             public double Y2;
             public double Thickness = 0.6;
             public XColor Color = XColors.Black;
+            public bool Dotted;
+        }
+
+        private sealed class PolygonOp : Op
+        {
+            public XPoint[] Points;
+            public XColor Fill;
         }
 
         private sealed class RectOp : Op
@@ -95,6 +102,7 @@ namespace HoaDonDienTu.Infrastructure.Invoices
 
             public byte[] ToPdf()
             {
+                var background = LoadBackground();
                 var pdf = new PdfDocument();
                 pdf.Info.Title = "Hóa đơn " + (_model.InvoiceNumber ?? string.Empty);
                 pdf.Info.Creator = "Hóa đơn điện tử (bản thể hiện tạo từ XML)";
@@ -103,7 +111,7 @@ namespace HoaDonDienTu.Infrastructure.Invoices
                     var page = pdf.AddPage();
                     page.Width = XUnit.FromPoint(PageWidth);
                     page.Height = XUnit.FromPoint(PageHeight);
-                    using (var graphics = XGraphics.FromPdfPage(page)) Draw(graphics, ops, true);
+                    using (var graphics = XGraphics.FromPdfPage(page)) Draw(graphics, ops, true, background);
                 }
 
                 using (var stream = new MemoryStream())
@@ -118,6 +126,7 @@ namespace HoaDonDienTu.Infrastructure.Invoices
                 if (pageIndex < 0 || pageIndex >= _pages.Count) throw new ArgumentOutOfRangeException("pageIndex");
                 if (dpi < 24 || dpi > 600) throw new ArgumentOutOfRangeException("dpi");
 
+                var background = LoadBackground();
                 var width = (int)Math.Ceiling(PageWidth * dpi / 72.0);
                 var height = (int)Math.Ceiling(PageHeight * dpi / 72.0);
                 using (var bitmap = new Bitmap(width, height, PixelFormat.Format24bppRgb))
@@ -129,7 +138,7 @@ namespace HoaDonDienTu.Infrastructure.Invoices
                         g.PageUnit = GraphicsUnit.Point;
                         g.SmoothingMode = SmoothingMode.AntiAlias;
                         g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
-                        using (var graphics = XGraphics.FromGraphics(g, new XSize(PageWidth, PageHeight), XGraphicsUnit.Point)) Draw(graphics, _pages[pageIndex], false);
+                        using (var graphics = XGraphics.FromGraphics(g, new XSize(PageWidth, PageHeight), XGraphicsUnit.Point)) Draw(graphics, _pages[pageIndex], false, background);
                     }
 
                     using (var stream = new MemoryStream())
@@ -140,9 +149,33 @@ namespace HoaDonDienTu.Infrastructure.Invoices
                 }
             }
 
-            private static void Draw(XGraphics graphics, IList<Op> ops, bool forPdf)
+            /// <summary>Hoa văn trống đồng làm nền, đúng ảnh nền của trang xem hóa đơn (tài sản của cổng Thuế, nhúng theo yêu cầu của người dùng); null nếu không đọc được.</summary>
+            private static XImage LoadBackground()
+            {
+                try
+                {
+                    using (var resource = typeof(PdfSharpInvoiceRenderer).Assembly.GetManifestResourceStream("HoaDonDienTu.Invoices.viewinvoice-bg.jpg"))
+                    {
+                        if (resource == null) return null;
+                        var memory = new MemoryStream();
+                        resource.CopyTo(memory);
+                        memory.Position = 0;
+                        return XImage.FromStream(memory);
+                    }
+                }
+                catch (Exception)
+                {
+                    return null;
+                }
+            }
+
+            private static void Draw(XGraphics graphics, IList<Op> ops, bool forPdf, XImage background)
             {
                 var options = forPdf ? new XPdfFontOptions(PdfFontEncoding.Unicode) : null;
+
+                // Ảnh nền vuông phủ hết chiều cao trang, căn giữa theo chiều ngang (phần thừa hai bên bị cắt).
+                if (background != null) graphics.DrawImage(background, (PageWidth - PageHeight) / 2, 0, PageHeight, PageHeight);
+
                 foreach (var op in ops)
                 {
                     var text = op as TextOp;
@@ -161,7 +194,16 @@ namespace HoaDonDienTu.Infrastructure.Invoices
                     var line = op as LineOp;
                     if (line != null)
                     {
-                        graphics.DrawLine(new XPen(line.Color, line.Thickness), line.X1, line.Y1, line.X2, line.Y2);
+                        var pen = new XPen(line.Color, line.Thickness);
+                        if (line.Dotted) pen.DashStyle = XDashStyle.Dot;
+                        graphics.DrawLine(pen, line.X1, line.Y1, line.X2, line.Y2);
+                        continue;
+                    }
+
+                    var polygon = op as PolygonOp;
+                    if (polygon != null)
+                    {
+                        graphics.DrawPolygon(new XSolidBrush(polygon.Fill), polygon.Points, XFillMode.Winding);
                         continue;
                     }
 
@@ -180,11 +222,11 @@ namespace HoaDonDienTu.Infrastructure.Invoices
 
             private const double PageWidth = 595.28;
             private const double PageHeight = 841.89;
-            private const double FrameInset = 22;
+            private const double FrameInset = 10;
             private const double Margin = 42;
             private const double ContentWidth = PageWidth - 2 * Margin;
             private const double BottomLimit = PageHeight - 46;
-            private const double BodySize = 10;
+            private const double BodySize = 9.5;
             private const double CellSize = 9.5;
             private static readonly CultureInfo Vi = CultureInfo.GetCultureInfo("vi-VN");
             private static readonly XColor Brown = XColor.FromArgb(166, 114, 50);
@@ -275,8 +317,8 @@ namespace HoaDonDienTu.Infrastructure.Invoices
                     _y = Margin - 10;
 
                     // Khung viền đôi của trang xem hóa đơn.
-                    _page.Add(new RectOp { X = FrameInset, Y = FrameInset, Width = PageWidth - 2 * FrameInset, Height = PageHeight - 2 * FrameInset, BorderColor = Brown, BorderThickness = 1.2 });
-                    _page.Add(new RectOp { X = FrameInset + 4, Y = FrameInset + 4, Width = PageWidth - 2 * FrameInset - 8, Height = PageHeight - 2 * FrameInset - 8, BorderColor = Brown, BorderThickness = 0.5 });
+                    _page.Add(new RectOp { X = FrameInset, Y = FrameInset, Width = PageWidth - 2 * FrameInset, Height = PageHeight - 2 * FrameInset, BorderColor = Brown, BorderThickness = 1.0 });
+                    _page.Add(new RectOp { X = FrameInset + 3.5, Y = FrameInset + 3.5, Width = PageWidth - 2 * FrameInset - 7, Height = PageHeight - 2 * FrameInset - 7, BorderColor = Brown, BorderThickness = 0.4 });
                 }
 
                 private double Width(string text, double size, XFontStyle style)
@@ -419,7 +461,14 @@ namespace HoaDonDienTu.Infrastructure.Invoices
                 {
                     var text = label + " " + (value ?? string.Empty);
                     if (_y + TextHeight(text, ContentWidth, BodySize, XFontStyle.Regular) > BottomLimit) NewPage();
-                    _y += Text(Margin, _y, ContentWidth, text.TrimEnd(), BodySize, XFontStyle.Regular, Align.Left) + 1;
+                    var height = Text(Margin, _y, ContentWidth, text.TrimEnd(), BodySize, XFontStyle.Regular, Align.Left);
+                    DottedRule(Margin, Margin + ContentWidth, _y + height + 0.5);
+                    _y += height + 1.5;
+                }
+
+                private void DottedRule(double x1, double x2, double y)
+                {
+                    _page.Add(new LineOp { X1 = x1, Y1 = y, X2 = x2, Y2 = y, Color = XColor.FromArgb(150, 150, 150), Thickness = 0.5, Dotted = true });
                 }
 
                 private static string Account(InvoicePrintParty p)
@@ -455,7 +504,10 @@ namespace HoaDonDienTu.Infrastructure.Invoices
                     Row("Đơn vị tiền tệ:" , _m.Currency + (!string.IsNullOrEmpty(_m.Currency) && _m.Currency != "VND" && _m.ExchangeRate.HasValue ? " (tỷ giá " + Number(_m.ExchangeRate) + ")" : string.Empty));
                     if (_y + LineStep(BodySize) > BottomLimit) NewPage();
                     Text(Margin, _y, 250, "Số bảng kê: " + (_m.ListNumber ?? string.Empty), BodySize, XFontStyle.Regular, Align.Left);
-                    _y += Text(Margin + 250, _y, ContentWidth - 250, "Ngày bảng kê: " + (_m.ListDate ?? string.Empty), BodySize, XFontStyle.Regular, Align.Left) + 6;
+                    var listHeight = Text(Margin + 250, _y, ContentWidth - 250, "Ngày bảng kê: " + (_m.ListDate ?? string.Empty), BodySize, XFontStyle.Regular, Align.Left);
+                    DottedRule(Margin, Margin + 240, _y + listHeight + 0.5);
+                    DottedRule(Margin + 250, Margin + ContentWidth, _y + listHeight + 0.5);
+                    _y += listHeight + 8;
                 }
 
                 // ---- Bảng ----
@@ -604,42 +656,74 @@ namespace HoaDonDienTu.Infrastructure.Invoices
 
                     var boxTop = top + 36;
                     double boxHeight = 0;
-                    if (!string.IsNullOrEmpty(_m.SellerSignedAtText) || _m.SellerSignedAt.HasValue)
+                    var status = _m.SellerSignatureStatus;
+                    var hasSigner = !string.IsNullOrEmpty(_m.SellerSignedAtText) || _m.SellerSignedAt.HasValue;
+                    if (status != InvoiceSignatureStatus.None || hasSigner)
                     {
-                        // Không in "Signature Valid": ứng dụng không kiểm chữ ký số, chỉ cho biết XML có chữ ký.
-                        var signed = _m.SellerSignedAtText ?? _m.SellerSignedAt.Value.ToString("yyyy-MM-dd'T'HH:mm:ss", CultureInfo.InvariantCulture);
-                        var lines = new[]
+                        // Trạng thái do ứng dụng kiểm trên chính file XML (InvoiceSignatureVerifier): "Signature Valid" và dấu tích chỉ khi chữ ký toàn vẹn thật.
+                        var signed = _m.SellerSignedAtText ?? (_m.SellerSignedAt.HasValue ? _m.SellerSignedAt.Value.ToString("yyyy-MM-dd'T'HH:mm:ss", CultureInfo.InvariantCulture) : string.Empty);
+                        var signer = _m.SellerSignerName ?? _m.Seller.Name ?? string.Empty;
+                        XColor color;
+                        var lines = new List<string>();
+                        switch (status)
                         {
-                            "XML có chữ ký số của người bán",
-                            "Ký bởi " + (_m.SellerSignerName ?? _m.Seller.Name ?? string.Empty),
-                            "Ký ngày: " + signed
-                        };
+                            case InvoiceSignatureStatus.Valid:
+                                color = XColor.FromArgb(33, 181, 15);
+                                lines.Add("Signature Valid");
+                                break;
+                            case InvoiceSignatureStatus.Invalid:
+                                color = XColor.FromArgb(200, 30, 30);
+                                lines.Add("Signature Invalid");
+                                lines.Add("XML đã bị sửa sau khi ký hoặc chữ ký sai");
+                                break;
+                            default:
+                                color = Gray;
+                                lines.Add("Chưa kiểm tra được chữ ký số");
+                                break;
+                        }
+
+                        lines.Add("Ký bởi " + signer);
+                        if (!string.IsNullOrEmpty(signed)) lines.Add("Ký ngày: " + signed);
+
                         var boxWidth = half - 40;
                         var boxX = Margin + half + 20;
                         var used = 0.0;
-                        var heights = lines.Select(l => TextHeight(l, boxWidth - 12, 10, XFontStyle.Regular)).ToList();
+                        var heights = lines.Select(l => TextHeight(l, boxWidth - 12, 10.5, XFontStyle.Regular)).ToList();
                         boxHeight = heights.Sum() + 12;
-                        _page.Add(new RectOp { X = boxX, Y = boxTop, Width = boxWidth, Height = boxHeight, BorderColor = Gray, BorderThickness = 0.8 });
-                        for (var i = 0; i < lines.Length; i++)
+                        _page.Add(new RectOp { X = boxX, Y = boxTop, Width = boxWidth, Height = boxHeight, BorderColor = color, BorderThickness = 1.2 });
+                        for (var i = 0; i < lines.Count; i++)
                         {
-                            Text(boxX + 6, boxTop + 6 + used, boxWidth - 12, lines[i], 10, XFontStyle.Regular, Align.Left);
+                            Text(boxX + 6, boxTop + 6 + used, boxWidth - 12, lines[i], 10.5, XFontStyle.Regular, Align.Left, color);
                             used += heights[i];
                         }
+
+                        if (status == InvoiceSignatureStatus.Valid) AddCheckMark(boxX + boxWidth - 78, boxTop + boxHeight - 36, 52, 46, color);
                     }
 
                     _y = boxTop + Math.Max(boxHeight, 36) + 10;
                     _y += Text(Margin, _y, ContentWidth, "(Cần kiểm tra, đối chiếu khi lập, nhận hóa đơn)", 10, XFontStyle.Italic, Align.Center) + 4;
                     Text(
                         Margin, _y, ContentWidth,
-                        "Bản thể hiện này do ứng dụng dựng từ file XML đã lưu để xem và in; file XML mới là chứng từ gốc. Ứng dụng chưa kiểm tra chữ ký số.",
-                        8, XFontStyle.Italic, Align.Center, Gray);
+                        "Bản thể hiện này do ứng dụng dựng từ file XML đã lưu; file XML mới là chứng từ gốc. Trạng thái chữ ký do ứng dụng kiểm trên file XML (toàn vẹn và chữ ký, chưa kiểm chuỗi chứng thư số).",
+                        7.5, XFontStyle.Italic, Align.Center, Gray);
+                }
+
+                /// <summary>Dấu tích xanh (đa giác gần giống dấu tích của cổng), vẽ vector để in nét ở mọi độ phân giải và không có nền trắng.</summary>
+                private void AddCheckMark(double x, double y, double width, double height, XColor color)
+                {
+                    var unit = new[]
+                    {
+                        new[] { 0.00, 0.58 }, new[] { 0.28, 0.74 }, new[] { 0.45, 0.52 }, new[] { 0.65, 0.28 }, new[] { 0.85, 0.10 }, new[] { 1.00, 0.00 },
+                        new[] { 0.80, 0.22 }, new[] { 0.60, 0.50 }, new[] { 0.45, 0.78 }, new[] { 0.33, 1.00 }
+                    };
+                    _page.Add(new PolygonOp { Points = unit.Select(p => new XPoint(x + p[0] * width, y + p[1] * height)).ToArray(), Fill = color });
                 }
 
                 private void NumberPages()
                 {
                     for (var i = 0; i < Pages.Count; i++)
                     {
-                        Pages[i].Add(new TextOp { X = Margin, Y = PageHeight - 40, Width = ContentWidth, Text = "Trang " + (i + 1) + "/" + Pages.Count, Size = 8, Style = XFontStyle.Regular, Align = Align.Center, Color = Gray });
+                        Pages[i].Add(new TextOp { X = Margin, Y = PageHeight - 29, Width = ContentWidth, Text = "Trang " + (i + 1) + "/" + Pages.Count, Size = 8, Style = XFontStyle.Regular, Align = Align.Center, Color = Gray });
                     }
                 }
 

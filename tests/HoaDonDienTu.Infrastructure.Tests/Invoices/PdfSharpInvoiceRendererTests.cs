@@ -35,6 +35,7 @@ namespace HoaDonDienTu.Infrastructure.Tests.Invoices
                 AuthorityCode = "00ABCDEF0123456789ABCDEF0123456789",
                 SellerSignedAt = new DateTime(2026, 10, 31, 15, 4, 36),
                 SellerSignedAtText = "2026-10-31T15:04:36",
+                SellerSignatureStatus = InvoiceSignatureStatus.Valid,
                 SellerSignerName = "CÔNG TY TNHH GIẢ BÁN HÀNG",
                 AuthoritySignedAt = new DateTime(2026, 10, 31, 15, 4, 40),
                 QrPayload = "000201999500323A23B70457BDD05DD4FED45AF33B99A501100108460041020110130 (MÃ QR GIẢ)"
@@ -150,6 +151,72 @@ namespace HoaDonDienTu.Infrastructure.Tests.Invoices
             }
         }
 
+        private static int GreenPixels(byte[] png)
+        {
+            using (var bitmap = new Bitmap(new MemoryStream(png)))
+            {
+                var green = 0;
+                for (var y = 0; y < bitmap.Height; y += 2)
+                {
+                    for (var x = 0; x < bitmap.Width; x += 2)
+                    {
+                        var c = bitmap.GetPixel(x, y);
+                        if (c.G > 140 && c.R < 90 && c.B < 90) green++;
+                    }
+                }
+
+                return green;
+            }
+        }
+
+        [Test]
+        public void SignatureBox_IsGreenWithACheckMarkOnlyWhenTheSignatureWasVerified()
+        {
+            var valid = Model(1);
+            var invalid = Model(1);
+            invalid.SellerSignatureStatus = InvoiceSignatureStatus.Invalid;
+            var unchecked1 = Model(1);
+            unchecked1.SellerSignatureStatus = InvoiceSignatureStatus.NotChecked;
+
+            var green = GreenPixels(_renderer.Build(valid).RenderPagePng(0, 96));
+
+            Assert.That(green, Is.GreaterThan(400), "khung và dấu tích xanh khi chữ ký hợp lệ");
+            Assert.That(GreenPixels(_renderer.Build(invalid).RenderPagePng(0, 96)), Is.LessThan(green / 4), "không xanh khi chữ ký sai");
+            Assert.That(GreenPixels(_renderer.Build(unchecked1).RenderPagePng(0, 96)), Is.LessThan(green / 4), "không xanh khi chưa kiểm được");
+        }
+
+        [Test]
+        public void SignatureBox_IsOmitted_WhenTheXmlHasNoSignature()
+        {
+            var model = Model(1);
+            model.SellerSignatureStatus = InvoiceSignatureStatus.None;
+            model.SellerSignedAt = null;
+            model.SellerSignedAtText = null;
+
+            Assert.That(GreenPixels(_renderer.Build(model).RenderPagePng(0, 96)), Is.LessThan(50));
+        }
+
+        [Test]
+        public void Background_IsDrawn_TheCornersAreNotPureWhite()
+        {
+            var png = _renderer.Build(Model(1)).RenderPagePng(0, 96);
+
+            using (var bitmap = new Bitmap(new MemoryStream(png)))
+            {
+                var tinted = 0;
+                for (var y = 600; y < 1100; y += 5)
+                {
+                    for (var x = 30; x < 760; x += 5)
+                    {
+                        var c = bitmap.GetPixel(x, y);
+                        if (c.R > 235 && c.B < 250 && c.R - c.B >= 3) tinted++;
+                    }
+                }
+
+                Assert.That(tinted, Is.GreaterThan(200), "hoa văn trống đồng ngả màu kem ở nền");
+            }
+        }
+
         [Test]
         public void TypeOfInvoiceTitle_FollowsTheFormSymbol_AndSurvivesAnUnknownOne()
         {
@@ -206,6 +273,41 @@ namespace HoaDonDienTu.Infrastructure.Tests.Invoices
             File.WriteAllBytes(Path.Combine(dir, "hoa-don-nho.png"), _renderer.Build(Model(2, "Vé máy bay nội địa HAN-SGN")).RenderPagePng(0, 110));
             File.WriteAllBytes(Path.Combine(dir, "hoa-don-mau.pdf"), document.ToPdf());
             for (var i = 0; i < document.PageCount; i++) File.WriteAllBytes(Path.Combine(dir, "trang-" + (i + 1) + ".png"), document.RenderPagePng(i, 110));
+        }
+
+        /// <summary>Dựng từ file XML thật mẫu của cổng (docs/api-samples/invoice.zip) qua bộ đọc XML thật: chữ ký phải hợp lệ và bản in có đủ dữ liệu; ghi ảnh khi có HDDT_PDF_PREVIEW_DIR.</summary>
+        [Test]
+        public void PortalSampleXml_EndToEnd_ParsesVerifiesAndRenders()
+        {
+            var dir = new DirectoryInfo(AppDomain.CurrentDomain.BaseDirectory);
+            while (dir != null && !File.Exists(Path.Combine(dir.FullName, "docs", "api-samples", "invoice.zip"))) dir = dir.Parent;
+            if (dir == null) Assert.Ignore("Không thấy docs/api-samples/invoice.zip.");
+
+            byte[] xml;
+            using (var zip = System.IO.Compression.ZipFile.OpenRead(Path.Combine(dir.FullName, "docs", "api-samples", "invoice.zip")))
+            using (var stream = zip.GetEntry("invoice.xml").Open())
+            using (var memory = new MemoryStream())
+            {
+                stream.CopyTo(memory);
+                xml = memory.ToArray();
+            }
+
+            var model = InvoicePrintModelParser.Parse(xml);
+            var document = _renderer.Build(model);
+
+            Assert.That(model.SellerSignatureStatus, Is.EqualTo(InvoiceSignatureStatus.Valid));
+            Assert.That(model.QrPayload, Is.Null.Or.Not.Empty);
+            Assert.That(model.Lines, Is.Not.Empty);
+            Assert.That(document.PageCount, Is.EqualTo(1));
+            Assert.That(GreenPixels(document.RenderPagePng(0, 96)), Is.GreaterThan(300), "chữ ký hợp lệ: khung và dấu tích xanh");
+
+            var preview = Environment.GetEnvironmentVariable("HDDT_PDF_PREVIEW_DIR");
+            if (!string.IsNullOrEmpty(preview))
+            {
+                Directory.CreateDirectory(preview);
+                File.WriteAllBytes(Path.Combine(preview, "mau-cong-thue.png"), document.RenderPagePng(0, 110));
+                File.WriteAllBytes(Path.Combine(preview, "mau-cong-thue.pdf"), document.ToPdf());
+            }
         }
 
         private static int Count(byte[] bytes, string needle)

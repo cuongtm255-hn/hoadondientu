@@ -35,13 +35,14 @@ của bên thứ ba. Ứng dụng nhắm net452 (ADR 0007), chạy được cả
 3. **Không dựng khi không tin được XML**: file mất, quá lớn (>5 MB), không phải hóa đơn, hoặc **sai SHA-256** → tab PDF nêu lý do, In/Lưu PDF bị khóa (tránh in sai chứng từ, AC-10).
 4. PDF chỉ được ghi ra đĩa khi người dùng bấm **Lưu PDF**; in qua hộp thoại in của Windows (`PrintDocument`). Chưa lưu PDF vào kho và chưa có bảng `FileAsset` cho PDF: dựng lại mỗi lần
    xem (vài chục mili giây); sẽ thêm bộ nhớ đệm khi đo thấy cần.
-5. Khối chữ ký chỉ nói "XML có chữ ký số của người bán, ký bởi …, ký ngày …" và **không** in "Signature Valid"/dấu tích xanh như cổng, vì ứng dụng **không** kiểm chữ ký số; trang ghi rõ bản thể hiện dựng từ XML và XML mới là chứng từ gốc.
+5. Khối chữ ký giống cổng (khung xanh, "Signature Valid", "Ký bởi …", "Ký ngày …", dấu tích xanh) **chỉ khi chữ ký thật sự hợp lệ**: `InvoiceSignatureVerifier` kiểm XML-DSig của người bán bằng `SignedXml` trên chính file XML (băm từng tham chiếu và kiểm chữ ký bằng khóa trong chứng thư đính kèm; đã kiểm trên file mẫu thật của cổng: hợp lệ, và sửa số hóa đơn hoặc tổng tiền thì thành không hợp lệ). Chữ ký sai in khung đỏ "Signature Invalid"; không kiểm được thì khung xám "Chưa kiểm tra được chữ ký số"; XML không có chữ ký thì không có khung. Chỉ nhận tham chiếu nội bộ và phép biến đổi chuẩn hóa/chữ ký bao (không XSLT, không địa chỉ ngoài). **Không** kiểm chuỗi chứng thư, thời hạn hay thu hồi, và trang ghi rõ điều đó ở chân trang.
 
 ## Hệ quả
 
 - (+) Chạy offline, không gọi cổng, không JavaScript ngoài; kiểm thử được cả bố cục (ảnh trang) lẫn PDF.
 - (+) Một bố cục cho xem trước, in và PDF.
-- (−) Chưa có hình nền hoa văn trống đồng và dấu kiểm chữ ký xanh của cổng (hình nền là tài sản của cổng, dấu kiểm sẽ ngụ ý đã xác minh chữ ký); các phần còn lại giống bố cục của cổng.
+- (+) Có hình nền hoa văn trống đồng như trang của cổng: nhúng `viewinvoice-bg.jpg` lấy từ gói xuất XML của cổng (tài sản của cổng, nhúng theo yêu cầu của người dùng; dấu tích xanh được vẽ vector thay vì dùng `sign-check.jpg` để không có nền trắng). Dấu gạch chấm dưới từng dòng thông tin và khung viền theo mẫu PDF in của cổng (`docs/api-samples`).
+- (−) Hình nền làm tăng cỡ file PDF thêm khoảng 150 KB mỗi bản (một ảnh dùng chung cho mọi trang) và là tài sản của cổng: nếu cần bỏ, xóa tài nguyên nhúng thì bản in vẫn dựng bình thường.
 - (−) Phụ thuộc phông Times New Roman của Windows (có sẵn trên mọi bản Windows mục tiêu); phông được nhúng vào PDF nên mở được ở máy khác.
 - (−) Chưa hỗ trợ các biến thể hóa đơn lạ (hóa đơn có nhiều bảng, phụ lục, mẫu đặc thù): hiển thị phần chung và để trống phần không hiểu.
 
@@ -49,4 +50,5 @@ của bên thứ ba. Ứng dụng nhắm net452 (ADR 0007), chạy được cả
 
 - Đối chiếu bố cục với nhiều hóa đơn thật (bán hàng, GTGT nhiều thuế suất, ngoại tệ, hóa đơn từ máy tính tiền, hóa đơn điều chỉnh/thay thế). Mới kiểm bằng hóa đơn giả theo cấu trúc TT78 và cấu trúc của một file XML thật đã có trong `docs/api-samples/invoice.zip`.
 - In ra máy in thật (đã kiểm phần dựng ảnh 300 dpi, chưa gửi tới máy in).
+- Kiểm chữ ký trên nhiều chứng thư/thuật toán khác (mới kiểm RSA-SHA256 trên một file mẫu).
 - Mở file PDF trong các trình đọc khác nhau (Adobe, Edge, Foxit); đã kiểm cấu trúc (có font nhúng, đúng số trang) nhưng không mở bằng trình đọc.

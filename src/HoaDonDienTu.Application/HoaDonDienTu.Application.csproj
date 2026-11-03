@@ -11,6 +11,7 @@
     <ProjectReference Include="..\HoaDonDienTu.Domain\HoaDonDienTu.Domain.csproj" />
     <Reference Include="System.IO.Compression" />
     <Reference Include="System.Runtime.Serialization" />
+    <Reference Include="System.Security" />
   </ItemGroup>
 
 </Project>
