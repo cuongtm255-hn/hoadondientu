@@ -109,6 +109,38 @@ namespace HoaDonDienTu.Infrastructure.Tests.Persistence
         }
 
         [Test]
+        public void Initialize_Upgrade_KeepsACopyOfTheDatabaseAsItWasBeforeUpgrading()
+        {
+            var first = new SchemaMigration(1, "v1", "CREATE TABLE a (id INTEGER PRIMARY KEY)");
+            var second = new SchemaMigration(2, "v2", "ALTER TABLE a ADD COLUMN note TEXT");
+            var before = new CompanyDatabaseInitializer(new List<SchemaMigration> { first }).Initialize(_path);
+            using (var c = before.Open()) SqliteDatabase.Execute(c, "INSERT INTO a (id) VALUES (7)");
+
+            new CompanyDatabaseInitializer(new List<SchemaMigration> { first, second }).Initialize(_path);
+
+            var copy = CompanyDatabaseInitializer.UpgradeCopyPath(_path, 1);
+            Assert.That(File.Exists(copy), Is.True);
+            using (var c = new SqliteDatabase(copy).Open())
+            {
+                Assert.That(SchemaVersionReader.Read(c), Is.EqualTo(1), "bản sao giữ nguyên phiên bản cũ");
+                Assert.That(Convert.ToInt64(SqliteDatabase.Scalar(c, "SELECT COUNT(*) FROM a")), Is.EqualTo(1));
+            }
+
+            Assert.That(File.Exists(copy + ".tmp"), Is.False);
+        }
+
+        [Test]
+        public void Initialize_NewFileOrUpToDate_LeavesNoUpgradeCopy()
+        {
+            var first = new SchemaMigration(1, "v1", "CREATE TABLE a (id INTEGER PRIMARY KEY)");
+            var initializer = new CompanyDatabaseInitializer(new List<SchemaMigration> { first });
+            initializer.Initialize(_path);
+            initializer.Initialize(_path);
+
+            Assert.That(Directory.GetFiles(Path.GetDirectoryName(_path), "*.bak"), Is.Empty);
+        }
+
+        [Test]
         public void Initialize_FailingMigration_RollsBackToPreviousVersion()
         {
             var first = new SchemaMigration(1, "v1", "CREATE TABLE a (id INTEGER PRIMARY KEY)");

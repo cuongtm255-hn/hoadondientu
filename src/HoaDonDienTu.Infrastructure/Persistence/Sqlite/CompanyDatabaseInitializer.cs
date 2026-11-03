@@ -78,6 +78,9 @@ namespace HoaDonDienTu.Infrastructure.Persistence.Sqlite
                         throw new CompanyDatabaseException("Cơ sở dữ liệu được tạo bởi phiên bản ứng dụng mới hơn. Hãy cập nhật ứng dụng.");
                     }
 
+                    // Nâng cấp một cơ sở dữ liệu đã có dữ liệu thì giữ lại bản trước khi nâng: migration lỗi logic (đã commit nhưng sai) vẫn có chỗ quay về.
+                    if (current > 0 && current < LatestVersion) SaveCopyBeforeUpgrade(connection, path, current);
+
                     for (var i = current; i < _migrations.Count; i++) Apply(connection, _migrations[i]);
 
                     EnsureIntact(connection);
@@ -89,6 +92,29 @@ namespace HoaDonDienTu.Infrastructure.Persistence.Sqlite
             }
 
             return database;
+        }
+
+        /// <summary>Tên bản sao trước khi nâng từ schema <paramref name="fromVersion"/>, nằm cạnh <c>company.db</c> (mỗi phiên bản một file, lần nâng sau ghi đè).</summary>
+        public static string UpgradeCopyPath(string databasePath, int fromVersion)
+        {
+            return databasePath + ".v" + fromVersion.ToString(CultureInfo.InvariantCulture) + ".bak";
+        }
+
+        private static void SaveCopyBeforeUpgrade(SQLiteConnection source, string path, int fromVersion)
+        {
+            // Backup API cho bản nhất quán kể cả khi còn dữ liệu trong tệp -wal; chép thẳng file chính sẽ bỏ sót chúng.
+            var copy = UpgradeCopyPath(path, fromVersion);
+            var temp = copy + ".tmp";
+            if (File.Exists(temp)) File.Delete(temp);
+            var builder = new SQLiteConnectionStringBuilder { DataSource = temp, Version = 3, Pooling = false };
+            using (var target = new SQLiteConnection(builder.ConnectionString))
+            {
+                target.Open();
+                source.BackupDatabase(target, "main", "main", -1, null, 0);
+            }
+
+            if (File.Exists(copy)) File.Delete(copy);
+            File.Move(temp, copy);
         }
 
         /// <summary>Chạy <c>PRAGMA integrity_check</c> trên một file; dùng sau khôi phục hoặc khi mở kho. Trả false nếu có lỗi.</summary>

@@ -6,7 +6,7 @@ Mỗi lần review ghi lại commit cuối đã được xét. Lần sau review 
 | Ngày | Phạm vi | Mốc (commit cuối đã review) | Kết quả |
 |---|---|---|---|
 | 02/11/2026 | `e91145c..f53c7d1` | `f53c7d1` | Các phát hiện đã sửa trong chính `f53c7d1` |
-| 03/11/2026 | `f53c7d1..78cc0f5` | `78cc0f5` | 10 phát hiện; đã sửa 1, 2, 3, 4, 5, 8, 9 (7 là báo nhầm); còn lại chưa sửa: xem mục dưới |
+| 03/11/2026 | `f53c7d1..78cc0f5` | `78cc0f5` | 10 phát hiện; đã sửa 1, 2, 3, 4, 5, 8, 9, 10 (7 là báo nhầm); còn lại chưa sửa: xem mục dưới |
 
 ## Review 03/11/2026 (`f53c7d1..78cc0f5`)
 
@@ -23,4 +23,4 @@ WinForms (Dashboard, Detail, Archive, Settings), `Dashboard.cs`, `InvoiceDetail.
 7. ❌ Báo nhầm: `Csv()` đã thêm `'` trước ô bắt đầu bằng `= + - @`. Manifest CSV khi xuất không vô hiệu hóa ô bắt đầu bằng `= + - @` (dữ liệu từ cổng Thuế).
 8. ✅ Đã sửa (Unspecified = UTC). `SqliteValues.Time` coi `DateTime` kiểu Unspecified là giờ local rồi đổi sang UTC.
 9. ✅ Đã sửa (chỉ UNIQUE trên khóa nghiệp vụ). `AddAsync` coi mọi lỗi ràng buộc là "khóa nghiệp vụ đã tồn tại".
-10. Migration chạy thẳng trên `company.db` mà không sao chép file trước.
+10. ✅ Đã sửa (`company.db.v<N>.bak` trước khi nâng). Migration chạy thẳng trên `company.db` mà không sao chép file trước.
