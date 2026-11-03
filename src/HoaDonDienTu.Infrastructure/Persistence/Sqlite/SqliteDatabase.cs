@@ -138,8 +138,10 @@ namespace HoaDonDienTu.Infrastructure.Persistence.Sqlite
         private const string TimeFormat = "yyyy-MM-dd'T'HH:mm:ss'Z'";
         private const string DateFormat = "yyyy-MM-dd";
 
+        /// <summary>Giá trị thời gian của ứng dụng luôn là UTC; kiểu Unspecified được hiểu là UTC chứ không bị đổi như giờ máy.</summary>
         public static string Time(DateTime utc)
         {
+            if (utc.Kind == DateTimeKind.Unspecified) utc = DateTime.SpecifyKind(utc, DateTimeKind.Utc);
             return utc.ToUniversalTime().ToString(TimeFormat, CultureInfo.InvariantCulture);
         }
 

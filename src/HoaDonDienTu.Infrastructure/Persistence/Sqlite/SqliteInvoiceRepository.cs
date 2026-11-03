@@ -52,7 +52,7 @@ namespace HoaDonDienTu.Infrastructure.Persistence.Sqlite
                     {
                         InsertInvoice(c, invoice);
                     }
-                    catch (SQLiteException ex) when (ex.ResultCode == SQLiteErrorCode.Constraint)
+                    catch (SQLiteException ex) when (ex.ResultCode == SQLiteErrorCode.Constraint && IsBusinessKeyConflict(ex))
                     {
                         throw new InvalidOperationException("Khóa nghiệp vụ đã tồn tại.", ex);
                     }
@@ -322,6 +322,13 @@ namespace HoaDonDienTu.Infrastructure.Persistence.Sqlite
                 i.Currency, SqliteValues.Rate(i.ExchangeRate), (int)i.Status, i.StatusRaw, (int)i.CheckResult, i.CheckResultRaw,
                 SqliteValues.Time(s.FirstSeenAtUtc), SqliteValues.Time(s.LastSeenAtUtc), ArchiveKeys.SearchText(i), ArchiveKeys.NumberKey(i.InvoiceNumber), ArchiveKeys.CounterpartySort(i),
                 CurrentPathOf(s), s.Versions.Count);
+        }
+
+        /// <summary>Chỉ vi phạm UNIQUE trên khóa nghiệp vụ hoặc mã hóa đơn mới là "đã tồn tại"; ràng buộc khác là lỗi dữ liệu thật và được ném nguyên.</summary>
+        private static bool IsBusinessKeyConflict(SQLiteException ex)
+        {
+            return ex.Message.IndexOf("UNIQUE constraint failed", StringComparison.OrdinalIgnoreCase) >= 0
+                && (ex.Message.IndexOf("business_key", StringComparison.OrdinalIgnoreCase) >= 0 || ex.Message.IndexOf("invoice.id", StringComparison.OrdinalIgnoreCase) >= 0);
         }
 
         private static object CurrentPathOf(StoredInvoice s)

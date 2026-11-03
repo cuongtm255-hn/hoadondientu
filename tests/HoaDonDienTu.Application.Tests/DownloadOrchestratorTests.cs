@@ -828,6 +828,26 @@ namespace HoaDonDienTu.Application.Tests
         }
 
         [Test]
+        public async Task RecoverInterrupted_ResumePressedWhileRecovering_IsRejected_NotOverwritten()
+        {
+            var id = await CreateAsync(PeriodSpec.ForMonth(2026, 10));
+            await MakeInterruptedAsync(id);
+            var gate = new TaskCompletionSource<bool>();
+            var orchestrator = new DownloadOrchestrator(
+                new GatedSegmentRepository(_repo, gate.Task), _context, _portal, () => _client, _flaky, new NoLimit(), DefaultRetryPolicy.Standard, _entitlement, _clock,
+                new NullLogger(), (span, token) => Task.FromResult(0));
+
+            var recovering = orchestrator.RecoverInterruptedAsync(CancellationToken.None);
+            Assert.That(orchestrator.HasActiveRun(Id), Is.True, "Phiên được giữ chỗ trong lúc khôi phục");
+            Assert.ThrowsAsync<InvalidDownloadStateException>(() => orchestrator.RunAsync(id, null, CancellationToken.None));
+
+            gate.SetResult(true);
+            Assert.That(await recovering, Is.EqualTo(1));
+            Assert.That(orchestrator.HasActiveRun(Id), Is.False);
+            Assert.That((await SessionAsync(id)).State, Is.EqualTo(DownloadSessionState.PausedByUser));
+        }
+
+        [Test]
         public async Task RecoverInterrupted_WithoutCompany_DoesNothing()
         {
             var id = await CreateAsync(PeriodSpec.ForMonth(2026, 10));
@@ -1068,6 +1088,36 @@ namespace HoaDonDienTu.Application.Tests
         {
             public bool HasCurrent { get { return Current != null; } }
             public CompanyContext Current { get; set; }
+        }
+
+        /// <summary>Giữ lần lưu đoạn đầu tiên cho tới khi cổng mở, để dựng đúng khoảnh khắc đang khôi phục dở.</summary>
+        private sealed class GatedSegmentRepository : IDownloadRepository
+        {
+            private readonly IDownloadRepository _inner;
+            private readonly Task _gate;
+
+            public GatedSegmentRepository(IDownloadRepository inner, Task gate)
+            {
+                _inner = inner;
+                _gate = gate;
+            }
+
+            public Task CreateAsync(DownloadSession session, IList<DownloadSegment> segments, CancellationToken ct) { return _inner.CreateAsync(session, segments, ct); }
+            public Task<DownloadSession> GetSessionAsync(Guid sessionId, CancellationToken ct) { return _inner.GetSessionAsync(sessionId, ct); }
+            public Task<IList<DownloadSegment>> GetSegmentsAsync(Guid sessionId, CancellationToken ct) { return _inner.GetSegmentsAsync(sessionId, ct); }
+            public Task SaveSessionAsync(DownloadSession session, CancellationToken ct) { return _inner.SaveSessionAsync(session, ct); }
+
+            public async Task SaveSegmentAsync(DownloadSegment segment, CancellationToken ct)
+            {
+                await _gate;
+                await _inner.SaveSegmentAsync(segment, ct);
+            }
+
+            public Task AddEventAsync(DownloadEvent downloadEvent, CancellationToken ct) { return _inner.AddEventAsync(downloadEvent, ct); }
+            public Task<IList<DownloadEvent>> GetEventsAsync(Guid sessionId, CancellationToken ct) { return _inner.GetEventsAsync(sessionId, ct); }
+            public Task<IList<DownloadSession>> GetUnfinishedAsync(CompanyId companyId, CancellationToken ct) { return _inner.GetUnfinishedAsync(companyId, ct); }
+            public Task<IList<DownloadSession>> GetSessionsAsync(CompanyId companyId, CancellationToken ct) { return _inner.GetSessionsAsync(companyId, ct); }
+            public Task<IDictionary<Guid, IList<DownloadSegment>>> GetSegmentsByCompanyAsync(CompanyId companyId, CancellationToken ct) { return _inner.GetSegmentsByCompanyAsync(companyId, ct); }
         }
 
         private sealed class FakeContextManager : ICompanyContextManager

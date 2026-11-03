@@ -598,21 +598,33 @@ namespace HoaDonDienTu.Application.Downloads
             var sessions = await _repository.GetUnfinishedAsync(companyId, cancellationToken).ConfigureAwait(false);
             foreach (var session in sessions)
             {
-                // Phiên đang chạy thật (đang giữ trong _active) không được đụng tới; chỉ phiên mồ côi mới bị đưa về tạm dừng.
-                if (session.State != DownloadSessionState.Running || _active.ContainsKey(session.Id)) continue;
+                if (session.State != DownloadSessionState.Running) continue;
 
-                var segments = await _repository.GetSegmentsAsync(session.Id, cancellationToken).ConfigureAwait(false);
-                foreach (var segment in segments.Where(s => s.State == DownloadSegmentState.Running))
+                // Giữ chỗ phiên trong _active suốt lúc sửa: lượt Tiếp tục bấm đúng lúc này bị từ chối thay vì bị ghi đè trạng thái.
+                // Phiên đang chạy thật đã nằm sẵn trong _active nên TryAdd thất bại và không bị đụng tới.
+                var entry = new RunEntry { SessionId = session.Id, CompanyId = companyId };
+                if (!_active.TryAdd(session.Id, entry)) continue;
+                try
                 {
-                    segment.TransitionTo(DownloadSegmentState.Paused);
-                    await _repository.SaveSegmentAsync(segment, cancellationToken).ConfigureAwait(false);
-                }
+                    var segments = await _repository.GetSegmentsAsync(session.Id, cancellationToken).ConfigureAwait(false);
+                    foreach (var segment in segments.Where(s => s.State == DownloadSegmentState.Running))
+                    {
+                        segment.TransitionTo(DownloadSegmentState.Paused);
+                        await _repository.SaveSegmentAsync(segment, cancellationToken).ConfigureAwait(false);
+                    }
 
-                session.TransitionTo(DownloadSessionState.PausedByUser, _clock.UtcNow);
-                await _repository.SaveSessionAsync(session, cancellationToken).ConfigureAwait(false);
-                await EventAsync(session, null, DownloadEventLevel.Warning, "INTERRUPTED",
-                    "Phiên bị ngắt giữa chừng khi ứng dụng tắt; đã tạm dừng, bấm Tiếp tục để chạy tiếp từ checkpoint.").ConfigureAwait(false);
-                recovered++;
+                    session.TransitionTo(DownloadSessionState.PausedByUser, _clock.UtcNow);
+                    await _repository.SaveSessionAsync(session, cancellationToken).ConfigureAwait(false);
+                    await EventAsync(session, null, DownloadEventLevel.Warning, "INTERRUPTED",
+                        "Phiên bị ngắt giữa chừng khi ứng dụng tắt; đã tạm dừng, bấm Tiếp tục để chạy tiếp từ checkpoint.").ConfigureAwait(false);
+                    recovered++;
+                }
+                finally
+                {
+                    RunEntry removed;
+                    _active.TryRemove(session.Id, out removed);
+                    entry.Done.TrySetResult(true);
+                }
             }
 
             return recovered;

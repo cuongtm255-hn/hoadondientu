@@ -146,6 +146,26 @@ namespace HoaDonDienTu.Infrastructure.Tests.Persistence
         }
 
         [Test]
+        public async Task Invoice_OtherConstraintViolation_IsNotReportedAsDuplicate()
+        {
+            var broken = NewInvoice("2", 1);
+            broken.BusinessKey = null;
+
+            var ex = Assert.CatchAsync(() => _invoices.AddAsync(broken, CancellationToken.None));
+
+            Assert.That(ex, Is.Not.InstanceOf<InvalidOperationException>());
+            Assert.That(ex, Is.InstanceOf<System.Data.SQLite.SQLiteException>());
+        }
+
+        [Test]
+        public void Time_UnspecifiedKind_IsTakenAsUtc_NotAsLocalTime()
+        {
+            var unspecified = new DateTime(2026, 11, 3, 10, 0, 0, DateTimeKind.Unspecified);
+
+            Assert.That(SqliteValues.Time(unspecified), Is.EqualTo("2026-11-03T10:00:00Z"));
+        }
+
+        [Test]
         public async Task Invoice_AddVersion_KeepsOldVersions_AndMakesTheNewOneCurrent()
         {
             var stored = NewInvoice("7", 1);
