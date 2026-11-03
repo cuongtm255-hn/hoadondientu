@@ -280,7 +280,7 @@ namespace HoaDonDienTu.WinForms.Bootstrap
                 var interval = Math.Min(portalConfig.RateLimit.MinIntervalMs, 20);
 #else
                 // Release: ít nhất 3 giây giữa hai lời gọi liên tiếp sang cổng Thuế, dù cấu hình ghi thấp hơn.
-                var interval = PortalOptions.EffectiveIntervalMs(portalConfig.RateLimit.MinIntervalMs);
+                var interval = HoaDonDienTu.Application.Portal.PortalOptions.EffectiveIntervalMs(portalConfig.RateLimit.MinIntervalMs);
 #endif
                 var concrete = new DownloadOrchestrator(
                     downloadRepository, contextManager, SessionStore, () => ApiClientProvider.GetClient(), invoiceStore,
