@@ -325,6 +325,11 @@ namespace HoaDonDienTu.Application.Invoices
             return Current().ListYearsAsync(direction, cancellationToken);
         }
 
+        public Task<InvoiceOverview> GetOverviewAsync(int year, int recentCount, CancellationToken cancellationToken)
+        {
+            return Current().GetOverviewAsync(year, recentCount, cancellationToken);
+        }
+
         private IInvoiceRepository Current()
         {
             if (!_context.HasCurrent) throw new StorageGuardException("Chưa mở doanh nghiệp nào.");

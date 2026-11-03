@@ -136,27 +136,24 @@ namespace HoaDonDienTu.Application.Dashboard
             var root = _context.Current.StorageRoot;
             var year = _clock.UtcNow.ToLocalTime().Year;
 
-            var all = await _invoices.ListAsync(cancellationToken).ConfigureAwait(false);
+            // Đếm, tổng năm và danh sách mới nhất tính trong kho dữ liệu: không nạp cả kho vào bộ nhớ mỗi lần mở Tổng quan.
+            var overview = await _invoices.GetOverviewAsync(year, RecentCount, cancellationToken).ConfigureAwait(false);
+            var recent = await _invoices.FindManyAsync(overview.RecentIds, cancellationToken).ConfigureAwait(false);
             var sessions = await _history.QueryAsync(new HistoryQuery { PageSize = 500 }, cancellationToken).ConfigureAwait(false);
             var missingPurchase = await CountMissingAsync(InvoiceDirection.Purchase, cancellationToken).ConfigureAwait(false);
             var missingSold = await CountMissingAsync(InvoiceDirection.Sold, cancellationToken).ConfigureAwait(false);
 
             var snapshot = new DashboardSnapshot
             {
-                TotalInvoices = all.Count,
-                PurchaseCount = all.Count(i => i.Invoice.Direction == InvoiceDirection.Purchase),
-                SoldCount = all.Count(i => i.Invoice.Direction == InvoiceDirection.Sold),
+                TotalInvoices = overview.PurchaseCount + overview.SoldCount,
+                PurchaseCount = overview.PurchaseCount,
+                SoldCount = overview.SoldCount,
                 Year = year,
-                YearPayment = all.Where(i => i.Invoice.IssueDate.Year == year).Sum(i => i.Invoice.TotalPayment ?? 0m),
+                YearPayment = overview.YearPayment,
                 MissingFileCount = missingPurchase + missingSold
             };
 
-            snapshot.Recent = all
-                .OrderByDescending(i => i.FirstSeenAtUtc)
-                .ThenByDescending(i => i.Invoice.IssueDate)
-                .Take(RecentCount)
-                .Select(i => ToRecent(root, i))
-                .ToList();
+            snapshot.Recent = recent.Select(i => ToRecent(root, i)).ToList();
 
             snapshot.Active = sessions.Rows
                 .Where(r => r.State == DownloadSessionState.Running || r.State == DownloadSessionState.PausedByUser || r.State == DownloadSessionState.WaitingForLogin)

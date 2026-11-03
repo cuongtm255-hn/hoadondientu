@@ -161,6 +161,40 @@ namespace HoaDonDienTu.Infrastructure.Tests.Persistence
         }
 
         [Test]
+        public async Task Overview_GivesTheSameCountsYearTotalAndRecentOrder_AsTheInMemoryRepository()
+        {
+            var memory = new InMemoryInvoiceRepository();
+            var data = Dataset();
+            for (var i = 0; i < data.Count; i++)
+            {
+                data[i].FirstSeenAtUtc = new DateTime(2026, 11, 1, 8, 0, 0, DateTimeKind.Utc).AddMinutes(i % 4);
+                await memory.AddAsync(data[i], CancellationToken.None);
+                await _sqlite.AddAsync(data[i], CancellationToken.None);
+            }
+
+            foreach (var year in new[] { 2026, 2025, 1999 })
+            {
+                var expected = await memory.GetOverviewAsync(year, 5, CancellationToken.None);
+                var actual = await _sqlite.GetOverviewAsync(year, 5, CancellationToken.None);
+
+                Assert.That(actual.PurchaseCount, Is.EqualTo(expected.PurchaseCount), "mua vào " + year);
+                Assert.That(actual.SoldCount, Is.EqualTo(expected.SoldCount), "bán ra " + year);
+                Assert.That(actual.YearPayment, Is.EqualTo(expected.YearPayment), "tổng năm " + year);
+                Assert.That(actual.RecentIds, Is.EqualTo(expected.RecentIds), "mới nhất " + year);
+            }
+        }
+
+        [Test]
+        public async Task Overview_OfAnEmptyStore_IsZeroAndEmpty()
+        {
+            var overview = await _sqlite.GetOverviewAsync(2026, 5, CancellationToken.None);
+
+            Assert.That(overview.PurchaseCount + overview.SoldCount, Is.EqualTo(0));
+            Assert.That(overview.YearPayment, Is.EqualTo(0m));
+            Assert.That(overview.RecentIds, Is.Empty);
+        }
+
+        [Test]
         public async Task Years_AreDistinctNewestFirst_PerDirection()
         {
             var data = Dataset();

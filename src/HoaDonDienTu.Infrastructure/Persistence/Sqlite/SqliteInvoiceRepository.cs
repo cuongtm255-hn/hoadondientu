@@ -203,6 +203,41 @@ namespace HoaDonDienTu.Infrastructure.Persistence.Sqlite
                 cancellationToken);
         }
 
+        public Task<InvoiceOverview> GetOverviewAsync(int year, int recentCount, CancellationToken cancellationToken)
+        {
+            return _provider.Current().ReadAsync(
+                c =>
+                {
+                    var overview = new InvoiceOverview { RecentIds = new List<Guid>() };
+                    using (var command = SqliteDatabase.Command(c, "SELECT direction, COUNT(*) AS n FROM invoice GROUP BY direction"))
+                    using (var reader = command.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            var direction = (InvoiceDirection)SqliteValues.Int(reader["direction"]);
+                            if (direction == InvoiceDirection.Purchase) overview.PurchaseCount = SqliteValues.Int(reader["n"]);
+                            else if (direction == InvoiceDirection.Sold) overview.SoldCount = SqliteValues.Int(reader["n"]);
+                        }
+                    }
+
+                    var firstDay = SqliteValues.Date(new DateTime(year, 1, 1));
+                    var lastDay = SqliteValues.Date(new DateTime(year, 12, 31));
+                    using (var command = SqliteDatabase.Command(c, "SELECT COALESCE(SUM(total_payment), 0) FROM invoice WHERE issue_date >= @p0 AND issue_date <= @p1", firstDay, lastDay))
+                    {
+                        overview.YearPayment = SqliteValues.ParseMoney(command.ExecuteScalar()) ?? 0m;
+                    }
+
+                    using (var command = SqliteDatabase.Command(c, "SELECT id FROM invoice ORDER BY first_seen_utc DESC, issue_date DESC, id ASC LIMIT @p0", recentCount))
+                    using (var reader = command.ExecuteReader())
+                    {
+                        while (reader.Read()) overview.RecentIds.Add(SqliteValues.ParseId(reader["id"]));
+                    }
+
+                    return overview;
+                },
+                cancellationToken);
+        }
+
         public Task<IList<int>> ListYearsAsync(InvoiceDirection direction, CancellationToken cancellationToken)
         {
             return _provider.Current().ReadAsync(

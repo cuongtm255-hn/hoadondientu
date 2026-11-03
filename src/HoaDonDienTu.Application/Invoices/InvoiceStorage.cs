@@ -88,6 +88,22 @@ namespace HoaDonDienTu.Application.Invoices
 
         /// <summary>Các năm lập hóa đơn có dữ liệu của chiều đã chọn, mới nhất trước.</summary>
         Task<IList<int>> ListYearsAsync(InvoiceDirection direction, CancellationToken cancellationToken);
+
+        /// <summary>Số liệu tổng quan tính ngay trong kho dữ liệu (đếm, cộng tổng năm, mã các hóa đơn mới nhất) để Tổng quan không phải nạp cả kho.</summary>
+        Task<InvoiceOverview> GetOverviewAsync(int year, int recentCount, CancellationToken cancellationToken);
+    }
+
+    /// <summary>Kết quả <see cref="IInvoiceRepository.GetOverviewAsync"/>.</summary>
+    public sealed class InvoiceOverview
+    {
+        public int PurchaseCount { get; set; }
+        public int SoldCount { get; set; }
+
+        /// <summary>Tổng thanh toán của các hóa đơn lập trong năm được hỏi.</summary>
+        public decimal YearPayment { get; set; }
+
+        /// <summary>Mã các hóa đơn tải về gần nhất, mới nhất trước.</summary>
+        public IList<Guid> RecentIds { get; set; }
     }
 
     /// <summary>Ghi file XML vào thư mục kho: file tạm → kiểm tra → đổi tên atomic (DD-06 mục 6).</summary>

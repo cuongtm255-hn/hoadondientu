@@ -282,6 +282,28 @@ namespace HoaDonDienTu.Application.Invoices
             }
         }
 
+        public Task<InvoiceOverview> GetOverviewAsync(int year, int recentCount, CancellationToken cancellationToken)
+        {
+            lock (_gate)
+            {
+                var all = _byKey.Values.ToList();
+                return Task.FromResult(
+                    new InvoiceOverview
+                    {
+                        PurchaseCount = all.Count(s => s.Invoice.Direction == InvoiceDirection.Purchase),
+                        SoldCount = all.Count(s => s.Invoice.Direction == InvoiceDirection.Sold),
+                        YearPayment = all.Where(s => s.Invoice.IssueDate.Year == year).Sum(s => s.Invoice.TotalPayment ?? 0m),
+                        RecentIds = all
+                            .OrderByDescending(s => s.FirstSeenAtUtc)
+                            .ThenByDescending(s => s.Invoice.IssueDate)
+                            .ThenBy(s => s.InvoiceId.ToString("D"), StringComparer.Ordinal)
+                            .Take(recentCount)
+                            .Select(s => s.InvoiceId)
+                            .ToList()
+                    });
+            }
+        }
+
         public Task<IList<int>> ListYearsAsync(InvoiceDirection direction, CancellationToken cancellationToken)
         {
             lock (_gate)

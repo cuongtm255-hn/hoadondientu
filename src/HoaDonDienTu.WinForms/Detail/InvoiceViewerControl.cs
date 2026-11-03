@@ -11,6 +11,9 @@ namespace HoaDonDienTu.WinForms.Detail
         private static readonly Color Good = Color.FromArgb(30, 110, 60);
         private static readonly Color Bad = Color.FromArgb(170, 40, 30);
 
+        /// <summary>Số nút tối đa để mở hết cây ngay khi hiển thị.</summary>
+        public const int FullExpandLimit = 2000;
+
         private bool _suppress;
 
         public InvoiceViewerControl()
@@ -52,9 +55,10 @@ namespace HoaDonDienTu.WinForms.Detail
                     treeXml.Nodes.Clear();
                     if (m.Tree != null)
                     {
-                        treeXml.Nodes.Add(ToTreeNode(m.Tree));
-                        treeXml.ExpandAll();
-                        if (treeXml.Nodes.Count > 0) treeXml.Nodes[0].EnsureVisible();
+                        var root = ToTreeNode(m.Tree);
+                        treeXml.Nodes.Add(root);
+                        ExpandForDisplay(root, m.Tree);
+                        root.EnsureVisible();
                     }
                     else
                     {
@@ -78,6 +82,29 @@ namespace HoaDonDienTu.WinForms.Detail
                 lblMessage.Text = text ?? string.Empty;
                 lblMessage.ForeColor = isError ? Bad : Good;
             });
+        }
+
+        /// <summary>
+        /// Mở hết cây khi nhỏ; cây lớn (tới 50.000 nút) chỉ mở gốc và các nút con trực tiếp vì ExpandAll trên TreeView treo luồng giao diện nhiều giây.
+        /// Người dùng mở thêm từng nhánh khi cần, nội dung thô vẫn có ở tab bên cạnh.
+        /// </summary>
+        private static void ExpandForDisplay(TreeNode root, ViewerNode model)
+        {
+            if (CountNodes(model) <= FullExpandLimit)
+            {
+                root.ExpandAll();
+                return;
+            }
+
+            root.Expand();
+            if (root.Nodes.Count <= 50) foreach (TreeNode child in root.Nodes) child.Expand();
+        }
+
+        private static int CountNodes(ViewerNode node)
+        {
+            var count = 1;
+            foreach (var child in node.Children) count += CountNodes(child);
+            return count;
         }
 
         private static TreeNode ToTreeNode(ViewerNode node)

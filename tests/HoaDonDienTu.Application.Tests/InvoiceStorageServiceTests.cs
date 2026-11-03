@@ -349,6 +349,7 @@ namespace HoaDonDienTu.Application.Tests
             public Task<IList<InvoiceFileRef>> ListFileRefsAsync(ArchiveCriteria criteria, CancellationToken cancellationToken) { return Task.FromResult<IList<InvoiceFileRef>>(new List<InvoiceFileRef>()); }
             public Task<IList<StoredInvoice>> FindManyAsync(IList<Guid> ids, CancellationToken cancellationToken) { return Task.FromResult<IList<StoredInvoice>>(new List<StoredInvoice>()); }
             public Task<IList<int>> ListYearsAsync(InvoiceDirection direction, CancellationToken cancellationToken) { return Task.FromResult<IList<int>>(new List<int>()); }
+            public Task<InvoiceOverview> GetOverviewAsync(int year, int recentCount, CancellationToken cancellationToken) { throw new NotSupportedException(); }
         }
 
         private sealed class FakeContext : ICompanyContextAccessor
