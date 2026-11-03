@@ -38,7 +38,7 @@ Planned layering (not yet created): UI (WinForms) → services (period splitting
 ## Constraints
 
 - Target framework is `net45`: no `async Main`, no modern C# runtime APIs; check package compatibility with .NET 4.5. TLS 1.2 must be enabled explicitly (`ServicePointManager.SecurityProtocol`) for the portal.
-- .NET 4.5 WebView options: `WebBrowser` (IE, legacy), CefSharp.WinForms, or WebView2 (needs newer framework) — pick one deliberately and record it here once decided.
+- WebView: decided in [ADR 0007](docs/decisions/0007-webview-cefsharp.md) — CefSharp.WinForms **109.1.110** (last Chromium for Windows 7/8). CefSharp needs **net452**, so the solution is to be retargeted from net45 to net452 when the production login adapter (T01-16) is written; until then everything still builds as net45 and uses the development login adapter.
 - Portal API contract (login JWT, RSQL search, detail, export-xml zip) is documented in `docs/api-samples/README.md`, taken from real traffic. Parts marked ⚠ there (purchase search, `state` paging) are still assumptions: verify against live traffic before relying on them. Never commit raw traffic captures (they contain passwords/tokens/cookies): name them `*.raw.*` (git-ignored) and commit only sanitized copies such as `docs/api-samples/sample-api-web.md`.
 - Build requires Visual Studio / MSBuild with the .NET Framework 4.5 targeting pack (`msbuild` is not on PATH in this environment; only the `dotnet` CLI is, which cannot build net45 WinForms projects without reference assemblies).
 
