@@ -33,7 +33,10 @@ namespace HoaDonDienTu.Application.Invoices
     {
         Ok,
         Missing,
-        MultiVersion
+        MultiVersion,
+
+        /// <summary>File còn nhưng lần kiểm tra file gần nhất thấy đọc không được, sai SHA-256 hoặc không phải XML.</summary>
+        Damaged
     }
 
     /// <summary>Điều kiện tra cứu kho. Bộ lọc khớp form tra cứu của cổng (DD-04 mục 5.1a); trống = không lọc.</summary>
@@ -203,7 +206,7 @@ namespace HoaDonDienTu.Application.Invoices
                 summary.TotalBeforeTax += matched[n].TotalBeforeTax;
                 summary.TotalTax += matched[n].TotalTax;
                 summary.TotalPayment += matched[n].TotalPayment;
-                if (matchedStates[n] == ArchiveFileState.Missing) summary.ProblemCount++;
+                if (matchedStates[n] == ArchiveFileState.Missing || matchedStates[n] == ArchiveFileState.Damaged) summary.ProblemCount++;
             }
 
             return new ArchivePage { Rows = rows, TotalCount = matched.Count, PageIndex = pageIndex, PageSize = pageSize, Summary = summary };
@@ -224,6 +227,9 @@ namespace HoaDonDienTu.Application.Invoices
         private ArchiveFileState StateOf(string root, InvoiceFileRef invoice, bool refresh)
         {
             if (invoice.RelativePath == null || !FileExists(root, invoice.RelativePath, refresh)) return ArchiveFileState.Missing;
+
+            // "Thiếu file" luôn lấy theo đĩa lúc này (người dùng có thể đã chép file về); các lỗi nội dung là kết quả của lần kiểm tra gần nhất.
+            if (invoice.StoredProblem.HasValue && invoice.StoredProblem.Value != IntegrityProblemKind.Missing) return ArchiveFileState.Damaged;
             return invoice.VersionCount > 1 ? ArchiveFileState.MultiVersion : ArchiveFileState.Ok;
         }
 
@@ -251,7 +257,7 @@ namespace HoaDonDienTu.Application.Invoices
         {
             switch (filter)
             {
-                case FileIntegrityFilter.Problems: return state == ArchiveFileState.Missing;
+                case FileIntegrityFilter.Problems: return state == ArchiveFileState.Missing || state == ArchiveFileState.Damaged;
                 case FileIntegrityFilter.MultiVersion: return state == ArchiveFileState.MultiVersion;
                 default: return true;
             }
@@ -328,6 +334,11 @@ namespace HoaDonDienTu.Application.Invoices
         public Task<InvoiceOverview> GetOverviewAsync(int year, int recentCount, CancellationToken cancellationToken)
         {
             return Current().GetOverviewAsync(year, recentCount, cancellationToken);
+        }
+
+        public Task SaveIntegrityAsync(IDictionary<Guid, IntegrityProblemKind?> results, DateTime checkedAtUtc, CancellationToken cancellationToken)
+        {
+            return Current().SaveIntegrityAsync(results, checkedAtUtc, cancellationToken);
         }
 
         private IInvoiceRepository Current()

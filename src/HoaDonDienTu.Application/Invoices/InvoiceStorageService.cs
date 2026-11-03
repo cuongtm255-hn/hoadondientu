@@ -191,6 +191,21 @@ namespace HoaDonDienTu.Application.Invoices
     {
         private readonly object _gate = new object();
         private readonly Dictionary<string, StoredInvoice> _byKey = new Dictionary<string, StoredInvoice>(StringComparer.Ordinal);
+        private readonly Dictionary<Guid, IntegrityProblemKind> _problems = new Dictionary<Guid, IntegrityProblemKind>();
+
+        public Task SaveIntegrityAsync(IDictionary<Guid, IntegrityProblemKind?> results, DateTime checkedAtUtc, CancellationToken cancellationToken)
+        {
+            lock (_gate)
+            {
+                foreach (var result in results)
+                {
+                    if (result.Value.HasValue) _problems[result.Key] = result.Value.Value;
+                    else _problems.Remove(result.Key);
+                }
+            }
+
+            return Task.FromResult(0);
+        }
 
         public Task<StoredInvoice> FindAsync(string businessKey, CancellationToken cancellationToken)
         {
@@ -230,6 +245,7 @@ namespace HoaDonDienTu.Application.Invoices
                 stored.Versions.Add(CopyVersion(version));
                 stored.Invoice = latest;
                 stored.LastSeenAtUtc = nowUtc;
+                _problems.Remove(invoiceId);
             }
 
             return Task.FromResult(0);
@@ -242,7 +258,11 @@ namespace HoaDonDienTu.Application.Invoices
                 var stored = _byKey.Values.First(i => i.InvoiceId == invoiceId);
                 stored.LastSeenAtUtc = nowUtc;
                 if (latest != null) stored.Invoice = latest;
-                if (restoredRelativePath != null && stored.Current != null) stored.Current.RelativePath = restoredRelativePath;
+                if (restoredRelativePath != null && stored.Current != null)
+                {
+                    stored.Current.RelativePath = restoredRelativePath;
+                    _problems.Remove(invoiceId);
+                }
             }
 
             return Task.FromResult(0);
@@ -259,12 +279,15 @@ namespace HoaDonDienTu.Application.Invoices
 
         public Task<IList<InvoiceFileRef>> ListFileRefsAsync(ArchiveCriteria criteria, CancellationToken cancellationToken)
         {
+            Dictionary<Guid, IntegrityProblemKind> problems;
+            lock (_gate) problems = new Dictionary<Guid, IntegrityProblemKind>(_problems);
             IList<InvoiceFileRef> refs = Matched(criteria).Select(
                 s => new InvoiceFileRef
                 {
                     InvoiceId = s.InvoiceId,
                     RelativePath = s.Current == null ? null : s.Current.RelativePath,
                     VersionCount = s.Versions.Count,
+                    StoredProblem = problems.ContainsKey(s.InvoiceId) ? problems[s.InvoiceId] : (IntegrityProblemKind?)null,
                     TotalBeforeTax = s.Invoice.TotalBeforeTax ?? 0m,
                     TotalTax = s.Invoice.TotalTax ?? 0m,
                     TotalPayment = s.Invoice.TotalPayment ?? 0m

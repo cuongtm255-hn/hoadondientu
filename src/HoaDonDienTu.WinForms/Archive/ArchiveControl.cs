@@ -306,7 +306,7 @@ namespace HoaDonDienTu.WinForms.Archive
             if (e.RowIndex < 0 || e.RowIndex >= gridInvoices.Rows.Count || e.ColumnIndex != colFile.Index) return;
             var row = gridInvoices.Rows[e.RowIndex].Tag as ArchiveRowViewModel;
             if (row == null) return;
-            e.CellStyle.ForeColor = row.FileState == ArchiveFileState.Missing ? Missing : row.FileState == ArchiveFileState.MultiVersion ? Multi : Good;
+            e.CellStyle.ForeColor = row.FileState == ArchiveFileState.Missing || row.FileState == ArchiveFileState.Damaged ? Missing : row.FileState == ArchiveFileState.MultiVersion ? Multi : Good;
         }
 
         // ---- Chọn nhiều, phím tắt, cột ----

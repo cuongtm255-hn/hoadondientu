@@ -73,7 +73,7 @@ namespace HoaDonDienTu.Infrastructure.Persistence.Sqlite
                     SqliteDatabase.Run(c, "UPDATE invoice_version SET is_current = 0 WHERE invoice_id = @p0", SqliteValues.Id(invoiceId));
                     version.IsCurrent = true;
                     InsertVersion(c, invoiceId, version);
-                    SqliteDatabase.Run(c, "UPDATE invoice SET current_path = @p1, version_count = version_count + 1 WHERE id = @p0", SqliteValues.Id(invoiceId), version.RelativePath);
+                    SqliteDatabase.Run(c, "UPDATE invoice SET current_path = @p1, version_count = version_count + 1, file_problem = NULL WHERE id = @p0", SqliteValues.Id(invoiceId), version.RelativePath);
                     UpdateInvoice(c, invoiceId, latest, nowUtc);
                 },
                 cancellationToken);
@@ -92,7 +92,22 @@ namespace HoaDonDienTu.Infrastructure.Persistence.Sqlite
                     {
                         SqliteDatabase.Run(
                             c, "UPDATE invoice_version SET relative_path = @p0 WHERE invoice_id = @p1 AND is_current = 1", restoredRelativePath, SqliteValues.Id(invoiceId));
-                        SqliteDatabase.Run(c, "UPDATE invoice SET current_path = @p0 WHERE id = @p1", restoredRelativePath, SqliteValues.Id(invoiceId));
+                        SqliteDatabase.Run(c, "UPDATE invoice SET current_path = @p0, file_problem = NULL WHERE id = @p1", restoredRelativePath, SqliteValues.Id(invoiceId));
+                    }
+                },
+                cancellationToken);
+        }
+
+        public Task SaveIntegrityAsync(IDictionary<Guid, IntegrityProblemKind?> results, DateTime checkedAtUtc, CancellationToken cancellationToken)
+        {
+            return _provider.Current().WriteAsync(
+                c =>
+                {
+                    foreach (var result in results)
+                    {
+                        SqliteDatabase.Run(
+                            c, "UPDATE invoice SET file_problem = @p0, file_checked_utc = @p1 WHERE id = @p2",
+                            result.Value.HasValue ? (object)(int)result.Value.Value : null, SqliteValues.Time(checkedAtUtc), SqliteValues.Id(result.Key));
                     }
                 },
                 cancellationToken);
@@ -140,7 +155,7 @@ namespace HoaDonDienTu.Infrastructure.Persistence.Sqlite
                 {
                     IList<InvoiceFileRef> refs = new List<InvoiceFileRef>();
                     var sql =
-                        "SELECT i.id, i.total_before_tax, i.total_tax, i.total_payment, i.current_path AS relative_path, i.version_count " +
+                        "SELECT i.id, i.total_before_tax, i.total_tax, i.total_payment, i.current_path AS relative_path, i.version_count, i.file_problem " +
                         "FROM invoice i WHERE " + filter.Where + " ORDER BY " + OrderBy(criteria);
                     using (var command = SqliteDatabase.Command(c, sql, filter.Values.ToArray()))
                     using (var reader = command.ExecuteReader())
@@ -153,6 +168,7 @@ namespace HoaDonDienTu.Infrastructure.Persistence.Sqlite
                                     InvoiceId = SqliteValues.ParseId(reader["id"]),
                                     RelativePath = SqliteValues.Text(reader["relative_path"]),
                                     VersionCount = SqliteValues.Int(reader["version_count"]),
+                                    StoredProblem = reader["file_problem"] is DBNull ? (IntegrityProblemKind?)null : (IntegrityProblemKind)SqliteValues.Int(reader["file_problem"]),
                                     TotalBeforeTax = SqliteValues.ParseMoney(reader["total_before_tax"]) ?? 0m,
                                     TotalTax = SqliteValues.ParseMoney(reader["total_tax"]) ?? 0m,
                                     TotalPayment = SqliteValues.ParseMoney(reader["total_payment"]) ?? 0m

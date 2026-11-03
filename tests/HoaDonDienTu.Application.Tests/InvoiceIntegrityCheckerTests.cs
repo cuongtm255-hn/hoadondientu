@@ -92,6 +92,65 @@ namespace HoaDonDienTu.Application.Tests
             Assert.That(problem.RelativePath, Is.EqualTo(@"2026\10\gone.xml"));
         }
 
+        private static ArchiveCriteria AllPurchases()
+        {
+            return ArchiveCriteria.From(new ArchiveQuery { Direction = InvoiceDirection.Purchase });
+        }
+
+        [Test]
+        public async Task TheResult_IsSavedPerInvoice_SoTheArchiveCanShowDamagedFiles()
+        {
+            var good = await AddAsync(@"2026\10\a.xml", Xml, Xml);
+            var changed = await AddAsync(@"2026\10\b.xml", Xml, Xml.Replace("0000128", "0000129"));
+
+            await _checker.CheckAsync(null, CancellationToken.None);
+            var refs = await _invoices.ListFileRefsAsync(AllPurchases(), CancellationToken.None);
+
+            Assert.That(refs.Single(r => r.InvoiceId == good.InvoiceId).StoredProblem, Is.Null);
+            Assert.That(refs.Single(r => r.InvoiceId == changed.InvoiceId).StoredProblem, Is.EqualTo(IntegrityProblemKind.HashMismatch));
+        }
+
+        [Test]
+        public async Task ACleanRecheck_ClearsAProblemSavedEarlier()
+        {
+            var stored = await AddAsync(@"2026\10\a.xml", Xml, Xml.Replace("0000128", "0000129"));
+            await _checker.CheckAsync(null, CancellationToken.None);
+
+            _disk.Files[@"2026\10\a.xml"] = Encoding.UTF8.GetBytes(Xml);
+            await _checker.CheckAsync(null, CancellationToken.None);
+
+            var refs = await _invoices.ListFileRefsAsync(AllPurchases(), CancellationToken.None);
+            Assert.That(refs.Single(r => r.InvoiceId == stored.InvoiceId).StoredProblem, Is.Null);
+        }
+
+        [Test]
+        public async Task ACancelledCheck_LeavesThePreviousResultUntouched()
+        {
+            var stored = await AddAsync(@"2026\10\a.xml", Xml, Xml.Replace("0000128", "0000129"));
+            await _checker.CheckAsync(null, CancellationToken.None);
+            _disk.Files[@"2026\10\a.xml"] = Encoding.UTF8.GetBytes(Xml);
+
+            var cancelled = new CancellationTokenSource();
+            cancelled.Cancel();
+            Assert.ThrowsAsync<OperationCanceledException>(() => _checker.CheckAsync(null, cancelled.Token));
+
+            var refs = await _invoices.ListFileRefsAsync(AllPurchases(), CancellationToken.None);
+            Assert.That(refs.Single(r => r.InvoiceId == stored.InvoiceId).StoredProblem, Is.EqualTo(IntegrityProblemKind.HashMismatch));
+        }
+
+        [Test]
+        public async Task ANewVersion_ClearsTheSavedProblem_BecauseTheDamagedFileIsNoLongerCurrent()
+        {
+            var stored = await AddAsync(@"2026\10\a.xml", Xml, Xml.Replace("0000128", "0000129"));
+            await _checker.CheckAsync(null, CancellationToken.None);
+
+            var next = new InvoiceVersionRecord { VersionId = Guid.NewGuid(), VersionNo = 2, Sha256 = "x", RelativePath = @"2026\10\a_v2.xml", SizeBytes = 1, CreatedAtUtc = DateTime.UtcNow };
+            await _invoices.AddVersionAsync(stored.InvoiceId, next, stored.Invoice, DateTime.UtcNow, CancellationToken.None);
+
+            var refs = await _invoices.ListFileRefsAsync(AllPurchases(), CancellationToken.None);
+            Assert.That(refs.Single().StoredProblem, Is.Null);
+        }
+
         [Test]
         public async Task ChangedContent_IsAHashMismatch()
         {

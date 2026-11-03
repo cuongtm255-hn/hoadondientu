@@ -141,7 +141,12 @@ namespace HoaDonDienTu.Infrastructure.Persistence.Sqlite
                 "CREATE INDEX ix_invoice_direction_number ON invoice (direction, number_key)")
             {
                 Backfill = BackfillInvoiceKeys
-            }
+            },
+            new SchemaMigration(
+                3,
+                "Kết quả kiểm tra file gần nhất của từng hóa đơn: vấn đề đầu tiên (IntegrityProblemKind, NULL = nguyên vẹn hoặc chưa kiểm) và thời điểm kiểm",
+                "ALTER TABLE invoice ADD COLUMN file_problem INTEGER",
+                "ALTER TABLE invoice ADD COLUMN file_checked_utc TEXT")
         };
 
         /// <summary>Điền <c>number_key</c> và <c>counterparty_sort</c> cho hóa đơn lưu trước migration 2, bằng đúng hàm của lúc ghi mới.</summary>

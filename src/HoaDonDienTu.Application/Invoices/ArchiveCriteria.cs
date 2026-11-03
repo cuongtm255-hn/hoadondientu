@@ -153,6 +153,10 @@ namespace HoaDonDienTu.Application.Invoices
         public string RelativePath { get; set; }
 
         public int VersionCount { get; set; }
+
+        /// <summary>Vấn đề do lần kiểm tra file gần nhất ghi lại; null khi chưa kiểm hoặc file nguyên vẹn.</summary>
+        public IntegrityProblemKind? StoredProblem { get; set; }
+
         public decimal TotalBeforeTax { get; set; }
         public decimal TotalTax { get; set; }
         public decimal TotalPayment { get; set; }

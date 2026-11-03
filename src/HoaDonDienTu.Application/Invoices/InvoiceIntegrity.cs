@@ -6,6 +6,7 @@ using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml;
+using HoaDonDienTu.Application.Abstractions;
 using HoaDonDienTu.Application.Companies;
 
 namespace HoaDonDienTu.Application.Invoices
@@ -85,9 +86,11 @@ namespace HoaDonDienTu.Application.Invoices
         private readonly IInvoiceFileReader _reader;
         private readonly IInvoiceFileScanner _scanner;
         private readonly ICompanyContextAccessor _context;
+        private readonly IClock _clock;
 
-        public InvoiceIntegrityChecker(IInvoiceRepository repository, IInvoiceFileReader reader, IInvoiceFileScanner scanner, ICompanyContextAccessor context)
+        public InvoiceIntegrityChecker(IInvoiceRepository repository, IInvoiceFileReader reader, IInvoiceFileScanner scanner, ICompanyContextAccessor context, IClock clock = null)
         {
+            _clock = clock;
             if (repository == null) throw new ArgumentNullException("repository");
             if (reader == null) throw new ArgumentNullException("reader");
             if (scanner == null) throw new ArgumentNullException("scanner");
@@ -106,8 +109,10 @@ namespace HoaDonDienTu.Application.Invoices
             var referenced = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
             var invoices = await _repository.ListAsync(cancellationToken).ConfigureAwait(false);
+            var results = new Dictionary<Guid, IntegrityProblemKind?>(invoices.Count);
             foreach (var invoice in invoices)
             {
+                results[invoice.InvoiceId] = null;
                 foreach (var version in invoice.Versions)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
@@ -117,6 +122,7 @@ namespace HoaDonDienTu.Application.Invoices
                     report.VersionsChecked++;
                     if (kind.HasValue)
                     {
+                        if (!results[invoice.InvoiceId].HasValue) results[invoice.InvoiceId] = kind;
                         report.Problems.Add(new IntegrityProblem
                         {
                             InvoiceId = invoice.InvoiceId,
@@ -139,6 +145,8 @@ namespace HoaDonDienTu.Application.Invoices
             var temps = await Task.Run(() => _scanner.EnumerateTempFiles(root).OrderBy(p => p, StringComparer.OrdinalIgnoreCase).ToList(), cancellationToken).ConfigureAwait(false);
             foreach (var temp in temps) report.StrayTemps.Add(temp);
 
+            // Chỉ ghi khi đã kiểm xong cả kho: bị hủy giữa chừng thì kết quả cũ còn nguyên, không có kho nửa mới nửa cũ.
+            await _repository.SaveIntegrityAsync(results, _clock == null ? DateTime.UtcNow : _clock.UtcNow, cancellationToken).ConfigureAwait(false);
             return report;
         }
 

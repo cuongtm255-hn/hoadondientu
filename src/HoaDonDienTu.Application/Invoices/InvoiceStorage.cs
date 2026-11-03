@@ -89,6 +89,12 @@ namespace HoaDonDienTu.Application.Invoices
         /// <summary>Các năm lập hóa đơn có dữ liệu của chiều đã chọn, mới nhất trước.</summary>
         Task<IList<int>> ListYearsAsync(InvoiceDirection direction, CancellationToken cancellationToken);
 
+        /// <summary>
+        /// Ghi kết quả lần kiểm tra file gần nhất (DD-06 mục 7): mỗi hóa đơn đã kiểm có vấn đề đầu tiên tìm thấy hoặc null khi file nguyên vẹn,
+        /// cùng thời điểm kiểm. Hóa đơn không có trong <paramref name="results"/> giữ nguyên kết quả cũ.
+        /// </summary>
+        Task SaveIntegrityAsync(IDictionary<Guid, IntegrityProblemKind?> results, DateTime checkedAtUtc, CancellationToken cancellationToken);
+
         /// <summary>Số liệu tổng quan tính ngay trong kho dữ liệu (đếm, cộng tổng năm, mã các hóa đơn mới nhất) để Tổng quan không phải nạp cả kho.</summary>
         Task<InvoiceOverview> GetOverviewAsync(int year, int recentCount, CancellationToken cancellationToken);
     }

@@ -99,6 +99,30 @@ namespace HoaDonDienTu.Infrastructure.Tests.Persistence
         // ---- Hóa đơn ----
 
         [Test]
+        public async Task IntegrityResult_IsPersisted_SurvivesReopening_AndIsClearedByAFreshVersion()
+        {
+            var bad = NewInvoice("0000041", 1);
+            var good = NewInvoice("0000042", 1);
+            await _invoices.AddAsync(bad, CancellationToken.None);
+            await _invoices.AddAsync(good, CancellationToken.None);
+            var criteria = ArchiveCriteria.From(new ArchiveQuery { Direction = InvoiceDirection.Sold });
+
+            await _invoices.SaveIntegrityAsync(
+                new Dictionary<Guid, IntegrityProblemKind?> { { bad.InvoiceId, IntegrityProblemKind.HashMismatch }, { good.InvoiceId, null } }, DateTime.UtcNow, CancellationToken.None);
+            Reopen();
+            var refs = await _invoices.ListFileRefsAsync(criteria, CancellationToken.None);
+
+            Assert.That(refs.Single(r => r.InvoiceId == bad.InvoiceId).StoredProblem, Is.EqualTo(IntegrityProblemKind.HashMismatch));
+            Assert.That(refs.Single(r => r.InvoiceId == good.InvoiceId).StoredProblem, Is.Null);
+
+            var next = new InvoiceVersionRecord { VersionId = Guid.NewGuid(), VersionNo = 2, Sha256 = "def456", RelativePath = @"2026\10\BanRa\XML\a_v2.xml", SizeBytes = 10, CreatedAtUtc = DateTime.UtcNow };
+            await _invoices.AddVersionAsync(bad.InvoiceId, next, bad.Invoice, DateTime.UtcNow, CancellationToken.None);
+            refs = await _invoices.ListFileRefsAsync(criteria, CancellationToken.None);
+
+            Assert.That(refs.Single(r => r.InvoiceId == bad.InvoiceId).StoredProblem, Is.Null);
+        }
+
+        [Test]
         public async Task Invoice_AddThenFind_RoundTripsEveryField_AndSurvivesReopening()
         {
             var stored = NewInvoice("0000040", 1);

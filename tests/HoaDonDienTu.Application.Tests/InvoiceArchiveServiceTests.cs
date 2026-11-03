@@ -259,6 +259,37 @@ namespace HoaDonDienTu.Application.Tests
         }
 
         [Test]
+        public async Task ASavedContentProblem_ShowsAsDamaged_CountsAsProblem_AndFiltersWithTheMissingOnes()
+        {
+            await AddAsync(InvoiceDirection.Purchase, "1", new DateTime(2026, 1, 1));
+            await AddAsync(InvoiceDirection.Purchase, "2", new DateTime(2026, 1, 2));
+            await AddAsync(InvoiceDirection.Purchase, "3", new DateTime(2026, 1, 3), fileExists: false);
+            var refs = await _repo.ListFileRefsAsync(ArchiveCriteria.From(Q()), CancellationToken.None);
+            var second = (await _repo.ListAsync(CancellationToken.None)).Single(s => s.Invoice.InvoiceNumber == "2").InvoiceId;
+            await _repo.SaveIntegrityAsync(new Dictionary<Guid, IntegrityProblemKind?> { { second, IntegrityProblemKind.HashMismatch } }, DateTime.UtcNow, CancellationToken.None);
+
+            var all = await _service.QueryAsync(With(q => { q.SortKey = ArchiveSortKey.InvoiceNumber; q.SortDescending = false; }), CancellationToken.None);
+            var problems = await _service.QueryAsync(With(q => q.FileFilter = FileIntegrityFilter.Problems), CancellationToken.None);
+
+            Assert.That(refs.Count, Is.EqualTo(3));
+            Assert.That(all.Rows.Select(r => r.FileState), Is.EqualTo(new[] { ArchiveFileState.Ok, ArchiveFileState.Damaged, ArchiveFileState.Missing }));
+            Assert.That(problems.Rows.Count, Is.EqualTo(2));
+            Assert.That(all.Summary.ProblemCount, Is.EqualTo(2));
+        }
+
+        [Test]
+        public async Task ASavedMissingProblem_IsIgnored_WhenTheFileIsBackOnDisk()
+        {
+            await AddAsync(InvoiceDirection.Purchase, "1", new DateTime(2026, 1, 1));
+            var id = (await _repo.ListAsync(CancellationToken.None)).Single().InvoiceId;
+            await _repo.SaveIntegrityAsync(new Dictionary<Guid, IntegrityProblemKind?> { { id, IntegrityProblemKind.Missing } }, DateTime.UtcNow, CancellationToken.None);
+
+            var row = (await _service.QueryAsync(Q(), CancellationToken.None)).Rows.Single();
+
+            Assert.That(row.FileState, Is.EqualTo(ArchiveFileState.Ok));
+        }
+
+        [Test]
         public async Task AFileThatDisappears_IsReportedMissingOnTheNextQuery()
         {
             await AddAsync(InvoiceDirection.Purchase, "1", new DateTime(2026, 1, 1));

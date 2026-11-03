@@ -409,7 +409,7 @@ namespace HoaDonDienTu.WinForms.Archive
                 _query.PageIndex = page.PageIndex;
                 _store.Save(company, filter, _query);
                 _view.ShowResult(Build(page, filter));
-            ResetSelection();
+                ResetSelection();
                 var problems = page.Summary.ProblemCount;
                 var existence = problems == 0 ? "Đã kiểm tra: mọi file XML đều còn trên đĩa." : "Đã kiểm tra: " + problems + " hóa đơn thiếu file XML. Lọc theo \"Lỗi/thiếu file\" để xem.";
                 _view.ShowMessage(existence, problems > 0);
@@ -420,6 +420,12 @@ namespace HoaDonDienTu.WinForms.Archive
                 var progress = new Progress<int>(done => { if (!_disposed) _view.ShowMessage("Đang kiểm tra nội dung file… " + done.ToString("N0", Vi) + " phiên bản đã kiểm.", false); });
                 var report = await _integrity.Checker.CheckAsync(progress, token);
                 if (_disposed) return;
+
+                // Kết quả đã được ghi vào kho: nạp lại trang để cột Tình trạng file hiện luôn các file lỗi nội dung.
+                var after = await _service.QueryAsync(_query.Clone(), token);
+                if (_disposed) return;
+                _view.ShowResult(Build(after, filter));
+                ResetSelection();
 
                 _view.ShowMessage(IntegrityReportText.Summary(report), !report.IsClean);
                 if (!report.IsClean) _integrity.Dialog.Show(report);
@@ -586,6 +592,7 @@ namespace HoaDonDienTu.WinForms.Archive
             switch (row.FileState)
             {
                 case ArchiveFileState.Missing: return "Thiếu XML";
+                case ArchiveFileState.Damaged: return "XML lỗi";
                 case ArchiveFileState.MultiVersion: return row.VersionCount + " phiên bản";
                 default: return "XML OK";
             }
