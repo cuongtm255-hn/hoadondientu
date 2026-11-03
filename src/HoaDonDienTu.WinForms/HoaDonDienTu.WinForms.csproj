@@ -82,6 +82,13 @@
     <Compile Include="Archive\ArchivePresenter.cs" />
     <Compile Include="Archive\ArchiveScreen.cs" />
     <Compile Include="Archive\IArchiveView.cs" />
+    <Compile Include="Archive\IntegrityReportDialog.cs" />
+    <Compile Include="Archive\IntegrityReportForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Archive\IntegrityReportForm.Designer.cs">
+      <DependentUpon>IntegrityReportForm.cs</DependentUpon>
+    </Compile>
     <Compile Include="History\HistoryControl.cs">
       <SubType>Component</SubType>
     </Compile>

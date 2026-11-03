@@ -106,6 +106,7 @@ namespace HoaDonDienTu.WinForms.Archive
         private readonly DateTime _today;
         private readonly ArchiveNavigationRequest _request;
         private readonly ArchiveExportContext _export;
+        private readonly ArchiveIntegrityContext _integrity;
         private ArchiveQuery _query = new ArchiveQuery();
         private InvoiceDirection? _yearsFor;
         private bool _initialized;
@@ -128,7 +129,8 @@ namespace HoaDonDienTu.WinForms.Archive
             IUserErrorPresenter errors,
             DateTime today,
             ArchiveNavigationRequest request = null,
-            ArchiveExportContext export = null)
+            ArchiveExportContext export = null,
+            ArchiveIntegrityContext integrity = null)
         {
             if (view == null) throw new ArgumentNullException("view");
             if (service == null) throw new ArgumentNullException("service");
@@ -147,6 +149,7 @@ namespace HoaDonDienTu.WinForms.Archive
             _today = today;
             _request = request;
             _export = export;
+            _integrity = integrity;
         }
 
         public void Initialize()
@@ -408,9 +411,18 @@ namespace HoaDonDienTu.WinForms.Archive
                 _view.ShowResult(Build(page, filter));
             ResetSelection();
                 var problems = page.Summary.ProblemCount;
-                _view.ShowMessage(
-                    problems == 0 ? "Đã kiểm tra: mọi file XML đều còn trên đĩa." : "Đã kiểm tra: " + problems + " hóa đơn thiếu file XML. Lọc theo \"Lỗi/thiếu file\" để xem.",
-                    problems > 0);
+                var existence = problems == 0 ? "Đã kiểm tra: mọi file XML đều còn trên đĩa." : "Đã kiểm tra: " + problems + " hóa đơn thiếu file XML. Lọc theo \"Lỗi/thiếu file\" để xem.";
+                _view.ShowMessage(existence, problems > 0);
+
+                if (_integrity == null) return;
+
+                // Kiểm tra sâu: đọc từng file, so SHA-256 và tìm file lạ; chạy lâu với kho lớn nên báo số file đã kiểm và hủy được.
+                var progress = new Progress<int>(done => { if (!_disposed) _view.ShowMessage("Đang kiểm tra nội dung file… " + done.ToString("N0", Vi) + " phiên bản đã kiểm.", false); });
+                var report = await _integrity.Checker.CheckAsync(progress, token);
+                if (_disposed) return;
+
+                _view.ShowMessage(IntegrityReportText.Summary(report), !report.IsClean);
+                if (!report.IsClean) _integrity.Dialog.Show(report);
             });
         }
 

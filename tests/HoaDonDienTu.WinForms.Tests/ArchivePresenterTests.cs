@@ -332,6 +332,124 @@ namespace HoaDonDienTu.WinForms.Tests
             Assert.That(_view.MessageIsError, Is.False);
         }
 
+        // ---- Kiểm tra nội dung file (báo cáo toàn vẹn) ----
+
+        private ArchivePresenter OpenWithIntegrity(IntegrityReport report, out FakeChecker checker, out FakeReportDialog dialog)
+        {
+            checker = new FakeChecker { Report = report };
+            dialog = new FakeReportDialog();
+            _presenter = new ArchivePresenter(_view, _service, Context, Nav, _state, Runner, Errors, new DateTime(2026, 11, 2), null, null, new ArchiveIntegrityContext(checker, dialog));
+            _presenter.Initialize();
+            return _presenter;
+        }
+
+        [Test]
+        public async Task CheckFiles_WithIntegrity_CleanReport_SaysSo_AndShowsNoDialog()
+        {
+            await AddAsync(InvoiceDirection.Purchase, "1", new DateTime(2026, 1, 1));
+            FakeChecker checker;
+            FakeReportDialog dialog;
+            OpenWithIntegrity(new IntegrityReport { VersionsChecked = 1 }, out checker, out dialog);
+            Assert.That(WaitFor(() => _view.Result != null), Is.True);
+
+            _view.RaiseCheckFiles();
+
+            Assert.That(WaitFor(() => _view.Message != null && _view.Message.Contains("toàn vẹn")), Is.True, _view.Message);
+            Assert.That(_view.MessageIsError, Is.False);
+            Assert.That(checker.Calls, Is.EqualTo(1));
+            Assert.That(dialog.Shown, Is.Empty);
+        }
+
+        [Test]
+        public async Task CheckFiles_WithIntegrity_Problems_ShowTheReportDialogAndASummaryWithCounts()
+        {
+            await AddAsync(InvoiceDirection.Purchase, "1", new DateTime(2026, 1, 1));
+            var report = new IntegrityReport { VersionsChecked = 3 };
+            report.Problems.Add(new IntegrityProblem { InvoiceNumber = "7", InvoiceSymbol = "C26TAA", VersionNo = 1, RelativePath = @"X\7_1.xml", Kind = IntegrityProblemKind.Missing });
+            report.Problems.Add(new IntegrityProblem { InvoiceNumber = "8", InvoiceSymbol = "C26TAA", VersionNo = 2, RelativePath = @"X\8_2.xml", Kind = IntegrityProblemKind.HashMismatch });
+            report.Orphans.Add(@"X\stray.xml");
+            FakeChecker checker;
+            FakeReportDialog dialog;
+            OpenWithIntegrity(report, out checker, out dialog);
+            Assert.That(WaitFor(() => _view.Result != null), Is.True);
+
+            _view.RaiseCheckFiles();
+
+            Assert.That(WaitFor(() => dialog.Shown.Count == 1), Is.True);
+            Assert.That(dialog.Shown[0], Is.SameAs(report));
+            Assert.That(WaitFor(() => _view.Message != null && _view.Message.Contains("thiếu file")), Is.True, _view.Message);
+            Assert.That(_view.Message, Does.Contain("1 thiếu file").And.Contain("1 bị đổi nội dung").And.Contain("1 file lạ"));
+            Assert.That(_view.MessageIsError, Is.True);
+        }
+
+        [Test]
+        public async Task CheckFiles_WithIntegrity_StillRefreshesTheTableFirst()
+        {
+            await AddAsync(InvoiceDirection.Purchase, "1", new DateTime(2026, 1, 1));
+            FakeChecker checker;
+            FakeReportDialog dialog;
+            OpenWithIntegrity(new IntegrityReport(), out checker, out dialog);
+            Assert.That(WaitFor(() => _view.Result != null && _view.Result.Rows.Count == 1), Is.True);
+            _files.Existing.Clear();
+
+            _view.RaiseCheckFiles();
+
+            Assert.That(WaitFor(() => checker.Calls == 1), Is.True);
+            Assert.That(_view.Result.Rows[0].FileText, Is.EqualTo("Thiếu XML"));
+        }
+
+        [Test]
+        public void IntegrityReportText_NamesEveryKind_AndCapsTheRows()
+        {
+            foreach (IntegrityProblemKind kind in Enum.GetValues(typeof(IntegrityProblemKind))) Assert.That(IntegrityReportText.Describe(kind), Does.Not.Contain(kind.ToString()), kind.ToString());
+
+            var report = new IntegrityReport();
+            for (var i = 0; i < IntegrityReportText.MaxRows + 25; i++) report.Orphans.Add(@"X\" + i + ".xml");
+            int hidden;
+            var rows = IntegrityReportText.Rows(report, out hidden);
+
+            Assert.That(rows.Count, Is.EqualTo(IntegrityReportText.MaxRows));
+            Assert.That(hidden, Is.EqualTo(25));
+        }
+
+        [Test]
+        public void IntegrityReportText_ListsInvoiceProblemsBeforeOrphansAndTemps()
+        {
+            var report = new IntegrityReport();
+            report.Orphans.Add(@"X\stray.xml");
+            report.StrayTemps.Add(@"X\a.tmp");
+            report.Problems.Add(new IntegrityProblem { InvoiceNumber = "0000128", InvoiceSymbol = "C26TAA", VersionNo = 2, RelativePath = @"X\128_v2.xml", Kind = IntegrityProblemKind.Missing });
+            int hidden;
+
+            var rows = IntegrityReportText.Rows(report, out hidden);
+
+            Assert.That(rows[0], Is.EqualTo(new[] { "Thiếu file", "Số 0000128 · C26TAA", "v2", @"X\128_v2.xml" }));
+            Assert.That(rows[1][3], Is.EqualTo(@"X\stray.xml"));
+            Assert.That(rows[2][0], Does.Contain("tạm"));
+        }
+
+        private sealed class FakeChecker : IInvoiceIntegrityChecker
+        {
+            public IntegrityReport Report;
+            public int Calls;
+
+            public Task<IntegrityReport> CheckAsync(IProgress<int> progress, CancellationToken cancellationToken)
+            {
+                Calls++;
+                return Task.FromResult(Report);
+            }
+        }
+
+        private sealed class FakeReportDialog : IIntegrityReportDialog
+        {
+            public readonly List<IntegrityReport> Shown = new List<IntegrityReport>();
+
+            public void Show(IntegrityReport report)
+            {
+                Shown.Add(report);
+            }
+        }
+
         // ---- Giữ trạng thái khi quay lại ----
 
         [Test]
