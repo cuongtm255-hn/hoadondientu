@@ -309,7 +309,13 @@ namespace HoaDonDienTu.Application.Invoices
             lock (_gate)
             {
                 var byId = _byKey.Values.ToDictionary(s => s.InvoiceId);
-                IList<StoredInvoice> found = ids.Where(byId.ContainsKey).Select(id => Copy(byId[id])).ToList();
+                IList<StoredInvoice> found = ids.Where(byId.ContainsKey).Select(id =>
+                {
+                    var copy = Copy(byId[id]);
+                    IntegrityProblemKind problem;
+                    if (_problems.TryGetValue(id, out problem)) copy.StoredProblem = problem;
+                    return copy;
+                }).ToList();
                 return Task.FromResult(found);
             }
         }

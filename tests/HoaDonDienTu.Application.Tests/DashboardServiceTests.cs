@@ -174,6 +174,23 @@ namespace HoaDonDienTu.Application.Tests
         }
 
         [Test]
+        public async Task Recent_ShowsDamagedWhenTheLastIntegrityCheckFoundBadContent_ButMissingStillWinsOverTheStoredResult()
+        {
+            var t0 = new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc);
+            var damaged = await AddInvoiceAsync(InvoiceDirection.Purchase, "1", new DateTime(2026, 1, 1), firstSeen: t0.AddHours(1));
+            var gone = await AddInvoiceAsync(InvoiceDirection.Purchase, "2", new DateTime(2026, 1, 2), fileExists: false, firstSeen: t0.AddHours(2));
+            await _invoices.SaveIntegrityAsync(
+                new Dictionary<Guid, IntegrityProblemKind?> { { damaged.InvoiceId, IntegrityProblemKind.HashMismatch }, { gone.InvoiceId, IntegrityProblemKind.HashMismatch } },
+                t0.AddDays(1), CancellationToken.None);
+
+            var s = await _service.GetAsync(CancellationToken.None);
+
+            Assert.That(s.Recent[0].InvoiceNumber, Is.EqualTo("2"));
+            Assert.That(s.Recent[0].FileState, Is.EqualTo(ArchiveFileState.Missing));
+            Assert.That(s.Recent[1].FileState, Is.EqualTo(ArchiveFileState.Damaged));
+        }
+
+        [Test]
         public async Task MissingFiles_AreCountedAcrossDirections_AndOpenTheDirectionThatHasThem()
         {
             await AddInvoiceAsync(InvoiceDirection.Sold, "1", new DateTime(2026, 1, 1), fileExists: false);

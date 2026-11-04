@@ -116,6 +116,10 @@ namespace HoaDonDienTu.Infrastructure.Tests.Persistence
             Assert.That(refs.Single(r => r.InvoiceId == good.InvoiceId).StoredProblem, Is.Null);
             Assert.That(refs.Single(r => r.InvoiceId == good.InvoiceId).CheckedAtUtc, Is.Not.Null);
 
+            var loaded = await _invoices.FindManyAsync(new[] { bad.InvoiceId, good.InvoiceId }, CancellationToken.None);
+            Assert.That(loaded[0].StoredProblem, Is.EqualTo(IntegrityProblemKind.HashMismatch));
+            Assert.That(loaded[1].StoredProblem, Is.Null);
+
             var next = new InvoiceVersionRecord { VersionId = Guid.NewGuid(), VersionNo = 2, Sha256 = "def456", RelativePath = @"2026\10\BanRa\XML\a_v2.xml", SizeBytes = 10, CreatedAtUtc = DateTime.UtcNow };
             await _invoices.AddVersionAsync(bad.InvoiceId, next, bad.Invoice, DateTime.UtcNow, CancellationToken.None);
             refs = await _invoices.ListFileRefsAsync(criteria, CancellationToken.None);

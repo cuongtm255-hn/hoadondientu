@@ -228,7 +228,7 @@ namespace HoaDonDienTu.WinForms.Dashboard
 
         private static DashboardRecentRowViewModel Recent(RecentInvoice r)
         {
-            var status = r.FileState == ArchiveFileState.Missing ? "Thiếu XML" : r.FileState == ArchiveFileState.MultiVersion ? "Có phiên bản mới" : "Đã lưu XML";
+            var status = r.FileState == ArchiveFileState.Missing ? "Thiếu XML" : r.FileState == ArchiveFileState.Damaged ? "XML lỗi" : r.FileState == ArchiveFileState.MultiVersion ? "Có phiên bản mới" : "Đã lưu XML";
             return new DashboardRecentRowViewModel
             {
                 IssueDate = r.IssueDate.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture),
@@ -236,7 +236,7 @@ namespace HoaDonDienTu.WinForms.Dashboard
                 Partner = string.IsNullOrEmpty(r.CounterpartyId) ? r.CounterpartyName : r.CounterpartyName + " · " + r.CounterpartyId,
                 Number = r.InvoiceNumber,
                 Status = status,
-                Tone = r.FileState == ArchiveFileState.Missing ? DashboardTone.Bad : r.FileState == ArchiveFileState.MultiVersion ? DashboardTone.Warning : DashboardTone.Good,
+                Tone = r.FileState == ArchiveFileState.Missing || r.FileState == ArchiveFileState.Damaged ? DashboardTone.Bad : r.FileState == ArchiveFileState.MultiVersion ? DashboardTone.Warning : DashboardTone.Good,
                 Payment = ArchivePresenter.Money(r.TotalPayment)
             };
         }

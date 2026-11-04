@@ -21,6 +21,9 @@ namespace HoaDonDienTu.Infrastructure.Persistence.Sqlite
             "buyer_tax_code, buyer_id_number, buyer_name, buyer_address, total_before_tax, total_tax, total_discount, total_fee, total_payment, " +
             "currency, exchange_rate, status, status_raw, check_result, check_result_raw, first_seen_utc, last_seen_utc";
 
+        /// <summary>Cột khi đọc: thêm kết quả kiểm tra file gần nhất, không dùng khi ghi.</summary>
+        private const string InvoiceReadColumns = InvoiceColumns + ", file_problem";
+
         private const string VersionColumns = "id, invoice_id, version_no, sha256, relative_path, size_bytes, created_utc, is_current, source_session_id";
 
         private const int IdChunk = 300;
@@ -120,7 +123,7 @@ namespace HoaDonDienTu.Infrastructure.Persistence.Sqlite
                 {
                     IList<StoredInvoice> result = new List<StoredInvoice>();
                     var byId = new Dictionary<Guid, StoredInvoice>();
-                    using (var command = SqliteDatabase.Command(c, "SELECT " + InvoiceColumns + " FROM invoice"))
+                    using (var command = SqliteDatabase.Command(c, "SELECT " + InvoiceReadColumns + " FROM invoice"))
                     using (var reader = command.ExecuteReader())
                     {
                         while (reader.Read())
@@ -193,7 +196,7 @@ namespace HoaDonDienTu.Infrastructure.Persistence.Sqlite
                         var chunk = new List<object>();
                         for (var n = offset; n < Math.Min(ids.Count, offset + IdChunk); n++) chunk.Add(SqliteValues.Id(ids[n]));
                         var marks = string.Join(", ", chunk.Select((_, n) => "@p" + n.ToString(CultureInfo.InvariantCulture)));
-                        using (var command = SqliteDatabase.Command(c, "SELECT " + InvoiceColumns + " FROM invoice WHERE id IN (" + marks + ")", chunk.ToArray()))
+                        using (var command = SqliteDatabase.Command(c, "SELECT " + InvoiceReadColumns + " FROM invoice WHERE id IN (" + marks + ")", chunk.ToArray()))
                         using (var reader = command.ExecuteReader())
                         {
                             while (reader.Read())
@@ -349,7 +352,7 @@ namespace HoaDonDienTu.Infrastructure.Persistence.Sqlite
         private static StoredInvoice LoadOne(SQLiteConnection c, string where, string parameter)
         {
             StoredInvoice stored;
-            using (var command = SqliteDatabase.Command(c, "SELECT " + InvoiceColumns + " FROM invoice WHERE " + where, parameter))
+            using (var command = SqliteDatabase.Command(c, "SELECT " + InvoiceReadColumns + " FROM invoice WHERE " + where, parameter))
             using (var reader = command.ExecuteReader())
             {
                 if (!reader.Read()) return null;
@@ -433,6 +436,7 @@ namespace HoaDonDienTu.Infrastructure.Persistence.Sqlite
                 BusinessKey = SqliteValues.Text(r["business_key"]),
                 FirstSeenAtUtc = SqliteValues.ParseTime(r["first_seen_utc"]),
                 LastSeenAtUtc = SqliteValues.ParseTime(r["last_seen_utc"]),
+                StoredProblem = r["file_problem"] is DBNull ? (IntegrityProblemKind?)null : (IntegrityProblemKind)SqliteValues.Int(r["file_problem"]),
                 Versions = new List<InvoiceVersionRecord>(),
                 Invoice = new NormalizedInvoice
                 {

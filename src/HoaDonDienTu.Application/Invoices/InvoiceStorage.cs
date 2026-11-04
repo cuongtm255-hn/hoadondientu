@@ -43,6 +43,9 @@ namespace HoaDonDienTu.Application.Invoices
         public DateTime LastSeenAtUtc { get; set; }
         public IList<InvoiceVersionRecord> Versions { get; set; }
 
+        /// <summary>Vấn đề do lần kiểm tra file gần nhất ghi lại; chỉ có khi nạp bằng <c>FindManyAsync</c>. Null khi chưa kiểm hoặc file nguyên vẹn.</summary>
+        public IntegrityProblemKind? StoredProblem { get; set; }
+
         public InvoiceVersionRecord Current
         {
             get

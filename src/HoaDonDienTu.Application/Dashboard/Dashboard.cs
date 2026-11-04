@@ -212,6 +212,7 @@ namespace HoaDonDienTu.Application.Dashboard
             var current = stored.Current;
             ArchiveFileState state;
             if (current == null || !_files.Exists(root, current.RelativePath)) state = ArchiveFileState.Missing;
+            else if (stored.StoredProblem.HasValue && stored.StoredProblem.Value != IntegrityProblemKind.Missing) state = ArchiveFileState.Damaged;
             else state = stored.Versions.Count > 1 ? ArchiveFileState.MultiVersion : ArchiveFileState.Ok;
 
             return new RecentInvoice
