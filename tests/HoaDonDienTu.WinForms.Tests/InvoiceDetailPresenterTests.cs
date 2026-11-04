@@ -6,8 +6,13 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using HoaDonDienTu.Application.Companies;
+using HoaDonDienTu.Application.Exports;
+using HoaDonDienTu.Application.Licensing;
+using HoaDonDienTu.Domain.Licensing;
+using HoaDonDienTu.WinForms.Archive;
 using HoaDonDienTu.Application.Invoices;
 using HoaDonDienTu.Application.Navigation;
+using HoaDonDienTu.Domain.Common;
 using HoaDonDienTu.Domain.Companies;
 using HoaDonDienTu.Domain.Invoices;
 using HoaDonDienTu.WinForms.Common;
@@ -122,7 +127,73 @@ namespace HoaDonDienTu.WinForms.Tests
             return UiWait.Until(condition);
         }
 
+        private ExportFake _exportService;
+        private FakeSavePicker _zipPicker;
+
+        private InvoiceDetailPresenter OpenDetailWithExport(bool allowed = true)
+        {
+            _exportService = new ExportFake();
+            _zipPicker = new FakeSavePicker { Result = @"C:\Xuat\goi.zip" };
+            var context = new ArchiveExportContext(_exportService, _zipPicker, Confirm, new ExportEntitlement(allowed));
+            _detail = new InvoiceDetailPresenter(_detailView, _service, Context, Nav, Runner, Errors, InvoiceId, context);
+            _detail.Initialize();
+            Assert.That(WaitFor(() => _detailView.Result != null), Is.True);
+            return _detail;
+        }
+
         // ---- SCR-06 ----
+
+        [Test]
+        public void Detail_WithoutExportContext_KeepsTheZipButtonLocked()
+        {
+            OpenDetail();
+
+            Assert.That(_detailView.ExportAllowed, Is.False);
+        }
+
+        [Test]
+        public void Detail_ExportZip_ExportsOnlyThisInvoiceAndNamesTheCompany()
+        {
+            OpenDetailWithExport();
+            Assert.That(_detailView.ExportAllowed, Is.True);
+
+            _detailView.RaiseExportZip();
+
+            Assert.That(WaitFor(() => _exportService.Calls.Count == 1), Is.True);
+            var call = _exportService.Calls.Single();
+            Assert.That(call.Request.Scope.IsSelection, Is.True);
+            Assert.That(call.Request.Scope.SelectedInvoiceIds, Is.EqualTo(new[] { InvoiceId }));
+            Assert.That(call.Request.TargetPath, Is.EqualTo(@"C:\Xuat\goi.zip"));
+            Assert.That(_zipPicker.LastExtension, Is.EqualTo("zip"));
+            Assert.That(_zipPicker.LastSuggested, Does.StartWith("XML_C26TAA_0000128_").And.EndWith(".zip"));
+            Assert.That(_zipPicker.LastTitle, Does.Contain("0101234567"));
+            Assert.That(WaitFor(() => _detailView.Message != null && _detailView.Message.StartsWith("Đã xuất ZIP")), Is.True);
+        }
+
+        [Test]
+        public void Detail_ExportZip_CancelledPicker_ExportsNothing()
+        {
+            OpenDetailWithExport();
+            _zipPicker.Result = null;
+
+            _detailView.RaiseExportZip();
+
+            Assert.That(WaitFor(() => _zipPicker.LastSuggested != null), Is.True);
+            Assert.That(_exportService.Calls, Is.Empty);
+        }
+
+        [Test]
+        public void Detail_ExportZip_DamagedFile_ShowsAnErrorWithoutAskingForPartialExport()
+        {
+            OpenDetailWithExport();
+            _exportService.NeedsDecision = new ExportNeedsDecisionException(new List<ExportProblem> { new ExportProblem { InvoiceNumber = "0000128", InvoiceSymbol = "C26TAA", Kind = ExportProblemKind.MissingFile } }, 0);
+
+            _detailView.RaiseExportZip();
+
+            Assert.That(WaitFor(() => _detailView.Message != null && _detailView.Message.Contains("thiếu hoặc bị lỗi")), Is.True);
+            Assert.That(Confirm.Messages, Is.Empty);
+            Assert.That(_exportService.Calls, Has.Count.EqualTo(1));
+        }
 
         [Test]
         public void Detail_ShowsAllFieldsInVietnamese()
@@ -596,6 +667,42 @@ namespace HoaDonDienTu.WinForms.Tests
             }
         }
 
+        private sealed class ExportEntitlement : IEntitlementService
+        {
+            private readonly bool _allowed;
+
+            public ExportEntitlement(bool allowed) { _allowed = allowed; }
+
+            public AppMode CurrentMode { get { return AppMode.Standard; } }
+            public bool IsAllowed(AppFeature feature) { return feature == AppFeature.ReadExport && _allowed; }
+            public void Demand(AppFeature feature) { if (!IsAllowed(feature)) throw new EntitlementDeniedException(feature); }
+            public event EventHandler ModeChanged { add { } remove { } }
+        }
+
+        private sealed class ExportCall
+        {
+            public ExportRequest Request;
+            public ZipFailurePolicy Policy;
+        }
+
+        private sealed class ExportFake : IInvoiceExportService
+        {
+            public readonly List<ExportCall> Calls = new List<ExportCall>();
+            public ExportNeedsDecisionException NeedsDecision;
+
+            public Task<ExportResult> ExportExcelAsync(ExportRequest request, IProgress<ExportProgress> progress, CancellationToken cancellationToken)
+            {
+                throw new NotSupportedException();
+            }
+
+            public Task<ExportResult> ExportZipAsync(ExportRequest request, ZipFailurePolicy policy, IProgress<ExportProgress> progress, CancellationToken cancellationToken)
+            {
+                lock (Calls) { Calls.Add(new ExportCall { Request = request, Policy = policy }); }
+                if (policy == ZipFailurePolicy.Ask && NeedsDecision != null) throw NeedsDecision;
+                return Task.FromResult(new ExportResult { Path = request.TargetPath, Exported = 1, Skipped = new List<ExportProblem>() });
+            }
+        }
+
         private sealed class FakeDetailView : IInvoiceDetailView
         {
             private readonly object _gate = new object();
@@ -604,6 +711,12 @@ namespace HoaDonDienTu.WinForms.Tests
 
             public event EventHandler BackRequested;
             public event EventHandler ViewCurrentRequested;
+            public event EventHandler ExportZipRequested;
+
+            public bool? ExportAllowed;
+
+            public void ShowExportAllowed(bool allowed) { ExportAllowed = allowed; }
+            public void RaiseExportZip() { ExportZipRequested(this, EventArgs.Empty); }
 
             public InvoiceDetailViewModel Result { get { lock (_gate) { return _result; } } }
             public string Message { get { lock (_gate) { return _message; } } }
@@ -647,9 +760,11 @@ namespace HoaDonDienTu.WinForms.Tests
             public string Result;
             public string LastSuggested;
             public string LastExtension;
+            public string LastTitle;
 
             public string Pick(string suggestedFileName, string extension, string filterDescription, string title, string initialDirectory)
             {
+                LastTitle = title;
                 LastSuggested = suggestedFileName;
                 LastExtension = extension;
                 return Result;

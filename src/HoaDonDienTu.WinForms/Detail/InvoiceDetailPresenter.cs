@@ -6,7 +6,10 @@ using System.Threading;
 using System.Threading.Tasks;
 using HoaDonDienTu.Application.Common;
 using HoaDonDienTu.Application.Companies;
+using HoaDonDienTu.Application.Exports;
 using HoaDonDienTu.Application.Invoices;
+using HoaDonDienTu.Application.Licensing;
+using HoaDonDienTu.Domain.Licensing;
 using HoaDonDienTu.Application.Navigation;
 using HoaDonDienTu.Application.Portal;
 using HoaDonDienTu.Domain.Invoices;
@@ -29,6 +32,7 @@ namespace HoaDonDienTu.WinForms.Detail
         private readonly IUiOperationRunner _runner;
         private readonly IUserErrorPresenter _errors;
         private readonly Guid _invoiceId;
+        private readonly ArchiveExportContext _export;
         private bool _initialized;
         private bool _disposed;
         private InvoiceDetail _detail;
@@ -40,7 +44,8 @@ namespace HoaDonDienTu.WinForms.Detail
             INavigationService navigation,
             IUiOperationRunner runner,
             IUserErrorPresenter errors,
-            Guid invoiceId)
+            Guid invoiceId,
+            ArchiveExportContext export = null)
         {
             if (view == null) throw new ArgumentNullException("view");
             if (service == null) throw new ArgumentNullException("service");
@@ -55,6 +60,7 @@ namespace HoaDonDienTu.WinForms.Detail
             _runner = runner;
             _errors = errors;
             _invoiceId = invoiceId;
+            _export = export;
         }
 
         public void Initialize()
@@ -63,6 +69,8 @@ namespace HoaDonDienTu.WinForms.Detail
             _initialized = true;
             _view.BackRequested += OnBack;
             _view.ViewCurrentRequested += OnViewCurrent;
+            _view.ExportZipRequested += OnExportZip;
+            _view.ShowExportAllowed(_export != null && _export.Entitlement.IsAllowed(AppFeature.ReadExport));
 
             Run("Nạp chi tiết hóa đơn", async token =>
             {
@@ -93,6 +101,60 @@ namespace HoaDonDienTu.WinForms.Detail
             _disposed = true;
             _view.BackRequested -= OnBack;
             _view.ViewCurrentRequested -= OnViewCurrent;
+            _view.ExportZipRequested -= OnExportZip;
+        }
+
+        /// <summary>Xuất ZIP XML hiện hành của riêng hóa đơn này (DD-09: một hóa đơn thì gói phẳng, không manifest).</summary>
+        private void OnExportZip(object sender, EventArgs e)
+        {
+            var detail = _detail;
+            if (_export == null || detail == null) return;
+
+            Run("Xuất ZIP XML", async token =>
+            {
+                if (!_context.HasCurrent)
+                {
+                    _view.ShowMessage("Chưa chọn doanh nghiệp.", true);
+                    return;
+                }
+
+                var company = _context.Current;
+                var folder = System.IO.Path.Combine(company.StorageRoot, "Exports");
+                try
+                {
+                    System.IO.Directory.CreateDirectory(folder);
+                }
+                catch (System.IO.IOException)
+                {
+                }
+                catch (UnauthorizedAccessException)
+                {
+                }
+
+                var invoice = detail.Invoice;
+                var title = "Xuất ZIP XML — " + company.DisplayName + " (MST " + company.TaxCode.Value + ")";
+                var suggested = ExportFileNamer.FileName("XML", invoice.InvoiceSymbol + "_" + invoice.InvoiceNumber, DateTime.Now, "zip");
+                var path = _export.Picker.Pick(suggested, "zip", "Gói ZIP XML", title, folder);
+                if (path == null) return;
+
+                _view.ShowMessage("Đang xuất ZIP...", false);
+                var request = new ExportRequest { Scope = ExportScope.ForSelection(new[] { _invoiceId }), TargetPath = path, Overwrite = true };
+                try
+                {
+                    var result = await _export.Service.ExportZipAsync(request, ZipFailurePolicy.Ask, null, token);
+                    if (_disposed) return;
+                    _view.ShowMessage("Đã xuất ZIP: " + result.Path, false);
+                }
+                catch (ExportNeedsDecisionException)
+                {
+                    // Chỉ một hóa đơn và file của nó thiếu/lỗi thì không còn phần hợp lệ nào để xuất; chưa ghi gì ra đĩa.
+                    if (!_disposed) _view.ShowMessage("Không xuất được: file XML của hóa đơn này thiếu hoặc bị lỗi. Dùng Kiểm tra file ở Kho hóa đơn để xem chi tiết.", true);
+                }
+                catch (InvoiceStorageException ex)
+                {
+                    if (!_disposed) _view.ShowMessage(ex.Message, true);
+                }
+            });
         }
 
         private void OnBack(object sender, EventArgs e)

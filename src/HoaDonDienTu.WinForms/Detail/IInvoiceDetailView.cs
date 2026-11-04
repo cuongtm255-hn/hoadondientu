@@ -91,6 +91,11 @@ namespace HoaDonDienTu.WinForms.Detail
         /// <summary>Mở phiên bản hiện hành.</summary>
         event EventHandler ViewCurrentRequested;
 
+        /// <summary>Xuất gói ZIP chứa XML hiện hành của hóa đơn này.</summary>
+        event EventHandler ExportZipRequested;
+
+        /// <summary>Bật hoặc khóa nút xuất theo quyền của chế độ ứng dụng.</summary>
+        void ShowExportAllowed(bool allowed);
 
         void ShowResult(InvoiceDetailViewModel model);
         void ShowMessage(string text, bool isError);

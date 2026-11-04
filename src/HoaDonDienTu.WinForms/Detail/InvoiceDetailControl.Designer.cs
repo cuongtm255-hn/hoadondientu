@@ -21,6 +21,7 @@ namespace HoaDonDienTu.WinForms.Detail
             this.pnlTitle = new ComponentFactory.Krypton.Toolkit.KryptonPanel();
             this.pnlTitleActions = new ComponentFactory.Krypton.Toolkit.KryptonPanel();
             this.btnView = new ComponentFactory.Krypton.Toolkit.KryptonButton();
+            this.btnExportZip = new ComponentFactory.Krypton.Toolkit.KryptonButton();
             this.btnBack = new ComponentFactory.Krypton.Toolkit.KryptonButton();
             this.lblSubtitle = new ComponentFactory.Krypton.Toolkit.KryptonLabel();
             this.lblBadge = new ComponentFactory.Krypton.Toolkit.KryptonLabel();
@@ -79,11 +80,12 @@ namespace HoaDonDienTu.WinForms.Detail
             // pnlTitleActions
             //
             this.pnlTitleActions.Controls.Add(this.btnView);
+            this.pnlTitleActions.Controls.Add(this.btnExportZip);
             this.pnlTitleActions.Controls.Add(this.btnBack);
             this.pnlTitleActions.Dock = System.Windows.Forms.DockStyle.Right;
             this.pnlTitleActions.Name = "pnlTitleActions";
             this.pnlTitleActions.Padding = new System.Windows.Forms.Padding(0, 30, 16, 30);
-            this.pnlTitleActions.Size = new System.Drawing.Size(320, 104);
+            this.pnlTitleActions.Size = new System.Drawing.Size(460, 104);
             //
             // btnBack
             //
@@ -92,6 +94,15 @@ namespace HoaDonDienTu.WinForms.Detail
             this.btnBack.Size = new System.Drawing.Size(100, 44);
             this.btnBack.Values.Text = "Quay lại";
             this.btnBack.Click += new System.EventHandler(this.OnBackClick);
+            //
+            // btnExportZip
+            //
+            this.btnExportZip.Dock = System.Windows.Forms.DockStyle.Right;
+            this.btnExportZip.Enabled = false;
+            this.btnExportZip.Name = "btnExportZip";
+            this.btnExportZip.Size = new System.Drawing.Size(130, 44);
+            this.btnExportZip.Values.Text = "Xuất ZIP XML";
+            this.btnExportZip.Click += new System.EventHandler(this.OnExportZipClick);
             //
             // btnView
             //
@@ -168,6 +179,7 @@ namespace HoaDonDienTu.WinForms.Detail
         private ComponentFactory.Krypton.Toolkit.KryptonPanel pnlTitle;
         private ComponentFactory.Krypton.Toolkit.KryptonPanel pnlTitleActions;
         private ComponentFactory.Krypton.Toolkit.KryptonButton btnView;
+        private ComponentFactory.Krypton.Toolkit.KryptonButton btnExportZip;
         private ComponentFactory.Krypton.Toolkit.KryptonButton btnBack;
         private ComponentFactory.Krypton.Toolkit.KryptonLabel lblSubtitle;
         private ComponentFactory.Krypton.Toolkit.KryptonLabel lblBadge;

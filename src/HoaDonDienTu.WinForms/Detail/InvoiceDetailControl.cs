@@ -28,6 +28,12 @@ namespace HoaDonDienTu.WinForms.Detail
 
         public event EventHandler BackRequested;
         public event EventHandler ViewCurrentRequested;
+        public event EventHandler ExportZipRequested;
+
+        public void ShowExportAllowed(bool allowed)
+        {
+            OnUi(delegate { btnExportZip.Enabled = allowed; });
+        }
 
         public void ShowResult(InvoiceDetailViewModel m)
         {
@@ -256,6 +262,11 @@ namespace HoaDonDienTu.WinForms.Detail
         private void OnViewClick(object sender, EventArgs e)
         {
             Raise(ViewCurrentRequested);
+        }
+
+        private void OnExportZipClick(object sender, EventArgs e)
+        {
+            Raise(ExportZipRequested);
         }
 
         private void Raise(EventHandler handler)

@@ -339,7 +339,7 @@ namespace HoaDonDienTu.WinForms.Bootstrap
                         new InvoiceDetailControl(),
                         view => new InvoiceDetailPresenter(
                             view, detail, contextManager, NavigationService, OperationRunner, ErrorPresenter,
-                            ((InvoiceDetailRequest)parameter).InvoiceId))),
+                            ((InvoiceDetailRequest)parameter).InvoiceId, archiveExport))),
                 new ScreenDescriptor(
                     HoaDonDienTu.Application.Navigation.ScreenId.InvoiceViewer, "Xem chứng từ", "SCR-07",
                     parameter => new InvoiceViewerScreen(
