@@ -217,6 +217,77 @@ namespace HoaDonDienTu.Application.Tests
             Assert.That(Directory.GetFiles(Path.GetDirectoryName(Target())).Select(Path.GetFileName), Is.EqualTo(new[] { "p.zip" }));
         }
 
+        // ---- File bị khóa và đích không ghi được ----
+
+        [Test]
+        public async Task Create_WhileAStoreFileIsLockedByAnotherProgram_FailsCleanly_AndLeavesNoPackageOrTempFile()
+        {
+            SeedStore();
+            var locked = Put("2026/10/khoa.xml", "<HDon>đang mở</HDon>");
+
+            using (new FileStream(locked, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+            {
+                Assert.ThrowsAsync<IOException>(() => _service.CreateAsync(Target("khoa.zip"), false, null, CancellationToken.None));
+            }
+
+            Assert.That(File.Exists(Target("khoa.zip")), Is.False);
+            var left = Directory.Exists(Path.GetDirectoryName(Target())) ? Directory.GetFiles(Path.GetDirectoryName(Target())) : new string[0];
+            Assert.That(left, Is.Empty, "Không để lại gói ghi dở hoặc file tạm");
+        }
+
+        [Test]
+        public async Task Create_OverAnExistingPackageThatIsLocked_KeepsTheOldPackageIntact()
+        {
+            SeedStore();
+            var target = Target("cu.zip");
+            Directory.CreateDirectory(Path.GetDirectoryName(target));
+            File.WriteAllText(target, "gói cũ");
+
+            using (new FileStream(target, FileMode.Open, FileAccess.Read, FileShare.Read))
+            {
+                Assert.ThrowsAsync<IOException>(() => _service.CreateAsync(target, true, null, CancellationToken.None));
+            }
+
+            Assert.That(File.ReadAllText(target), Is.EqualTo("gói cũ"));
+            Assert.That(Directory.GetFiles(Path.GetDirectoryName(target)), Has.Length.EqualTo(1), "Không để lại file tạm");
+        }
+
+        [Test]
+        public async Task Create_ToATargetThatIsAFolder_FailsWithoutLeavingATempFile()
+        {
+            SeedStore();
+            var blocked = Target("la-thu-muc.zip");
+            Directory.CreateDirectory(blocked);
+
+            Assert.ThrowsAsync<IOException>(() => _service.CreateAsync(blocked, true, null, CancellationToken.None));
+
+            Assert.That(Directory.GetFiles(Path.GetDirectoryName(blocked)), Is.Empty);
+        }
+
+        [Test]
+        public async Task Restore_WhenAnExistingFileIsLocked_RollsBackEverythingAlreadyWritten()
+        {
+            Put("2026/a.xml", "<a>hiện tại</a>");
+            var locked = Put("2026/z.xml", "<z>hiện tại</z>");
+            var package = Craft("khoa-khi-khoi-phuc.zip", (e, m) =>
+            {
+                AddFile(e, m, "2026/a.xml", "<a>từ gói</a>");
+                AddFile(e, m, "2026/moi.xml", "<m>từ gói</m>");
+                AddFile(e, m, "2026/z.xml", "<z>từ gói</z>");
+            });
+
+            using (new FileStream(locked, FileMode.Open, FileAccess.Read, FileShare.Read))
+            {
+                var ex = Assert.ThrowsAsync<BackupException>(() => _service.RestoreAsync(package, null, CancellationToken.None));
+                Assert.That(ex.Message, Does.Contain("trả về trạng thái trước"));
+            }
+
+            Assert.That(Read("2026/a.xml"), Is.EqualTo("<a>hiện tại</a>"));
+            Assert.That(Read("2026/z.xml"), Is.EqualTo("<z>hiện tại</z>"));
+            Assert.That(File.Exists(Path.Combine(_root, "2026", "moi.xml")), Is.False);
+            Assert.That(Directory.GetFiles(_root, "*.tmp", SearchOption.AllDirectories), Is.Empty);
+        }
+
         // ---- Kiểm tra gói ----
 
         [Test]
