@@ -218,6 +218,22 @@ namespace HoaDonDienTu.Application.Tests
         }
 
         [Test]
+        public async Task DeleteStrayTemps_RemovesOnlyTheRequestedFilesThatAreStillTemps()
+        {
+            _disk.Temps.Add(@"2026\10\a.tmp");
+            _disk.Temps.Add(@"2026\10\b.tmp");
+            _disk.Temps.Add(@"2026\10\locked.tmp");
+            _disk.LockedTemps.Add(@"2026\10\locked.tmp");
+            _disk.Files[@"2026\10\real.xml"] = new byte[] { 1 };
+
+            var deleted = await _checker.DeleteStrayTempsAsync(new[] { @"2026/10/a.tmp", @"2026\10\locked.tmp", @"2026\10\real.xml", @"2026\10\unknown.tmp" }, CancellationToken.None);
+
+            Assert.That(deleted, Is.EqualTo(new[] { @"2026\10\a.tmp" }));
+            Assert.That(_disk.Temps, Is.EquivalentTo(new[] { @"2026\10\b.tmp", @"2026\10\locked.tmp" }));
+            Assert.That(_disk.Files.ContainsKey(@"2026\10\real.xml"), Is.True);
+        }
+
+        [Test]
         public async Task ProgressCountsEveryVersion()
         {
             await AddAsync(@"a.xml", Xml, Xml);
@@ -299,6 +315,14 @@ namespace HoaDonDienTu.Application.Tests
             public IEnumerable<string> EnumerateTempFiles(string storageRoot)
             {
                 return Temps.ToList();
+            }
+
+            public readonly HashSet<string> LockedTemps = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            public bool DeleteTempFile(string storageRoot, string relativePath)
+            {
+                if (LockedTemps.Contains(relativePath)) return false;
+                return Temps.Remove(relativePath);
             }
         }
 

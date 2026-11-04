@@ -11,6 +11,33 @@ namespace HoaDonDienTu.WinForms.Tests
     public class IntegrityReportFormTests
     {
         [Test]
+        public void CleanTempsButton_ShowsOnlyWhenThereAreTempsAndACleanerIsGiven()
+        {
+            var withTemps = new IntegrityReport();
+            withTemps.StrayTemps.Add(@"2026\a.tmp");
+            var withoutTemps = new IntegrityReport();
+            withoutTemps.Orphans.Add(@"2026\x.xml");
+
+            using (var form = new IntegrityReportForm(withTemps, paths => paths))
+            {
+                form.Show();
+                Assert.That(form.Controls.Find("btnCleanTemps", true).Single().Visible, Is.True);
+            }
+
+            using (var form = new IntegrityReportForm(withTemps))
+            {
+                form.Show();
+                Assert.That(form.Controls.Find("btnCleanTemps", true).Single().Visible, Is.False);
+            }
+
+            using (var form = new IntegrityReportForm(withoutTemps, paths => paths))
+            {
+                form.Show();
+                Assert.That(form.Controls.Find("btnCleanTemps", true).Single().Visible, Is.False);
+            }
+        }
+
+        [Test]
         public void TheForm_ListsEveryProblemWithItsInvoiceAndFile_AndStatesItChangesNothing()
         {
             var report = new IntegrityReport { VersionsChecked = 5 };

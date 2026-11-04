@@ -88,9 +88,23 @@ namespace HoaDonDienTu.WinForms.Archive
 
     public sealed class IntegrityReportDialog : IIntegrityReportDialog
     {
+        private readonly IInvoiceIntegrityChecker _checker;
+
+        /// <param name="checker">Dùng cho nút xóa file tạm; null thì hộp thoại chỉ để xem.</param>
+        public IntegrityReportDialog(IInvoiceIntegrityChecker checker = null)
+        {
+            _checker = checker;
+        }
+
         public void Show(IntegrityReport report)
         {
-            using (var form = new IntegrityReportForm(report)) form.ShowDialog(Form.ActiveForm);
+            Func<IList<string>, IList<string>> cleaner = null;
+            if (_checker != null)
+            {
+                cleaner = paths => _checker.DeleteStrayTempsAsync(paths, System.Threading.CancellationToken.None).GetAwaiter().GetResult();
+            }
+
+            using (var form = new IntegrityReportForm(report, cleaner)) form.ShowDialog(Form.ActiveForm);
         }
     }
 }

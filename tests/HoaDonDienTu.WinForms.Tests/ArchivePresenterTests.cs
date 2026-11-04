@@ -438,6 +438,11 @@ namespace HoaDonDienTu.WinForms.Tests
                 Calls++;
                 return Task.FromResult(Report);
             }
+
+            public Task<IList<string>> DeleteStrayTempsAsync(IEnumerable<string> relativePaths, CancellationToken cancellationToken)
+            {
+                return Task.FromResult((IList<string>)new List<string>());
+            }
         }
 
         private sealed class FakeReportDialog : IIntegrityReportDialog

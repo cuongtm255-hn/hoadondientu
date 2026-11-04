@@ -34,6 +34,32 @@ namespace HoaDonDienTu.Infrastructure.Tests.Invoices
         }
 
         [Test]
+        public void DeleteTempFile_RemovesOnlyTmpFilesInsideTheStore()
+        {
+            Touch(@"2026\10\0f3a.tmp");
+            Touch(@"2026\10\keep.xml");
+            Touch(@"Data\company.db.tmp");
+            var outside = Path.Combine(Path.GetDirectoryName(_root), "outside_" + System.Guid.NewGuid().ToString("N") + ".tmp");
+            File.WriteAllText(outside, "x");
+            try
+            {
+                Assert.That(_scanner.DeleteTempFile(_root, @"2026\10\keep.xml"), Is.False, "không phải .tmp");
+                Assert.That(_scanner.DeleteTempFile(_root, @"Data\company.db.tmp"), Is.False, "thư mục dành riêng");
+                Assert.That(_scanner.DeleteTempFile(_root, @"..\" + Path.GetFileName(outside)), Is.False, "ra ngoài thư mục kho");
+                Assert.That(_scanner.DeleteTempFile(_root, @"2026\10\missing.tmp"), Is.False, "không có file");
+                Assert.That(File.Exists(outside), Is.True);
+
+                Assert.That(_scanner.DeleteTempFile(_root, @"2026\10\0f3a.tmp"), Is.True);
+                Assert.That(File.Exists(Path.Combine(_root, @"2026\10\0f3a.tmp")), Is.False);
+                Assert.That(File.Exists(Path.Combine(_root, @"2026\10\keep.xml")), Is.True);
+            }
+            finally
+            {
+                File.Delete(outside);
+            }
+        }
+
+        [Test]
         public void FindsXmlAtAnyDepth_AsPathsRelativeToTheRoot()
         {
             Touch(@"2026\10\a.xml");

@@ -19,6 +19,39 @@ namespace HoaDonDienTu.Infrastructure.Invoices
             return Enumerate(storageRoot, "*" + FileSystemInvoiceFileStore.TempSuffix);
         }
 
+        public bool DeleteTempFile(string storageRoot, string relativePath)
+        {
+            if (string.IsNullOrEmpty(storageRoot) || string.IsNullOrEmpty(relativePath)) return false;
+            if (!relativePath.EndsWith(FileSystemInvoiceFileStore.TempSuffix, StringComparison.OrdinalIgnoreCase)) return false;
+            try
+            {
+                var root = Path.GetFullPath(storageRoot).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+                var full = Path.GetFullPath(Path.Combine(root, relativePath));
+                if (!full.StartsWith(root, StringComparison.OrdinalIgnoreCase)) return false;
+
+                var inside = full.Substring(root.Length);
+                var separator = inside.IndexOf(Path.DirectorySeparatorChar);
+                if (separator >= 0 && IsReserved(inside.Substring(0, separator))) return false;
+                if (!File.Exists(full)) return false;
+
+                File.SetAttributes(full, FileAttributes.Normal);
+                File.Delete(full);
+                return true;
+            }
+            catch (IOException)
+            {
+                return false;
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return false;
+            }
+            catch (ArgumentException)
+            {
+                return false;
+            }
+        }
+
         private static IEnumerable<string> Enumerate(string storageRoot, string pattern)
         {
             if (string.IsNullOrEmpty(storageRoot) || !Directory.Exists(storageRoot)) yield break;

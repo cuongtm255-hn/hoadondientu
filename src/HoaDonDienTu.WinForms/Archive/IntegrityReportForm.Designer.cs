@@ -26,6 +26,7 @@ namespace HoaDonDienTu.WinForms.Archive
             this.colPath = new System.Windows.Forms.ColumnHeader();
             this.lblNote = new ComponentFactory.Krypton.Toolkit.KryptonWrapLabel();
             this.btnClose = new ComponentFactory.Krypton.Toolkit.KryptonButton();
+            this.btnCleanTemps = new ComponentFactory.Krypton.Toolkit.KryptonButton();
             this.SuspendLayout();
             //
             // lblSummary
@@ -81,7 +82,7 @@ namespace HoaDonDienTu.WinForms.Archive
             this.lblNote.Font = new System.Drawing.Font("Segoe UI", 9F);
             this.lblNote.Location = new System.Drawing.Point(16, 396);
             this.lblNote.Name = "lblNote";
-            this.lblNote.Size = new System.Drawing.Size(640, 50);
+            this.lblNote.Size = new System.Drawing.Size(520, 50);
             this.lblNote.Text = "";
             //
             // btnClose
@@ -94,6 +95,17 @@ namespace HoaDonDienTu.WinForms.Archive
             this.btnClose.Values.Text = "Đóng";
             this.btnClose.Click += new System.EventHandler(this.OnCloseClick);
             //
+            // btnCleanTemps
+            //
+            this.btnCleanTemps.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
+            this.btnCleanTemps.Location = new System.Drawing.Point(544, 400);
+            this.btnCleanTemps.Name = "btnCleanTemps";
+            this.btnCleanTemps.Size = new System.Drawing.Size(112, 34);
+            this.btnCleanTemps.TabIndex = 2;
+            this.btnCleanTemps.Values.Text = "Xóa file tạm";
+            this.btnCleanTemps.Visible = false;
+            this.btnCleanTemps.Click += new System.EventHandler(this.OnCleanTempsClick);
+            //
             // IntegrityReportForm
             //
             this.ClientSize = new System.Drawing.Size(780, 456);
@@ -101,6 +113,7 @@ namespace HoaDonDienTu.WinForms.Archive
             this.Controls.Add(this.list);
             this.Controls.Add(this.lblNote);
             this.Controls.Add(this.btnClose);
+            this.Controls.Add(this.btnCleanTemps);
             this.MinimizeBox = false;
             this.MinimumSize = new System.Drawing.Size(640, 360);
             this.Name = "IntegrityReportForm";
@@ -120,5 +133,6 @@ namespace HoaDonDienTu.WinForms.Archive
         private System.Windows.Forms.ColumnHeader colPath;
         private ComponentFactory.Krypton.Toolkit.KryptonWrapLabel lblNote;
         private ComponentFactory.Krypton.Toolkit.KryptonButton btnClose;
+        private ComponentFactory.Krypton.Toolkit.KryptonButton btnCleanTemps;
     }
 }

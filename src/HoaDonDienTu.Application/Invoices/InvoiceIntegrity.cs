@@ -19,6 +19,9 @@ namespace HoaDonDienTu.Application.Invoices
 
         /// <summary>File tạm (<c>.tmp</c>) còn sót lại do ghi dở, ví dụ khi mất điện.</summary>
         IEnumerable<string> EnumerateTempFiles(string storageRoot);
+
+        /// <summary>Xóa một file tạm (đường dẫn tương đối so với thư mục kho). Chỉ nhận file <c>.tmp</c> nằm trong thư mục kho; trả về false nếu không có file hoặc không xóa được.</summary>
+        bool DeleteTempFile(string storageRoot, string relativePath);
     }
 
     public enum IntegrityProblemKind
@@ -75,6 +78,9 @@ namespace HoaDonDienTu.Application.Invoices
     {
         /// <param name="progress">Số phiên bản đã kiểm; có thể null.</param>
         Task<IntegrityReport> CheckAsync(IProgress<int> progress, CancellationToken cancellationToken);
+
+        /// <summary>Xóa các file tạm sót lại có trong <paramref name="relativePaths"/> (chỉ những file hiện vẫn là file tạm của kho); trả về các đường dẫn đã xóa. Không đụng tới file XML.</summary>
+        Task<IList<string>> DeleteStrayTempsAsync(IEnumerable<string> relativePaths, CancellationToken cancellationToken);
     }
 
     /// <summary>Chỉ đọc: không sửa, không xóa, không tải lại file nào. Tải lại là hành động của người dùng.</summary>
@@ -99,6 +105,26 @@ namespace HoaDonDienTu.Application.Invoices
             _reader = reader;
             _scanner = scanner;
             _context = context;
+        }
+
+        public async Task<IList<string>> DeleteStrayTempsAsync(IEnumerable<string> relativePaths, CancellationToken cancellationToken)
+        {
+            if (relativePaths == null) throw new ArgumentNullException("relativePaths");
+            if (!_context.HasCurrent) throw new StorageGuardException("Chưa mở doanh nghiệp nào.");
+            var root = _context.Current.StorageRoot;
+            var wanted = new HashSet<string>(relativePaths.Select(Normalize), StringComparer.OrdinalIgnoreCase);
+            return await Task.Run(() =>
+            {
+                var deleted = new List<string>();
+                // Chỉ xóa file mà bộ quét vẫn coi là file tạm của kho, không tin đường dẫn do giao diện gửi lên.
+                foreach (var temp in _scanner.EnumerateTempFiles(root).ToList())
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (wanted.Contains(Normalize(temp)) && _scanner.DeleteTempFile(root, temp)) deleted.Add(temp);
+                }
+
+                return (IList<string>)deleted;
+            }, cancellationToken).ConfigureAwait(false);
         }
 
         public async Task<IntegrityReport> CheckAsync(IProgress<int> progress, CancellationToken cancellationToken)
