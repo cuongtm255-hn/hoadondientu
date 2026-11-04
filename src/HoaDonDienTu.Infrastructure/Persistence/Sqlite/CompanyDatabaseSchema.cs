@@ -146,7 +146,20 @@ namespace HoaDonDienTu.Infrastructure.Persistence.Sqlite
                 3,
                 "Kết quả kiểm tra file gần nhất của từng hóa đơn: vấn đề đầu tiên (IntegrityProblemKind, NULL = nguyên vẹn hoặc chưa kiểm) và thời điểm kiểm",
                 "ALTER TABLE invoice ADD COLUMN file_problem INTEGER",
-                "ALTER TABLE invoice ADD COLUMN file_checked_utc TEXT")
+                "ALTER TABLE invoice ADD COLUMN file_checked_utc TEXT"),
+            new SchemaMigration(
+                4,
+                "Lịch sử xuất Excel/ZIP: phạm vi, nơi lưu, số hóa đơn đã xuất và bị bỏ qua",
+                @"CREATE TABLE export_record (
+                    id TEXT NOT NULL PRIMARY KEY,
+                    kind INTEGER NOT NULL,
+                    target_path TEXT NOT NULL,
+                    scope_text TEXT NOT NULL,
+                    exported_count INTEGER NOT NULL,
+                    skipped_count INTEGER NOT NULL,
+                    skipped_summary TEXT NOT NULL,
+                    created_utc TEXT NOT NULL)",
+                "CREATE INDEX ix_export_record_created ON export_record (created_utc)")
         };
 
         /// <summary>Điền <c>number_key</c> và <c>counterparty_sort</c> cho hóa đơn lưu trước migration 2, bằng đúng hàm của lúc ghi mới.</summary>

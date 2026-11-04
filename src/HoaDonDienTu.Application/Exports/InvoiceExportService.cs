@@ -8,6 +8,8 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Diagnostics;
+using HoaDonDienTu.Application.Abstractions;
 using HoaDonDienTu.Application.Companies;
 using HoaDonDienTu.Application.Invoices;
 using HoaDonDienTu.Application.Licensing;
@@ -216,13 +218,19 @@ namespace HoaDonDienTu.Application.Exports
         private readonly IInvoiceFileReader _reader;
         private readonly ICompanyContextAccessor _context;
         private readonly IEntitlementService _entitlement;
+        private readonly IExportHistoryRepository _history;
+        private readonly IClock _clock;
 
+        /// <param name="history">Nơi ghi lịch sử xuất; null thì không ghi.</param>
+        /// <param name="clock">Giờ ghi vào lịch sử; mặc định là giờ hệ thống.</param>
         public InvoiceExportService(
             IInvoiceRepository repository,
             IInvoiceArchiveService archive,
             IInvoiceFileReader reader,
             ICompanyContextAccessor context,
-            IEntitlementService entitlement)
+            IEntitlementService entitlement,
+            IExportHistoryRepository history = null,
+            IClock clock = null)
         {
             if (repository == null) throw new ArgumentNullException("repository");
             if (archive == null) throw new ArgumentNullException("archive");
@@ -234,6 +242,39 @@ namespace HoaDonDienTu.Application.Exports
             _reader = reader;
             _context = context;
             _entitlement = entitlement;
+            _history = history;
+            _clock = clock;
+        }
+
+        /// <summary>
+        /// Ghi lịch sử sau khi file đã đổi tên xong. Lưu lịch sử hỏng không được làm hỏng một lần xuất đã thành công,
+        /// nên lỗi ở đây chỉ được ghi vết.
+        /// </summary>
+        private async Task RecordAsync(ExportKind kind, ExportRequest request, ExportScope scope, int scopeCount, int exported, IList<ExportProblem> skipped)
+        {
+            if (_history == null) return;
+            try
+            {
+                var lines = skipped.Take(ExportRecord.MaxSkippedLines)
+                    .Select(p => "Số " + p.InvoiceNumber + " · " + p.InvoiceSymbol + ": " + p.Reason);
+                await _history.AddAsync(
+                    new ExportRecord
+                    {
+                        Id = Guid.NewGuid(),
+                        Kind = kind,
+                        TargetPath = request.TargetPath,
+                        ScopeText = ScopeText(scope, scopeCount),
+                        ExportedCount = exported,
+                        SkippedCount = skipped.Count,
+                        SkippedSummary = string.Join("\n", lines),
+                        CreatedAtUtc = _clock != null ? _clock.UtcNow : DateTime.UtcNow
+                    },
+                    CancellationToken.None).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                Trace.TraceError("Không ghi được lịch sử xuất: " + ex.Message);
+            }
         }
 
         // ---- Excel ----
@@ -262,7 +303,9 @@ namespace HoaDonDienTu.Application.Exports
                 }
 
                 Commit(temp, request);
-                return new ExportResult { Path = request.TargetPath, Exported = total, Skipped = new List<ExportProblem>() };
+                var skippedNone = new List<ExportProblem>();
+                await RecordAsync(ExportKind.Excel, request, request.Scope, total, total, skippedNone).ConfigureAwait(false);
+                return new ExportResult { Path = request.TargetPath, Exported = total, Skipped = skippedNone };
             }
             catch
             {
@@ -317,6 +360,7 @@ namespace HoaDonDienTu.Application.Exports
                 }
 
                 Commit(temp, request);
+                await RecordAsync(ExportKind.Zip, request, request.Scope, total, exported, problems).ConfigureAwait(false);
                 return new ExportResult { Path = request.TargetPath, Exported = exported, Skipped = problems };
             }
             catch

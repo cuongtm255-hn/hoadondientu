@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using HoaDonDienTu.Application.Abstractions;
+using HoaDonDienTu.Application.Exports;
 using HoaDonDienTu.Application.Authentication;
 using HoaDonDienTu.Application.Companies;
 using HoaDonDienTu.Application.Downloads;
@@ -97,6 +98,25 @@ namespace HoaDonDienTu.Infrastructure.Tests.Persistence
         }
 
         // ---- Hóa đơn ----
+
+        [Test]
+        public async Task ExportHistory_IsPersisted_NewestFirst_AndSurvivesReopening()
+        {
+            var history = new SqliteExportHistoryRepository(_provider);
+            var t0 = new DateTime(2026, 11, 4, 8, 0, 0, DateTimeKind.Utc);
+            await history.AddAsync(new ExportRecord { Id = Guid.NewGuid(), Kind = ExportKind.Excel, TargetPath = @"C:\Kho\Exports\a.xlsx", ScopeText = "Phạm vi: toàn bộ", ExportedCount = 12, CreatedAtUtc = t0 }, CancellationToken.None);
+            await history.AddAsync(new ExportRecord { Id = Guid.NewGuid(), Kind = ExportKind.Zip, TargetPath = @"C:\Kho\Exports\b.zip", ScopeText = "Phạm vi: đã chọn", ExportedCount = 3, SkippedCount = 1, SkippedSummary = "Số 7 · C26TAA: thiếu file", CreatedAtUtc = t0.AddMinutes(5) }, CancellationToken.None);
+            Reopen();
+
+            var list = await new SqliteExportHistoryRepository(_provider).ListRecentAsync(10, CancellationToken.None);
+
+            Assert.That(list.Select(r => r.Kind), Is.EqualTo(new[] { ExportKind.Zip, ExportKind.Excel }));
+            Assert.That(list[0].SkippedCount, Is.EqualTo(1));
+            Assert.That(list[0].SkippedSummary, Is.EqualTo("Số 7 · C26TAA: thiếu file"));
+            Assert.That(list[0].CreatedAtUtc, Is.EqualTo(t0.AddMinutes(5)));
+            Assert.That(list[1].TargetPath, Is.EqualTo(@"C:\Kho\Exports\a.xlsx"));
+            Assert.That((await new SqliteExportHistoryRepository(_provider).ListRecentAsync(1, CancellationToken.None)).Count, Is.EqualTo(1));
+        }
 
         [Test]
         public async Task IntegrityResult_IsPersisted_SurvivesReopening_AndIsClearedByAFreshVersion()

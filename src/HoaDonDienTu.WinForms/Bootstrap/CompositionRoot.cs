@@ -266,7 +266,7 @@ namespace HoaDonDienTu.WinForms.Bootstrap
             var archiveState = new ArchiveViewStateStore();
             var history = new DownloadHistoryService(downloadRepository, contextManager);
             var historyState = new HistoryViewStateStore();
-            var export = new InvoiceExportService(invoiceRepository, archive, invoiceFiles, contextManager, entitlement);
+            var export = new InvoiceExportService(invoiceRepository, archive, invoiceFiles, contextManager, entitlement, new SqliteExportHistoryRepository(databases), Clock);
             var archiveExport = new ArchiveExportContext(export, new ExportSavePicker(), Confirmation, entitlement);
             var integrityChecker = new InvoiceIntegrityChecker(invoiceRepository, invoiceFiles, new FileSystemInvoiceFileScanner(), contextManager, Clock);
             var archiveIntegrity = new ArchiveIntegrityContext(integrityChecker, new IntegrityReportDialog(integrityChecker));

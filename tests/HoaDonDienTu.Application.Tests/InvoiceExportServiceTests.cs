@@ -32,6 +32,7 @@ namespace HoaDonDienTu.Application.Tests
         private FakeContext _context;
         private FakeEntitlement _entitlement;
         private InvoiceExportService _service;
+        private InMemoryExportHistoryRepository _history;
 
         [SetUp]
         public void SetUp()
@@ -43,7 +44,8 @@ namespace HoaDonDienTu.Application.Tests
             _context = new FakeContext { Current = new CompanyContext(CompanyId.NewId(), Mst, "Công ty mẫu", @"C:\Kho", null) };
             _entitlement = new FakeEntitlement();
             var archive = new InvoiceArchiveService(_repo, _files, _context);
-            _service = new InvoiceExportService(_repo, archive, _files, _context, _entitlement);
+            _history = new InMemoryExportHistoryRepository();
+            _service = new InvoiceExportService(_repo, archive, _files, _context, _entitlement, _history);
         }
 
         [TearDown]
@@ -479,6 +481,69 @@ namespace HoaDonDienTu.Application.Tests
             var manifest = Encoding.UTF8.GetString(entries["manifest.csv"]);
             Assert.That(manifest, Does.Contain("BO_QUA"));
             Assert.That(manifest, Does.Contain("File XML không còn trong thư mục kho"));
+        }
+
+        [Test]
+        public async Task EachCompletedExport_IsRecordedWithItsScopeCountsAndSkippedInvoices()
+        {
+            await AddAsync("1", new DateTime(2026, 1, 1));
+            await AddAsync("2", new DateTime(2026, 1, 2), present: false);
+
+            var excel = Req(All(), "h.xlsx");
+            await _service.ExportExcelAsync(excel, null, CancellationToken.None);
+            var zip = Req(All(), "h.zip");
+            await _service.ExportZipAsync(zip, ZipFailurePolicy.SkipAndRecord, null, CancellationToken.None);
+
+            var records = await _history.ListRecentAsync(10, CancellationToken.None);
+            Assert.That(records.Count, Is.EqualTo(2));
+            var z = records.Single(r => r.Kind == ExportKind.Zip);
+            Assert.That(z.TargetPath, Is.EqualTo(zip.TargetPath));
+            Assert.That(z.ExportedCount, Is.EqualTo(1));
+            Assert.That(z.SkippedCount, Is.EqualTo(1));
+            Assert.That(z.SkippedSummary, Does.Contain("Số 2").And.Contain("File XML không còn trong thư mục kho"));
+            Assert.That(z.ScopeText, Does.Contain("toàn bộ kết quả"));
+            var x = records.Single(r => r.Kind == ExportKind.Excel);
+            Assert.That(x.ExportedCount, Is.EqualTo(2));
+            Assert.That(x.SkippedCount, Is.EqualTo(0));
+        }
+
+        [Test]
+        public async Task FailedOrRefusedExports_AreNotRecorded()
+        {
+            await AddAsync("1", new DateTime(2026, 1, 1), present: false);
+            var request = Req(All(), "f.zip");
+
+            Assert.ThrowsAsync<ExportNeedsDecisionException>(() => _service.ExportZipAsync(request, ZipFailurePolicy.Ask, null, CancellationToken.None));
+            Assert.ThrowsAsync<ExportAbortedException>(() => _service.ExportZipAsync(request, ZipFailurePolicy.Abort, null, CancellationToken.None));
+
+            Assert.That(await _history.ListRecentAsync(10, CancellationToken.None), Is.Empty);
+        }
+
+        [Test]
+        public async Task AFailingHistory_DoesNotFailAnExportThatAlreadySucceeded()
+        {
+            await AddAsync("1", new DateTime(2026, 1, 1));
+            var archive = new InvoiceArchiveService(_repo, _files, _context);
+            var service = new InvoiceExportService(_repo, archive, _files, _context, _entitlement, new ThrowingHistory());
+            var request = Req(All(), "t.xlsx");
+
+            var result = await service.ExportExcelAsync(request, null, CancellationToken.None);
+
+            Assert.That(result.Exported, Is.EqualTo(1));
+            Assert.That(File.Exists(request.TargetPath), Is.True);
+        }
+
+        private sealed class ThrowingHistory : IExportHistoryRepository
+        {
+            public Task AddAsync(ExportRecord record, CancellationToken cancellationToken)
+            {
+                throw new InvalidOperationException("đĩa đầy");
+            }
+
+            public Task<IList<ExportRecord>> ListRecentAsync(int max, CancellationToken cancellationToken)
+            {
+                throw new InvalidOperationException("đĩa đầy");
+            }
         }
 
         [Test]
