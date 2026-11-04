@@ -32,7 +32,7 @@ Ký hiệu: ⬜ Chưa bắt đầu · 🟡 Đang làm · ✅ Hoàn thành · ⛔
 | 2 | Khung chương trình, doanh nghiệp, licence và đăng nhập | Chạy 3 chế độ bằng development adapter | FT-01, FT-02, FT-03, FT-04 | 🟡 DD-01 16/18 task xong; DD-02 6/10; DD-03 5/8 (khóa/hợp đồng licence thật chờ G-06) |
 | 3 | Tải hóa đơn end-to-end | Chọn kỳ → tải → lưu XML trên cổng thật | FT-05, FT-06, FT-07, FT-02 (production) | 🟡 DD-04 xong; DD-05 7/11 và DD-06 3/9 chạy trên cổng giả; còn cài đặt repository SQLite ([ADR 0006](../decisions/0006-sqlite-provider.md)), đăng nhập WebView thật (G-01), UAT cổng thật |
 | 4 | Kho hóa đơn, chi tiết và trình xem | Tra cứu, xem XML/PDF | FT-08, FT-09 | ✅ DD-07 9/9; DD-08 3/8 (XML xong, PDF/in chờ G-03, G-09) |
-| 5 | Xuất dữ liệu, tổng quan, lịch sử, cài đặt và sao lưu | Hoàn thiện tính năng còn lại | FT-10, FT-11, FT-12 | ✅ DD-09 7/7; DD-10 7/7; DD-11 4/8 (sao lưu/khôi phục XML/PDF, dung lượng, kiểm tra kết nối; còn đổi thư mục kho, database trong gói chờ SQLite) |
+| 5 | Xuất dữ liệu, tổng quan, lịch sử, cài đặt và sao lưu | Hoàn thiện tính năng còn lại | FT-10, FT-11, FT-12 | ✅ DD-09 7/7; DD-10 7/7; DD-11 5/8 (sao lưu/khôi phục có nút hủy, dung lượng, kiểm tra kết nối; còn đổi thư mục kho, thử cổng thật, test hết dung lượng/file khóa) |
 | 6 | Hardening, UAT và phát hành | Nghiệm thu AC-01…AC-17, đóng gói | Xuyên suốt | ⬜ |
 
 Mỗi phase kết thúc khi đạt đủ **tiêu chí thoát**; không bắt đầu code phụ thuộc vào gate chưa có ADR.
@@ -116,7 +116,7 @@ Mỗi phase kết thúc khi đạt đủ **tiêu chí thoát**; không bắt đ�
 |---|---|---|---|
 | T09-01…T09-07 | Xuất Excel/ZIP | [DD-09](../detail-design/DD-09-EXPORT.md#7-theo-dõi-tiến-độ-implement) | 7 ✅ (T09-01..07) |
 | T10-01…T10-07 | Tổng quan, lịch sử | [DD-10](../detail-design/DD-10-DASHBOARD-HISTORY.md#6-theo-dõi-tiến-độ-implement) | ✅ 7/7 |
-| T11-01…T11-08 | Cài đặt, sao lưu/khôi phục | [DD-11](../detail-design/DD-11-SETTINGS-BACKUP.md#7-theo-dõi-tiến-độ-implement) | 🟡 4 ✅ (T11-02, 04, 05, 07) · 4 🟡 (T11-01 chưa đổi thư mục kho, T11-03 chưa thử cổng thật, T11-06 chưa có nút hủy, T11-08 chờ SQLite) |
+| T11-01…T11-08 | Cài đặt, sao lưu/khôi phục | [DD-11](../detail-design/DD-11-SETTINGS-BACKUP.md#7-theo-dõi-tiến-độ-implement) | 🟡 5 ✅ (T11-02, 04, 05, 06, 07) · 3 🟡 (T11-01 chưa đổi thư mục kho, T11-03 chưa thử cổng thật, T11-08 còn test hết dung lượng/file khóa) |
 
 ### Phase 6 — Hardening, UAT và phát hành
 
@@ -165,7 +165,7 @@ Số task lấy từ bảng theo dõi trong từng DD (cập nhật khi đổi t
 | FT-09 Chi tiết/viewer | [DD-08](../detail-design/DD-08-INVOICE-DETAIL-VIEWER.md) | 4 | 8 | 3 | 3 | 1 | SCR-06 và XML SCR-07 xong; PDF/in chờ G-03, G-09 |
 | FT-10 Xuất | [DD-09](../detail-design/DD-09-EXPORT.md) | 7 | 7 | 7 | 0 | 0 | Excel (bộ ghi xlsx tự viết, đã mở thử bằng Excel) và ZIP chạy từ SCR-05; hỗ trợ xuất theo dòng chọn; lịch sử xuất lưu trong company.db (T09-01); SCR-06 có nút Xuất ZIP XML một hóa đơn (T09-06); có test 100.000 hóa đơn, file khóa (T09-07) |
 | FT-11 Tổng quan/lịch sử | [DD-10](../detail-design/DD-10-DASHBOARD-HISTORY.md) | 5 | 7 | 7 | 0 | 0 | SCR-02/SCR-08 chạy; T10-05 xong (mở kho đúng năm của phiên) |
-| FT-12 Cài đặt/sao lưu | [DD-11](../detail-design/DD-11-SETTINGS-BACKUP.md) | 5 | 8 | 4 | 4 | 0 | Sao lưu/khôi phục XML/PDF (có điểm an toàn + rollback), dung lượng, kiểm tra kết nối; gói chưa có database (ADR 0004) |
+| FT-12 Cài đặt/sao lưu | [DD-11](../detail-design/DD-11-SETTINGS-BACKUP.md) | 5 | 8 | 5 | 3 | 0 | Sao lưu/khôi phục XML/PDF (có điểm an toàn + rollback), dung lượng, kiểm tra kết nối; gói chưa có database (ADR 0004) |
 | **Tổng** | | | **116** | **79** | **24** | **2** | Còn 11 task chưa bắt đầu; số liệu đếm tự động từ các bảng DD ngày 02/11/2026 |
 
 ## 5. Phụ thuộc quan trọng

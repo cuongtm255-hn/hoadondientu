@@ -249,6 +249,28 @@ namespace HoaDonDienTu.WinForms.Tests
             Assert.That(WaitFor(() => Errors.Shown.Count > 0), Is.True);
         }
 
+        [Test]
+        public void Backup_WhileRunning_OnlyCancelIsOffered_AndCancellingLeavesNoPackage()
+        {
+            _stats.Result = Stats();
+            _save.Result = @"D:\Backup\goi.zip";
+            _backup.Hang = true;
+            Open();
+            Assert.That(WaitFor(() => _view.Actions != null && _view.Actions.Any(a => a.Id == "backup" && a.Enabled)), Is.True);
+
+            _view.Click("backup");
+
+            Assert.That(WaitFor(() => _view.Actions != null && _view.Actions.Count == 1 && _view.Actions[0].Id == "cancel-operation"), Is.True, "Chỉ còn nút Hủy khi đang sao lưu");
+            Assert.That(_view.Actions[0].Text, Is.EqualTo("Hủy sao lưu"));
+
+            _view.Click("cancel-operation");
+
+            Assert.That(WaitFor(() => _view.MessageText != null && _view.MessageText.StartsWith("Đã hủy sao lưu")), Is.True, _view.MessageText);
+            Assert.That(_view.MessageIsError, Is.False);
+            Assert.That(Errors.Shown, Is.Empty, "Hủy không phải là lỗi");
+            Assert.That(WaitFor(() => _view.Actions != null && _view.Actions.Any(a => a.Id == "backup" && a.Enabled)), Is.True, "Các nút trở lại sau khi hủy");
+        }
+
         // ---- Khôi phục ----
 
         [Test]
@@ -347,6 +369,29 @@ namespace HoaDonDienTu.WinForms.Tests
 
             Assert.That(WaitFor(() => _view.MessageText != null && _view.MessageText.Contains("trả về trạng thái trước")), Is.True, _view.MessageText);
             Assert.That(_view.MessageIsError, Is.True);
+        }
+
+        [Test]
+        public void Restore_CancelledWhileRunning_SaysTheDataIsKept()
+        {
+            _stats.Result = Stats();
+            _open.Result = @"D:\Backup\goi.zip";
+            _backup.Inspection = Good();
+            _backup.Hang = true;
+            Open();
+            Assert.That(WaitFor(() => _view.Actions != null && _view.Actions.Any(a => a.Id == "restore" && a.Enabled)), Is.True);
+
+            _view.Click("restore");
+
+            Assert.That(WaitFor(() => _view.Actions != null && _view.Actions.Count == 1 && _view.Actions[0].Id == "cancel-operation"), Is.True);
+            Assert.That(_view.Actions[0].Text, Is.EqualTo("Hủy khôi phục"));
+
+            _view.Click("cancel-operation");
+
+            Assert.That(WaitFor(() => _view.MessageText != null && _view.MessageText.StartsWith("Đã hủy khôi phục")), Is.True, _view.MessageText);
+            Assert.That(_view.MessageText, Does.Contain("giữ như trước"));
+            Assert.That(Errors.Shown, Is.Empty);
+            Assert.That(WaitFor(() => _view.Actions != null && _view.Actions.Any(a => a.Id == "restore" && a.Enabled)), Is.True);
         }
 
         [Test]
@@ -532,11 +577,15 @@ namespace HoaDonDienTu.WinForms.Tests
             public RestoreResult RestoreResult = new RestoreResult();
             public Exception RestoreFailure;
 
-            public Task<BackupResult> CreateAsync(string targetPath, bool overwrite, IProgress<BackupProgress> progress, CancellationToken cancellationToken)
+            /// <summary>Việc chạy mãi cho tới khi bị hủy, để thử nút Hủy.</summary>
+            public bool Hang;
+
+            public async Task<BackupResult> CreateAsync(string targetPath, bool overwrite, IProgress<BackupProgress> progress, CancellationToken cancellationToken)
             {
                 lock (Created) { Created.Add(new CreateCall { Path = targetPath, Overwrite = overwrite }); }
                 if (CreateFailure != null) throw CreateFailure;
-                return Task.FromResult(CreateResult);
+                if (Hang) await Task.Delay(Timeout.Infinite, cancellationToken);
+                return CreateResult;
             }
 
             public Task<BackupInspection> InspectAsync(string backupPath, CancellationToken cancellationToken)
@@ -545,11 +594,12 @@ namespace HoaDonDienTu.WinForms.Tests
                 return Task.FromResult(Inspection);
             }
 
-            public Task<RestoreResult> RestoreAsync(string backupPath, IProgress<BackupProgress> progress, CancellationToken cancellationToken)
+            public async Task<RestoreResult> RestoreAsync(string backupPath, IProgress<BackupProgress> progress, CancellationToken cancellationToken)
             {
                 lock (Restored) { Restored.Add(backupPath); }
                 if (RestoreFailure != null) throw RestoreFailure;
-                return Task.FromResult(RestoreResult);
+                if (Hang) await Task.Delay(Timeout.Infinite, cancellationToken);
+                return RestoreResult;
             }
         }
 

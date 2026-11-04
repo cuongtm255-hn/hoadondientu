@@ -76,6 +76,9 @@ namespace HoaDonDienTu.WinForms.Settings
         private bool _initialized;
         private bool _disposed;
 
+        // Việc sao lưu/khôi phục đang chạy; nút "Hủy" của mục Lưu trữ hủy nó.
+        private CancellationTokenSource _running;
+
         public SettingsPresenter(
             ISettingsView view,
             ILicenseService license,
@@ -301,6 +304,7 @@ namespace HoaDonDienTu.WinForms.Settings
             {
                 case "open-folder": OpenFolder(); break;
                 case "refresh": LoadStatistics(); break;
+                case "cancel-operation": CancelRunning(); break;
                 case "backup": Backup(); break;
                 case "restore": Restore(); break;
                 case "check-connection": CheckConnection(); break;
@@ -318,6 +322,20 @@ namespace HoaDonDienTu.WinForms.Settings
             {
                 _view.ShowMessage("Thư mục kho chưa tồn tại: " + _context.Current.StorageRoot, true);
             }
+        }
+
+        /// <summary>Trong lúc sao lưu/khôi phục chỉ còn nút Hủy: các nút khác khóa để không chạy hai việc cùng lúc.</summary>
+        private void ShowCancelOnly(string text)
+        {
+            _view.ShowActions(new List<SettingsAction> { new SettingsAction("cancel-operation", text, true) });
+        }
+
+        private void CancelRunning()
+        {
+            var running = _running;
+            if (running == null) return;
+            _view.ShowMessage("Đang hủy...", false);
+            running.Cancel();
         }
 
         private void Backup()
@@ -340,16 +358,30 @@ namespace HoaDonDienTu.WinForms.Settings
                 if (path == null) return;
 
                 var progress = new Progress<BackupProgress>(p => _view.ShowMessage("Đang sao lưu " + p.Done.ToString("N0", Vi) + "/" + p.Total.ToString("N0", Vi) + " file...", false));
-                try
+                using (var cancellation = CancellationTokenSource.CreateLinkedTokenSource(token))
                 {
-                    var result = await _services.Backup.CreateAsync(path, true, progress, token);
-                    if (_disposed) return;
-                    Keep("Đã tạo bản sao lưu " + result.Path + " (" + result.FileCount.ToString("N0", Vi) + " file, " + FormatBytes(result.TotalBytes) + ").", false);
-                    LoadStatistics();
-                }
-                catch (BackupException ex)
-                {
-                    _view.ShowMessage(ex.Message, true);
+                    _running = cancellation;
+                    ShowCancelOnly("Hủy sao lưu");
+                    try
+                    {
+                        var result = await _services.Backup.CreateAsync(path, true, progress, cancellation.Token);
+                        if (_disposed) return;
+                        Keep("Đã tạo bản sao lưu " + result.Path + " (" + result.FileCount.ToString("N0", Vi) + " file, " + FormatBytes(result.TotalBytes) + ").", false);
+                    }
+                    catch (BackupException ex)
+                    {
+                        if (!_disposed) Keep(ex.Message, true);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        // Gói ghi dở nằm ở file tạm và đã bị xóa: chưa có bản sao lưu nào ở nơi đã chọn.
+                        if (!_disposed) Keep("Đã hủy sao lưu. Chưa có gói nào được tạo.", false);
+                    }
+                    finally
+                    {
+                        _running = null;
+                        if (!_disposed && _current == SettingsSection.Storage) LoadStatistics();
+                    }
                 }
             });
         }
@@ -400,22 +432,36 @@ namespace HoaDonDienTu.WinForms.Settings
                 }
 
                 var progress = new Progress<BackupProgress>(p => _view.ShowMessage("Đang khôi phục " + p.Done.ToString("N0", Vi) + "/" + p.Total.ToString("N0", Vi) + " file...", false));
-                try
+                using (var cancellation = CancellationTokenSource.CreateLinkedTokenSource(token))
                 {
-                    var result = await _services.Backup.RestoreAsync(file, progress, token);
-                    if (_disposed) return;
-                    Keep(
+                    _running = cancellation;
+                    ShowCancelOnly("Hủy khôi phục");
+                    try
+                    {
+                        var result = await _services.Backup.RestoreAsync(file, progress, cancellation.Token);
+                        if (_disposed) return;
+                        Keep(
                         "Đã khôi phục: thêm " + result.Created.ToString("N0", Vi) + ", thay " + result.Overwritten.ToString("N0", Vi) + ", giữ nguyên " + result.Unchanged.ToString("N0", Vi) + " file."
                             + (result.SafetyBackupPath != null ? " Điểm sao lưu an toàn: " + result.SafetyBackupPath : string.Empty)
                             + (result.DatabaseRestored
                                 ? " Đã khôi phục cả cơ sở dữ liệu: Kho hóa đơn và lịch sử tải khớp với bản sao lưu."
                                 : " Lưu ý: gói này không có cơ sở dữ liệu (định dạng cũ) nên chỉ mục Kho hóa đơn không đổi theo các file vừa khôi phục."),
-                        false);
-                    LoadStatistics();
-                }
-                catch (BackupException ex)
-                {
-                    _view.ShowMessage(ex.Message, true);
+                            false);
+                    }
+                    catch (BackupException ex)
+                    {
+                        if (!_disposed) Keep(ex.Message, true);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        // Dịch vụ đã trả dữ liệu về trạng thái trước khi bắt đầu (điểm sao lưu an toàn).
+                        if (!_disposed) Keep("Đã hủy khôi phục. Dữ liệu được giữ như trước khi bắt đầu.", false);
+                    }
+                    finally
+                    {
+                        _running = null;
+                        if (!_disposed && _current == SettingsSection.Storage) LoadStatistics();
+                    }
                 }
             });
         }
