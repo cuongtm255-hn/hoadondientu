@@ -377,6 +377,90 @@ namespace HoaDonDienTu.Application.Tests
         }
 
         [Test]
+        public async Task LockedTarget_KeepsTheOldFileIntact_AndLeavesNoTempFile()
+        {
+            // Người dùng đang mở file cũ bằng Excel: ghi đè thất bại thì file cũ phải còn nguyên.
+            await AddAsync("1", new DateTime(2026, 1, 1));
+            var request = Req(All(), "khoa.xlsx", overwrite: true);
+            File.WriteAllText(request.TargetPath, "dữ liệu cũ");
+
+            using (new FileStream(request.TargetPath, FileMode.Open, FileAccess.Read, FileShare.Read))
+            {
+                Assert.ThrowsAsync<IOException>(() => _service.ExportExcelAsync(request, null, CancellationToken.None));
+            }
+
+            Assert.That(File.ReadAllText(request.TargetPath), Is.EqualTo("dữ liệu cũ"));
+            Assert.That(Directory.GetFiles(_dir), Has.Length.EqualTo(1), "Không để lại file tạm");
+            Assert.That(await _history.ListRecentAsync(10, CancellationToken.None), Is.Empty, "Xuất thất bại thì không ghi lịch sử");
+        }
+
+        [Test]
+        public async Task UnwritableTarget_FailsWithoutLeavingATempFile_ForExcelAndZip()
+        {
+            // Đích là một thư mục có sẵn: không thể thay bằng file, giống như khi ổ đĩa từ chối ghi.
+            await AddAsync("1", new DateTime(2026, 1, 1));
+            var blocked = Path.Combine(_dir, "la-thu-muc.xlsx");
+            Directory.CreateDirectory(blocked);
+
+            Assert.ThrowsAsync<IOException>(() => _service.ExportExcelAsync(Req(All(), "la-thu-muc.xlsx", overwrite: true), null, CancellationToken.None));
+            Assert.ThrowsAsync<IOException>(() => _service.ExportZipAsync(Req(All(), "la-thu-muc.xlsx", overwrite: true), ZipFailurePolicy.SkipAndRecord, null, CancellationToken.None));
+
+            Assert.That(Directory.GetFiles(_dir), Is.Empty);
+            Assert.That(await _history.ListRecentAsync(10, CancellationToken.None), Is.Empty);
+        }
+
+        [Test, Category("Performance")]
+        public async Task Excel_100000Invoices_AreAllWritten_InOrder_AndFast()
+        {
+            const int count = 100000;
+            for (var n = 1; n <= count; n++)
+            {
+                var invoice = new NormalizedInvoice
+                {
+                    Direction = InvoiceDirection.Purchase, InvoiceNumber = n.ToString("D7"), IssueDate = new DateTime(2026, 1, 1).AddDays(n % 300), FormSymbol = "1", InvoiceSymbol = "C26TAA",
+                    SellerTaxCode = "0109988776", SellerName = "Công ty ABC (dữ liệu giả)", BuyerTaxCode = "0101234567", BuyerName = "Công ty TNHH Mẫu", StatusRaw = "1", CheckResultRaw = "5",
+                    TotalBeforeTax = 1000m, TotalTax = 100m, TotalPayment = 1100m, Currency = "VND"
+                };
+                await _repo.AddAsync(
+                    new StoredInvoice
+                    {
+                        InvoiceId = Guid.NewGuid(), BusinessKey = BusinessKey.Build(invoice), Invoice = invoice, Versions = new List<InvoiceVersionRecord>(),
+                        FirstSeenAtUtc = DateTime.UtcNow, LastSeenAtUtc = DateTime.UtcNow
+                    },
+                    CancellationToken.None);
+            }
+
+            var request = Req(All(), "lon.xlsx");
+            var watch = System.Diagnostics.Stopwatch.StartNew();
+            var result = await _service.ExportExcelAsync(request, null, CancellationToken.None);
+            watch.Stop();
+
+            Assert.That(result.Exported, Is.EqualTo(count));
+            Assert.That(watch.Elapsed, Is.LessThan(TimeSpan.FromSeconds(60)), "Xuất 100.000 dòng không được kéo dài");
+
+            // Đọc dạng luồng: không dựng cả DOM của bảng tính hơn hai triệu ô.
+            var rows = 0;
+            string lastNumber = null;
+            using (var zip = ZipFile.OpenRead(request.TargetPath))
+            using (var s = zip.GetEntry("xl/worksheets/sheet1.xml").Open())
+            using (var reader = XmlReader.Create(s))
+            {
+                string cellRef = null;
+                while (reader.Read())
+                {
+                    if (reader.NodeType != XmlNodeType.Element) continue;
+                    if (reader.LocalName == "row") rows++;
+                    else if (reader.LocalName == "c") cellRef = reader.GetAttribute("r");
+                    else if (reader.LocalName == "t" && cellRef != null && cellRef.StartsWith("D", StringComparison.Ordinal) && cellRef != "D6") lastNumber = reader.ReadElementContentAsString();
+                }
+            }
+
+            Assert.That(rows, Is.GreaterThanOrEqualTo(count + 1), "Một dòng tiêu đề cột và 100.000 dòng dữ liệu");
+            Assert.That(lastNumber, Is.EqualTo(count.ToString("D7")), "Dòng cuối là hóa đơn cuối theo số hóa đơn");
+            Assert.That(Directory.GetFiles(_dir), Has.Length.EqualTo(1));
+        }
+
+        [Test]
         public void NothingToExport_IsReported_AndNoFileIsCreated()
         {
             var request = Req(All(), "l.xlsx");

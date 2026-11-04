@@ -492,6 +492,8 @@ namespace HoaDonDienTu.Application.Exports
             if (!_context.HasCurrent) throw new StorageGuardException("Chưa mở doanh nghiệp nào.");
         }
 
+        private const int LoadChunk = 500;
+
         private async Task<IList<StoredInvoice>> ResolveAsync(ExportScope scope, CancellationToken token)
         {
             var result = new List<StoredInvoice>();
@@ -509,13 +511,16 @@ namespace HoaDonDienTu.Application.Exports
                 ids = page.Rows.Select(r => r.InvoiceId).ToList();
             }
 
-            foreach (var id in ids)
+            // Nạp theo lô thay vì từng hóa đơn một: 100.000 hóa đơn chỉ cần vài trăm truy vấn. FindManyAsync giữ nguyên thứ tự id.
+            var idList = ids.ToList();
+            for (var offset = 0; offset < idList.Count; offset += LoadChunk)
             {
                 token.ThrowIfCancellationRequested();
-                var stored = await _repository.FindByIdAsync(id, token).ConfigureAwait(false);
+                var chunk = idList.GetRange(offset, Math.Min(LoadChunk, idList.Count - offset));
+                var found = await _repository.FindManyAsync(chunk, token).ConfigureAwait(false);
 
-                // Hóa đơn của doanh nghiệp khác hoặc đã biến mất khỏi kho thì không xuất.
-                if (stored != null) result.Add(stored);
+                // Hóa đơn của doanh nghiệp khác hoặc đã biến mất khỏi kho thì không xuất (FindManyAsync không trả về).
+                result.AddRange(found);
             }
 
             if (result.Count == 0) throw new InvoiceStorageException("Không có hóa đơn nào để xuất.");
