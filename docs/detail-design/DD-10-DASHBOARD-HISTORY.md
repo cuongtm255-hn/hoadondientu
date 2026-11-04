@@ -85,7 +85,7 @@ Trạng thái: ⬜ Chưa bắt đầu · 🟡 Đang làm · ✅ Hoàn thành · 
 | T10-02 | `DashboardControl` + presenter (SCR-02) | WinForms | T10-01, T01-05 | ✅ | | DashboardControl + DashboardPresenter (SCR-02): 4 thẻ, phiên đang chạy, việc cần xử lý, hóa đơn mới tải, khóa nút tải theo quyền (ReadOnlyService) |
 | T10-03 | `IDownloadHistoryService`, `HistoryQuery` | Application/Infra | T05-02 | ✅ | | IDownloadHistoryService + HistoryQuery; IDownloadRepository.GetSessionsAsync; mã phiên DL-yyyy-MMdd-NNN suy ra từ ngày tạo |
 | T10-04 | `DownloadHistoryControl` + presenter (SCR-08) | WinForms | T10-03 | ✅ | | HistoryControl + HistoryPresenter (SCR-08): lọc loại/trạng thái/ngày/tìm nhanh, thẻ tóm tắt, phân trang, mở phiên sang SCR-04, Tạo phiên mới |
-| T10-05 | Tái sử dụng SCR-04 ở chế độ chi tiết lịch sử | WinForms | T05-08 | ⬜ | | |
+| T10-05 | Tái sử dụng SCR-04 ở chế độ chi tiết lịch sử | WinForms | T05-08 | ✅ | | 04/11/2026: Lịch sử mở phiên bằng chính SCR-04 (lỗi theo tháng, Thử lại các lỗi, Tiếp tục); nút Mở Kho hóa đơn của phiên xong mở kho đúng chiều và đúng năm của kỳ tải (kỳ nằm gọn trong một năm; kỳ trải qua nhiều năm thì xem mọi năm; năm không có hóa đơn thì mọi năm). Bộ lọc theo từng ngày của kỳ chưa có vì SCR-05 chỉ lọc theo năm |
 | T10-06 | Điều hướng có bộ lọc sang SCR-05 | WinForms | T07-04 | ✅ | | ArchiveNavigationRequest: thẻ file thiếu mở SCR-05 đúng chiều với bộ lọc lỗi/thiếu file, mọi năm; thẻ phiên lỗi mở SCR-04 |
 | T10-07 | Unit + UI smoke test (mục 5) | Tests | T10-02, T10-04 | ✅ | | 14 test service lịch sử, 17 test presenter lịch sử, 12 test service Tổng quan, 17 test presenter Tổng quan, 3 smoke |
 

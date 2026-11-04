@@ -620,6 +620,31 @@ namespace HoaDonDienTu.WinForms.Tests
             Assert.That(_view.Result.Rows.Select(r => r.InvoiceNumber), Is.EquivalentTo(new[] { "1", "3" }));
         }
 
+        [Test]
+        public async Task OpenedWithARequestedYear_ShowsThatYear_AndFallsBackToAllYearsWhenTheStoreHasNone()
+        {
+            await AddAsync(InvoiceDirection.Sold, "1", new DateTime(2025, 3, 1));
+            await AddAsync(InvoiceDirection.Sold, "2", new DateTime(2026, 3, 1));
+
+            _presenter = new ArchivePresenter(
+                _view, _service, Context, Nav, _state, Runner, Errors, new DateTime(2026, 11, 2),
+                new ArchiveNavigationRequest(InvoiceDirection.Sold, FileIntegrityFilter.All, 2025));
+            _presenter.Initialize();
+
+            Assert.That(WaitFor(() => _view.Result != null && _view.Result.Rows.Count == 1), Is.True);
+            Assert.That(_view.SelectedYear, Is.EqualTo(2025));
+            Assert.That(_view.Result.Rows[0].InvoiceNumber, Is.EqualTo("1"));
+
+            _presenter.Dispose();
+            _presenter = new ArchivePresenter(
+                _view, _service, Context, Nav, _state, Runner, Errors, new DateTime(2026, 11, 2),
+                new ArchiveNavigationRequest(InvoiceDirection.Sold, FileIntegrityFilter.All, 2019));
+            _presenter.Initialize();
+
+            Assert.That(WaitFor(() => _view.Result != null && _view.Result.Rows.Count == 2), Is.True);
+            Assert.That(_view.SelectedYear, Is.EqualTo(0));
+        }
+
         // ---- Xuất Excel / ZIP (DD-09) ----
 
         private FakeExportService _exportService;

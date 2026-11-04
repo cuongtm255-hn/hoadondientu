@@ -137,6 +137,20 @@ namespace HoaDonDienTu.WinForms.Tests
             var request = (ArchiveNavigationRequest)_nav.Parameters[0];
             Assert.That(request.Direction, Is.EqualTo(InvoiceDirection.Sold));
             Assert.That(request.FileFilter, Is.EqualTo(FileIntegrityFilter.All));
+            Assert.That(request.Year, Is.EqualTo(2026), "Kỳ nằm trong một năm thì mở đúng năm đó");
+        }
+
+        [Test]
+        public async Task FinishedSession_OverTwoYears_OpensTheArchiveForAllYears()
+        {
+            var id = await CreateAsync(PeriodSpec.Custom(new DateTime(2025, 12, 1), new DateTime(2026, 1, 31)));
+            Open(id);
+            Assert.That(WaitFor(() => _view.Last != null && _view.Last.CanOpenArchive), Is.True, _view.Message);
+
+            _view.RaiseOpenArchive();
+
+            Assert.That(WaitFor(() => _nav.Targets.Count == 1), Is.True);
+            Assert.That(((ArchiveNavigationRequest)_nav.Parameters[0]).Year, Is.EqualTo(0));
         }
 
         [Test]

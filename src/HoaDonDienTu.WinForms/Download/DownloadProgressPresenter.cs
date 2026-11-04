@@ -191,8 +191,16 @@ namespace HoaDonDienTu.WinForms.Download
             {
                 var session = await _repository.GetSessionAsync(_sessionId, token);
                 if (session == null) return;
-                await _navigation().NavigateAsync(ScreenId.InvoiceArchive, new ArchiveNavigationRequest(session.Direction, FileIntegrityFilter.All), token);
+                await _navigation().NavigateAsync(ScreenId.InvoiceArchive, new ArchiveNavigationRequest(session.Direction, FileIntegrityFilter.All, SingleYearOf(session.Period)), token);
             });
+        }
+
+        /// <summary>Năm của kỳ tải khi kỳ nằm gọn trong một năm; 0 khi kỳ trải qua nhiều năm.</summary>
+        private static int SingleYearOf(PeriodSpec period)
+        {
+            if (period == null) return 0;
+            if (period.Kind != PeriodKind.Custom) return period.Year;
+            return period.From.HasValue && period.To.HasValue && period.From.Value.Year == period.To.Value.Year ? period.From.Value.Year : 0;
         }
 
         private void OnNewDownload(object sender, EventArgs e)

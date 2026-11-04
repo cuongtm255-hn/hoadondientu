@@ -185,10 +185,12 @@ namespace HoaDonDienTu.WinForms.Archive
                     ArchiveQuery saved;
                     if (_request != null)
                     {
-                        // Mở từ màn hình khác với bộ lọc cho sẵn: bắt đầu mới, xem mọi năm của chiều được yêu cầu.
+                        // Mở từ màn hình khác với bộ lọc cho sẵn: bắt đầu mới, xem chiều được yêu cầu (mọi năm, hoặc đúng năm nếu có hóa đơn năm đó).
                         _query = new ArchiveQuery();
                         filter = new ArchiveFilterInput { Direction = _request.Direction, FileFilter = _request.FileFilter };
-                        await ShowYearsAsync(filter.Direction, 0, token);
+                        var years = await _service.YearsAsync(filter.Direction, token);
+                        filter.Year = years.Contains(_request.Year) ? _request.Year : 0;
+                        await ShowYearsAsync(filter.Direction, filter.Year, token);
                         _view.ShowFilter(filter);
                     }
                     else if (_store.TryGet(_context.Current.CompanyId, out filter, out saved))
