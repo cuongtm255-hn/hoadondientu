@@ -30,6 +30,9 @@ namespace HoaDonDienTu.WinForms.Tests
         private FakeSave _save;
         private FakeOpen _open;
         private SettingsPresenter _presenter;
+        private FakeMove _move;
+        private FakeFolders _folders;
+        private bool _withMove;
 
         [SetUp]
         public void SetUp()
@@ -43,6 +46,9 @@ namespace HoaDonDienTu.WinForms.Tests
             _launcher = new FakeLauncher();
             _save = new FakeSave();
             _open = new FakeOpen();
+            _move = new FakeMove();
+            _folders = new FakeFolders();
+            _withMove = false;
         }
 
         [TearDown]
@@ -53,7 +59,7 @@ namespace HoaDonDienTu.WinForms.Tests
 
         private SettingsPresenter Open(SettingsSection section = SettingsSection.Storage, bool withServices = true)
         {
-            var services = withServices ? new SettingsServices(_stats, _backup, _connectivity, _launcher, _save, _open, Confirm) : null;
+            var services = withServices ? new SettingsServices(_stats, _backup, _connectivity, _launcher, _save, _open, Confirm, _withMove ? _move : null, _withMove ? _folders : null) : null;
             _presenter = new SettingsPresenter(_view, new FakeLicense(), Entitlement, Context, () => Nav, Runner, Errors, "1.0 · Schema v1", services);
             _presenter.Initialize();
             if (section != SettingsSection.ActiveCompany) _view.Select(section);
@@ -269,6 +275,126 @@ namespace HoaDonDienTu.WinForms.Tests
             Assert.That(_view.MessageIsError, Is.False);
             Assert.That(Errors.Shown, Is.Empty, "Hủy không phải là lỗi");
             Assert.That(WaitFor(() => _view.Actions != null && _view.Actions.Any(a => a.Id == "backup" && a.Enabled)), Is.True, "Các nút trở lại sau khi hủy");
+        }
+
+        // ---- Đổi thư mục kho (T11-01) ----
+
+        private const string NewFolder = @"E:\Kho-moi";
+
+        [Test]
+        public void ChangeFolder_ButtonExistsOnlyWhenTheServicesAreGiven()
+        {
+            _stats.Result = Stats();
+            Open();
+            Assert.That(WaitFor(() => _view.Actions != null && _view.Actions.Any(a => a.Id == "backup" && a.Enabled)), Is.True);
+            Assert.That(_view.Actions.Any(a => a.Id == "change-folder"), Is.False);
+
+            _presenter.Dispose();
+            _view = new FakeView();
+            _withMove = true;
+            Open();
+            Assert.That(WaitFor(() => _view.Actions != null && _view.Actions.Any(a => a.Id == "change-folder" && a.Enabled)), Is.True);
+        }
+
+        [Test]
+        public void ChangeFolder_NamesTheCompanyAndBothFolders_ThenReportsWhereTheOldDataStays()
+        {
+            _stats.Result = Stats();
+            _withMove = true;
+            _folders.Result = NewFolder;
+            _move.Result = new StorageMoveResult { OldPath = Root, NewPath = NewFolder, FileCount = 1235, TotalBytes = 7L * 1024 * 1024 * 1024 };
+            Confirm.Answer = true;
+            Open();
+            Assert.That(WaitFor(() => _view.Actions != null && _view.Actions.Any(a => a.Id == "change-folder" && a.Enabled)), Is.True);
+
+            _view.Click("change-folder");
+
+            Assert.That(WaitFor(() => _move.Moved.Count == 1), Is.True);
+            Assert.That(_move.Moved[0], Is.EqualTo(NewFolder));
+            Assert.That(_folders.InitialPath, Is.EqualTo(Root));
+            Assert.That(Confirm.Messages.Single(), Does.Contain("CÔNG TY MẪU").And.Contain("0101234567").And.Contain(Root).And.Contain(NewFolder).And.Contain("giữ nguyên"));
+            Assert.That(WaitFor(() => _view.MessageText != null && _view.MessageText.StartsWith("Đã chép 1.235 file")), Is.True, _view.MessageText);
+            Assert.That(_view.MessageText, Does.Contain(NewFolder).And.Contain("Thư mục cũ được giữ nguyên"));
+            Assert.That(_view.MessageIsError, Is.False);
+            Assert.That(WaitFor(() => _view.Actions != null && _view.Actions.Any(a => a.Id == "change-folder" && a.Enabled)), Is.True, "Các nút trở lại sau khi đổi");
+        }
+
+        [Test]
+        public void ChangeFolder_AnUnusableFolder_IsExplainedBeforeAskingOrCopying()
+        {
+            _stats.Result = Stats();
+            _withMove = true;
+            _folders.Result = Root + @"\con";
+            _move.Problems = new List<string> { "Thư mục mới không được nằm trong thư mục kho hiện tại." };
+            Open();
+            Assert.That(WaitFor(() => _view.Actions != null && _view.Actions.Any(a => a.Id == "change-folder" && a.Enabled)), Is.True);
+
+            _view.Click("change-folder");
+
+            Assert.That(WaitFor(() => _view.MessageText != null && _view.MessageText.Contains("Không dùng được thư mục này")), Is.True, _view.MessageText);
+            Assert.That(_view.MessageIsError, Is.True);
+            Assert.That(Confirm.Messages, Is.Empty);
+            Assert.That(_move.Moved, Is.Empty);
+        }
+
+        [Test]
+        public void ChangeFolder_CancellingThePicker_OrDecliningTheConfirmation_ChangesNothing()
+        {
+            _stats.Result = Stats();
+            _withMove = true;
+            Open();
+            Assert.That(WaitFor(() => _view.Actions != null && _view.Actions.Any(a => a.Id == "change-folder" && a.Enabled)), Is.True);
+
+            _folders.Result = null;
+            _view.Click("change-folder");
+            Assert.That(WaitFor(() => _folders.Picks == 1), Is.True);
+
+            _folders.Result = NewFolder;
+            Confirm.Answer = false;
+            _view.Click("change-folder");
+            Assert.That(WaitFor(() => _view.MessageText == "Đã hủy đổi thư mục kho."), Is.True, _view.MessageText);
+            Assert.That(_move.Moved, Is.Empty);
+        }
+
+        [Test]
+        public void ChangeFolder_Cancelled_SaysTheOldFolderIsStillUsed_AndIsNotAnError()
+        {
+            _stats.Result = Stats();
+            _withMove = true;
+            _folders.Result = NewFolder;
+            _move.Hang = true;
+            Confirm.Answer = true;
+            Open();
+            Assert.That(WaitFor(() => _view.Actions != null && _view.Actions.Any(a => a.Id == "change-folder" && a.Enabled)), Is.True);
+
+            _view.Click("change-folder");
+
+            Assert.That(WaitFor(() => _view.Actions != null && _view.Actions.Count == 1 && _view.Actions[0].Id == "cancel-operation"), Is.True);
+            Assert.That(_view.Actions[0].Text, Is.EqualTo("Hủy đổi thư mục"));
+
+            _view.Click("cancel-operation");
+
+            Assert.That(WaitFor(() => _view.MessageText != null && _view.MessageText.StartsWith("Đã hủy đổi thư mục kho")), Is.True, _view.MessageText);
+            Assert.That(_view.MessageText, Does.Contain("Vẫn dùng thư mục cũ"));
+            Assert.That(Errors.Shown, Is.Empty);
+        }
+
+        [Test]
+        public void ChangeFolder_Failure_IsShownInlineAsAnError()
+        {
+            _stats.Result = Stats();
+            _withMove = true;
+            _folders.Result = NewFolder;
+            _move.Failure = new StorageMoveException("Không chép được kho sang thư mục mới: đầy đĩa. Ứng dụng vẫn dùng thư mục cũ.");
+            Confirm.Answer = true;
+            Open();
+            Assert.That(WaitFor(() => _view.Actions != null && _view.Actions.Any(a => a.Id == "change-folder" && a.Enabled)), Is.True);
+
+            _view.Click("change-folder");
+
+            Assert.That(WaitFor(() => _view.MessageText != null && _view.MessageText.Contains("vẫn dùng thư mục cũ")), Is.True, _view.MessageText);
+            Assert.That(_view.MessageIsError, Is.True);
+            Assert.That(Errors.Shown, Is.Empty);
         }
 
         // ---- Khôi phục ----
@@ -612,6 +738,39 @@ namespace HoaDonDienTu.WinForms.Tests
             {
                 if (Gate != null) await Gate.Task;
                 return Results;
+            }
+        }
+
+        private sealed class FakeFolders : IFolderPicker
+        {
+            public string Result;
+            public string InitialPath;
+            public int Picks;
+
+            public string Pick(string initialPath)
+            {
+                Picks++;
+                InitialPath = initialPath;
+                return Result;
+            }
+        }
+
+        private sealed class FakeMove : IStorageMoveService
+        {
+            public readonly List<string> Moved = new List<string>();
+            public IList<string> Problems = new List<string>();
+            public StorageMoveResult Result = new StorageMoveResult { OldPath = "a", NewPath = "b", FileCount = 1 };
+            public Exception Failure;
+            public bool Hang;
+
+            public Task<IList<string>> CheckAsync(string newPath, CancellationToken cancellationToken) { return Task.FromResult(Problems); }
+
+            public async Task<StorageMoveResult> MoveAsync(string newPath, IProgress<BackupProgress> progress, CancellationToken cancellationToken)
+            {
+                lock (Moved) { Moved.Add(newPath); }
+                if (Failure != null) throw Failure;
+                if (Hang) await Task.Delay(Timeout.Infinite, cancellationToken);
+                return Result;
             }
         }
 

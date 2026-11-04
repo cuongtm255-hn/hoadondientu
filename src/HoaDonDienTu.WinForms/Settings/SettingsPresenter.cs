@@ -26,7 +26,9 @@ namespace HoaDonDienTu.WinForms.Settings
             IFolderLauncher launcher,
             IExportSavePicker savePicker,
             IOpenFilePicker openPicker,
-            IConfirmationService confirmation)
+            IConfirmationService confirmation,
+            IStorageMoveService storageMove = null,
+            IFolderPicker folderPicker = null)
         {
             if (statistics == null) throw new ArgumentNullException("statistics");
             if (backup == null) throw new ArgumentNullException("backup");
@@ -42,7 +44,14 @@ namespace HoaDonDienTu.WinForms.Settings
             SavePicker = savePicker;
             OpenPicker = openPicker;
             Confirmation = confirmation;
+            StorageMove = storageMove;
+            FolderPicker = folderPicker;
         }
+
+        /// <summary>Đổi thư mục kho; thiếu một trong hai thì không có nút "Đổi thư mục kho...".</summary>
+        public IStorageMoveService StorageMove { get; private set; }
+
+        public IFolderPicker FolderPicker { get; private set; }
 
         public IStorageStatisticsService Statistics { get; private set; }
         public IBackupService Backup { get; private set; }
@@ -237,13 +246,19 @@ namespace HoaDonDienTu.WinForms.Settings
         {
             var canBackup = !busy && _entitlement.IsAllowed(AppFeature.ReadExport);
             var canRestore = !busy && _entitlement.IsAllowed(AppFeature.ManageSettings);
-            _view.ShowActions(new List<SettingsAction>
+            var actions = new List<SettingsAction>
             {
                 new SettingsAction("open-folder", "Mở thư mục kho"),
                 new SettingsAction("backup", "Tạo bản sao lưu", canBackup, true),
                 new SettingsAction("restore", "Khôi phục từ gói...", canRestore),
                 new SettingsAction("refresh", "Tính lại dung lượng", !busy)
-            });
+            };
+            if (_services.StorageMove != null && _services.FolderPicker != null)
+            {
+                actions.Add(new SettingsAction("change-folder", "Đổi thư mục kho...", canRestore));
+            }
+
+            _view.ShowActions(actions);
         }
 
         private static string BackupNote()
@@ -305,6 +320,7 @@ namespace HoaDonDienTu.WinForms.Settings
                 case "open-folder": OpenFolder(); break;
                 case "refresh": LoadStatistics(); break;
                 case "cancel-operation": CancelRunning(); break;
+                case "change-folder": ChangeFolder(); break;
                 case "backup": Backup(); break;
                 case "restore": Restore(); break;
                 case "check-connection": CheckConnection(); break;
@@ -381,6 +397,71 @@ namespace HoaDonDienTu.WinForms.Settings
                     {
                         _running = null;
                         if (!_disposed && _current == SettingsSection.Storage) LoadStatistics();
+                    }
+                }
+            });
+        }
+
+        private void ChangeFolder()
+        {
+            if (_services.StorageMove == null || _services.FolderPicker == null) return;
+            Run("Đổi thư mục kho", async token =>
+            {
+                if (!_context.HasCurrent)
+                {
+                    _view.ShowMessage("Chưa chọn doanh nghiệp.", true);
+                    return;
+                }
+
+                var company = _context.Current;
+                var folder = _services.FolderPicker.Pick(company.StorageRoot);
+                if (folder == null) return;
+
+                var problems = await _services.StorageMove.CheckAsync(folder, token);
+                if (_disposed) return;
+                if (problems.Count > 0)
+                {
+                    _view.ShowMessage("Không dùng được thư mục này: " + problems[0] + (problems.Count > 1 ? " (và " + (problems.Count - 1) + " vấn đề khác)" : string.Empty), true);
+                    return;
+                }
+
+                var message = "Đổi thư mục kho cho:\r\n" + company.DisplayName + "\r\nMST " + company.TaxCode.Value + "\r\n\r\n"
+                    + "Từ: " + company.StorageRoot + "\r\nSang: " + folder + "\r\n\r\n"
+                    + "Ứng dụng chép toàn bộ kho (XML, PDF, bản sao lưu và cơ sở dữ liệu), kiểm SHA-256 từng file, rồi mới chuyển sang dùng thư mục mới. "
+                    + "Thư mục cũ được giữ nguyên, ứng dụng không xóa; bạn có thể tự xóa khi đã yên tâm. Không đóng ứng dụng trong lúc chép.\r\n\r\nTiếp tục?";
+                if (!_services.Confirmation.Confirm("Đổi thư mục kho", message))
+                {
+                    _view.ShowMessage("Đã hủy đổi thư mục kho.", false);
+                    return;
+                }
+
+                var progress = new Progress<BackupProgress>(p => _view.ShowMessage("Đang chép kho " + p.Done.ToString("N0", Vi) + "/" + p.Total.ToString("N0", Vi) + " file...", false));
+                using (var cancellation = CancellationTokenSource.CreateLinkedTokenSource(token))
+                {
+                    _running = cancellation;
+                    ShowCancelOnly("Hủy đổi thư mục");
+                    try
+                    {
+                        var result = await _services.StorageMove.MoveAsync(folder, progress, cancellation.Token);
+                        if (_disposed) return;
+                        Keep(
+                            "Đã chép " + result.FileCount.ToString("N0", Vi) + " file (" + FormatBytes(result.TotalBytes) + ") và chuyển sang dùng " + result.NewPath
+                                + ". Thư mục cũ được giữ nguyên: " + result.OldPath + " (có thể xóa thủ công khi đã yên tâm).",
+                            false);
+                    }
+                    catch (StorageMoveException ex)
+                    {
+                        if (!_disposed) Keep(ex.Message, true);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        if (!_disposed) Keep("Đã hủy đổi thư mục kho. Vẫn dùng thư mục cũ; phần đã chép sang thư mục mới được dọn.", false);
+                    }
+                    finally
+                    {
+                        _running = null;
+                        if (!_disposed && _current == SettingsSection.Storage) ShowStorage();
+                        if (!_disposed && _keptText != null) _view.ShowMessage(_keptText, _keptIsError);
                     }
                 }
             });
