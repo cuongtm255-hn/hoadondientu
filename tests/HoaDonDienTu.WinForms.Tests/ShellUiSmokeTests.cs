@@ -827,6 +827,141 @@ namespace HoaDonDienTu.WinForms.Tests
 
         // ---- helpers ----
 
+        // ---- Smoke 05 → 06 → 07 với kho thật (T08-08) và khôi phục danh mục ----
+
+        private const string SmokeInvoiceNumber = "0000128";
+
+        /// <summary>
+        /// Dựng sẵn kho của doanh nghiệp mẫu trong thư mục dữ liệu của test: một hóa đơn mua vào GIẢ trong SQLite company.db thật và file XML thật
+        /// (SHA-256 khớp). Trả về thư mục kho. Không gọi cổng Thuế.
+        /// </summary>
+        private string SeedStoreWithOneInvoice()
+        {
+            HoaDonDienTu.Infrastructure.Development.DevelopmentDataSeeder.Seed(_dataDir, "Standard");
+            var items = new HoaDonDienTu.Infrastructure.Companies.JsonCompanyCatalog(System.IO.Path.Combine(_dataDir, "companies.json"))
+                .GetItemsAsync(CancellationToken.None).GetAwaiter().GetResult();
+            var item = items.Single();
+
+            var xml = System.Text.Encoding.UTF8.GetBytes("<HDon><DLHDon><TTChung><SHDon>" + SmokeInvoiceNumber + "</SHDon></TTChung></DLHDon></HDon>");
+            string sha;
+            using (var hash = System.Security.Cryptography.SHA256.Create()) sha = string.Concat(hash.ComputeHash(xml).Select(b => b.ToString("x2")));
+            var relative = @"2026\10\MuaVao_" + SmokeInvoiceNumber + "_v1.xml";
+            var full = System.IO.Path.Combine(item.StoragePath, relative);
+            System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(full));
+            System.IO.File.WriteAllBytes(full, xml);
+
+            var invoice = new HoaDonDienTu.Domain.Invoices.NormalizedInvoice
+            {
+                Direction = HoaDonDienTu.Domain.Invoices.InvoiceDirection.Purchase,
+                InvoiceNumber = SmokeInvoiceNumber, InvoiceSymbol = "C26TAA", FormSymbol = "1", IssueDate = new DateTime(2026, 10, 31),
+                SellerTaxCode = "0109988776", SellerName = "CÔNG TY GIẢ (mô phỏng)", BuyerTaxCode = item.TaxCode.Value, BuyerName = item.DisplayName,
+                StatusRaw = "1", CheckResultRaw = "5", TotalBeforeTax = 1000m, TotalTax = 100m, TotalPayment = 1100m, Currency = "VND"
+            };
+            var now = DateTime.UtcNow;
+            var stored = new HoaDonDienTu.Application.Invoices.StoredInvoice
+            {
+                InvoiceId = Guid.NewGuid(),
+                BusinessKey = HoaDonDienTu.Domain.Invoices.BusinessKey.Build(invoice),
+                Invoice = invoice,
+                FirstSeenAtUtc = now,
+                LastSeenAtUtc = now,
+                Versions = new System.Collections.Generic.List<HoaDonDienTu.Application.Invoices.InvoiceVersionRecord>
+                {
+                    new HoaDonDienTu.Application.Invoices.InvoiceVersionRecord
+                    {
+                        VersionId = Guid.NewGuid(), VersionNo = 1, Sha256 = sha, RelativePath = relative, SizeBytes = xml.Length, CreatedAtUtc = now, IsCurrent = true
+                    }
+                }
+            };
+            var context = new FixedStoreContext(new HoaDonDienTu.Application.Companies.CompanyContext(item.Id, item.TaxCode, item.DisplayName, item.StoragePath, null));
+            var provider = new HoaDonDienTu.Infrastructure.Persistence.Sqlite.CompanyDatabaseProvider(context);
+            new HoaDonDienTu.Infrastructure.Persistence.Sqlite.SqliteInvoiceRepository(provider).AddAsync(stored, CancellationToken.None).GetAwaiter().GetResult();
+            System.Data.SQLite.SQLiteConnection.ClearAllPools();
+            return item.StoragePath;
+        }
+
+        private sealed class FixedStoreContext : HoaDonDienTu.Application.Companies.ICompanyContextAccessor
+        {
+            public FixedStoreContext(HoaDonDienTu.Application.Companies.CompanyContext current)
+            {
+                Current = current;
+            }
+
+            public bool HasCurrent { get { return true; } }
+            public HoaDonDienTu.Application.Companies.CompanyContext Current { get; private set; }
+        }
+
+        private string LabelText(string name)
+        {
+            var label = _form.Controls.Find(name, true).OfType<KryptonLabel>().FirstOrDefault();
+            return label == null ? null : label.Values.Text;
+        }
+
+        [Test]
+        public void Invoice_OpensFromTheArchive_ThroughDetail_ToTheViewer_AndBack_05_06_07()
+        {
+            SeedStoreWithOneInvoice();
+            Start("Standard");
+
+            // SCR-05: kho có đúng một hóa đơn mua vào đọc từ SQLite thật.
+            Click("navInvoiceArchive");
+            Assert.That(WaitFor(() => ContentTitle() == "Kho hóa đơn"), Is.True);
+            var grid = Control<KryptonDataGridView>("gridInvoices");
+            Assert.That(WaitFor(() => grid.Rows.Count == 1), Is.True, "Kho phải hiện hóa đơn đã lưu");
+            Assert.That(grid.Rows[0].Cells["colNumber"].Value, Is.EqualTo(SmokeInvoiceNumber));
+            Assert.That(Control<KryptonButton>("btnExportExcel").Enabled, Is.True, "Có dòng thì cho xuất");
+
+            // Mở chi tiết bằng cách bấm đúp dòng (cùng đường đi với người dùng).
+            var archive = _form.Controls.Find("pnlContent", true).Single().Controls.OfType<HoaDonDienTu.WinForms.Archive.ArchiveControl>().Single();
+            var open = typeof(HoaDonDienTu.WinForms.Archive.ArchiveControl).GetMethod("OnCellDoubleClick", BindingFlags.NonPublic | BindingFlags.Instance);
+            UseUiSynchronizationContext();
+            open.Invoke(archive, new object[] { grid, new DataGridViewCellEventArgs(0, 0) });
+
+            // SCR-06
+            Assert.That(WaitFor(() => ContentTitle() == "Chi tiết hóa đơn " + SmokeInvoiceNumber), Is.True, ContentTitle());
+            Assert.That(WaitFor(() => Control<KryptonButton>("btnView").Enabled), Is.True, "XML còn nguyên nên mở được chứng từ");
+            Assert.That(WaitFor(() => Control<KryptonButton>("btnExportZip").Enabled), Is.True);
+
+            // SCR-07
+            Click("btnView");
+            Assert.That(WaitFor(() => ContentTitle() == "Xem chứng từ"), Is.True, ContentTitle());
+            Assert.That(WaitFor(() => (LabelText("lblSubtitle") ?? string.Empty).Contains(SmokeInvoiceNumber)), Is.True, LabelText("lblSubtitle"));
+            Assert.That(LabelText("lblSubtitle"), Does.Contain("C26TAA").And.Contain("v1"));
+
+            // Quay lại SCR-06 rồi SCR-05.
+            Click("btnClose");
+            Assert.That(WaitFor(() => ContentTitle() == "Chi tiết hóa đơn " + SmokeInvoiceNumber), Is.True, ContentTitle());
+            Click("btnBack");
+            Assert.That(WaitFor(() => ContentTitle() == "Kho hóa đơn"), Is.True, ContentTitle());
+            Assert.That(WaitFor(() => Control<KryptonDataGridView>("gridInvoices").Rows.Count == 1), Is.True, "Quay lại vẫn giữ kết quả");
+        }
+
+        [Test]
+        public void Recovery_RebuildsTheCatalogFromTheStoresOnDisk_AndKeepsTheDamagedFile()
+        {
+            // Chế độ Recovery tạo companies.json hỏng; thêm một kho có file định danh vào thư mục dữ liệu mặc định.
+            System.IO.Directory.CreateDirectory(_dataDir);
+            HoaDonDienTu.Infrastructure.Development.DevelopmentDataSeeder.Seed(_dataDir, "Recovery");
+            var storePath = System.IO.Path.Combine(_dataDir, "Companies", "0101234567");
+            new HoaDonDienTu.Infrastructure.Companies.FileSystemCompanyStorage().Initialize(
+                storePath, HoaDonDienTu.Domain.Companies.CompanyId.NewId(), HoaDonDienTu.Domain.Companies.TaxCode.Parse("0101234567"));
+            Start("Recovery");
+
+            Assert.That(ContentTitle(), Is.EqualTo("Cần khôi phục"));
+            var list = Control<System.Windows.Forms.ListView>("listStores");
+            Assert.That(WaitFor(() => list.Items.Count == 1), Is.True, "Quét tự động phải tìm thấy kho");
+            Assert.That(list.Items[0].Checked, Is.True);
+            Assert.That(WaitFor(() => Control<KryptonButton>("btnRebuild").Enabled), Is.True);
+
+            Click("btnRebuild");
+
+            Assert.That(WaitFor(() => Control<KryptonButton>("btnRestart").Visible), Is.True, "Đăng ký xong thì mời khởi động lại");
+            var registered = new HoaDonDienTu.Infrastructure.Companies.JsonCompanyCatalog(System.IO.Path.Combine(_dataDir, "companies.json"))
+                .GetItemsAsync(CancellationToken.None).GetAwaiter().GetResult();
+            Assert.That(registered.Single().StoragePath, Is.EqualTo(storePath));
+            Assert.That(System.IO.Directory.GetFiles(_dataDir, "companies.json.corrupt-*").Length, Is.EqualTo(1), "File danh mục hỏng được giữ lại");
+        }
+
         private T Control<T>(string name) where T : System.Windows.Forms.Control
         {
             var found = _form.Controls.Find(name, true).OfType<T>().FirstOrDefault();

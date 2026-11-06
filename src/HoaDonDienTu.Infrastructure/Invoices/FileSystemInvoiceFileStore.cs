@@ -16,6 +16,14 @@ namespace HoaDonDienTu.Infrastructure.Invoices
     {
         public const string TempSuffix = ".tmp";
 
+        private readonly Func<string, Stream> _createTemp;
+
+        /// <param name="createTemp">Mở luồng ghi file tạm (chỉ để thử nghiệm mô phỏng đĩa đầy); mặc định mở FileStream mới, không ghi đè.</param>
+        public FileSystemInvoiceFileStore(Func<string, Stream> createTemp = null)
+        {
+            _createTemp = createTemp ?? (path => new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None, 4096, true));
+        }
+
         public async Task<string> WriteTempAsync(string storageRoot, string relativeFolder, byte[] content, CancellationToken cancellationToken)
         {
             var folder = Path.Combine(storageRoot, relativeFolder);
@@ -23,7 +31,7 @@ namespace HoaDonDienTu.Infrastructure.Invoices
             var temp = Path.Combine(folder, Guid.NewGuid().ToString("N") + TempSuffix);
             try
             {
-                using (var stream = new FileStream(temp, FileMode.CreateNew, FileAccess.Write, FileShare.None, 4096, true))
+                using (var stream = _createTemp(temp))
                 {
                     await stream.WriteAsync(content, 0, content.Length, cancellationToken).ConfigureAwait(false);
                     await stream.FlushAsync(cancellationToken).ConfigureAwait(false);

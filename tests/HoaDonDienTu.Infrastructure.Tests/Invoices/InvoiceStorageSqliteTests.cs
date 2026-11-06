@@ -155,11 +155,136 @@ namespace HoaDonDienTu.Infrastructure.Tests.Invoices
             }
         }
 
+        // ---- Đĩa đầy giữa chừng (T06-09) ----
+
+        /// <summary>Ghi nửa số byte rồi báo hết dung lượng như Windows (ERROR_DISK_FULL, HRESULT 0x80070070).</summary>
+        private sealed class DiskFullStream : Stream
+        {
+            private readonly Stream _inner;
+
+            public DiskFullStream(Stream inner)
+            {
+                _inner = inner;
+            }
+
+            public override bool CanRead { get { return false; } }
+            public override bool CanSeek { get { return false; } }
+            public override bool CanWrite { get { return true; } }
+            public override long Length { get { return _inner.Length; } }
+            public override long Position { get { return _inner.Position; } set { throw new NotSupportedException(); } }
+            public override void Flush() { _inner.Flush(); }
+            public override int Read(byte[] buffer, int offset, int count) { throw new NotSupportedException(); }
+            public override long Seek(long offset, SeekOrigin origin) { throw new NotSupportedException(); }
+            public override void SetLength(long value) { throw new NotSupportedException(); }
+
+            public override void Write(byte[] buffer, int offset, int count)
+            {
+                _inner.Write(buffer, offset, count / 2);
+                _inner.Flush();
+                throw new IOException("Không đủ dung lượng trên đĩa.", unchecked((int)0x80070070));
+            }
+
+            public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+            {
+                Write(buffer, offset, count);
+                return Task.FromResult(0);
+            }
+
+            protected override void Dispose(bool disposing)
+            {
+                if (disposing) _inner.Dispose();
+                base.Dispose(disposing);
+            }
+        }
+
+        /// <summary>Kho file thật nhưng từ lần ghi thứ <c>failOn</c> báo đĩa đầy cho tới khi <see cref="Full"/> tắt.</summary>
+        private sealed class FlakyDisk
+        {
+            private readonly int _failOn;
+            private int _writes;
+
+            public FlakyDisk(int failOn)
+            {
+                _failOn = failOn;
+                Full = true;
+            }
+
+            public bool Full;
+
+            public FileSystemInvoiceFileStore Store()
+            {
+                return new FileSystemInvoiceFileStore(path =>
+                {
+                    var inner = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None, 4096, true);
+                    return Full && ++_writes >= _failOn ? (Stream)new DiskFullStream(inner) : inner;
+                });
+            }
+        }
+
+        [Test]
+        public async Task DiskFullMidWrite_LeavesNoPartialFileOrRow_PausesWithCheckpoint_AndResumesWithoutDuplicates()
+        {
+            var disk = new FlakyDisk(6);
+            using (var rig = new Rig(_root, disk.Store()))
+            {
+                var expected = rig.Portal.Dataset.Query(InvoiceDirection.Sold, new DateTime(2026, 1, 1), new DateTime(2026, 1, 31)).Count;
+                Assert.That(expected, Is.GreaterThan(6), "Dữ liệu giả phải đủ lớn để đĩa đầy ở giữa");
+                var id = await rig.CreateAsync(InvoiceDirection.Sold, PeriodSpec.ForMonth(2026, 1));
+
+                await rig.Orchestrator.RunAsync(id, null, CancellationToken.None);
+
+                // Hết dung lượng: tạm dừng có checkpoint (không phải lỗi), 5 hóa đơn đầu đã lưu trọn vẹn, hóa đơn thứ 6 không để lại gì.
+                Assert.That((await rig.Downloads.GetSessionAsync(id, CancellationToken.None)).State, Is.EqualTo(DownloadSessionState.PausedByUser));
+                var segment = (await rig.Downloads.GetSegmentsAsync(id, CancellationToken.None)).Single();
+                Assert.That(segment.State, Is.EqualTo(DownloadSegmentState.Paused));
+                Assert.That(segment.ReceivedCount, Is.EqualTo(5));
+                Assert.That(segment.ItemOffset, Is.EqualTo(5));
+                Assert.That(Directory.GetFiles(_root, "*.tmp", SearchOption.AllDirectories), Is.Empty, "Không để lại file tạm ghi dở");
+                Assert.That(Directory.GetFiles(_root, "*.xml", SearchOption.AllDirectories).Length, Is.EqualTo(5));
+                var partial = await rig.Invoices.ListAsync(CancellationToken.None);
+                Assert.That(partial.Count, Is.EqualTo(5), "Cơ sở dữ liệu chỉ có các hóa đơn đã có file");
+                Assert.That(partial.All(i => File.Exists(Path.Combine(_root, i.Current.RelativePath))), Is.True);
+
+                // Người dùng giải phóng ổ đĩa rồi tiếp tục: đủ hóa đơn, không trùng.
+                disk.Full = false;
+                await rig.Orchestrator.RunAsync(id, null, CancellationToken.None);
+
+                Assert.That((await rig.Downloads.GetSessionAsync(id, CancellationToken.None)).State, Is.EqualTo(DownloadSessionState.Completed));
+                var all = await rig.Invoices.ListAsync(CancellationToken.None);
+                Assert.That(all.Count, Is.EqualTo(expected));
+                Assert.That(all.All(i => i.Versions.Count == 1), Is.True, "Tiếp tục không tạo phiên bản trùng");
+                Assert.That(Directory.GetFiles(_root, "*.xml", SearchOption.AllDirectories).Length, Is.EqualTo(expected));
+                Assert.That(all.All(i => File.Exists(Path.Combine(_root, i.Current.RelativePath))), Is.True);
+            }
+        }
+
+        [Test]
+        public async Task DiskFull_FromTheFirstFile_StoresNothing_AndLeavesTheStoreCleanForARetry()
+        {
+            var disk = new FlakyDisk(1);
+            using (var rig = new Rig(_root, disk.Store()))
+            {
+                var id = await rig.CreateAsync(InvoiceDirection.Sold, PeriodSpec.ForMonth(2026, 1));
+
+                await rig.Orchestrator.RunAsync(id, null, CancellationToken.None);
+
+                Assert.That((await rig.Downloads.GetSessionAsync(id, CancellationToken.None)).State, Is.EqualTo(DownloadSessionState.PausedByUser));
+                Assert.That(await rig.Invoices.ListAsync(CancellationToken.None), Is.Empty);
+                var stray = Directory.GetFiles(_root, "*", SearchOption.AllDirectories).Where(f => !f.Contains(Path.DirectorySeparatorChar + "Data" + Path.DirectorySeparatorChar)).ToList();
+                Assert.That(stray, Is.Empty);
+
+                disk.Full = false;
+                await rig.Orchestrator.RunAsync(id, null, CancellationToken.None);
+                Assert.That((await rig.Downloads.GetSessionAsync(id, CancellationToken.None)).State, Is.EqualTo(DownloadSessionState.Completed));
+                Assert.That((await rig.Invoices.ListAsync(CancellationToken.None)).Count, Is.GreaterThan(0));
+            }
+        }
+
         private sealed class Rig : IDisposable
         {
             private readonly InMemoryPortalSessionStore _session = new InMemoryPortalSessionStore();
 
-            public Rig(string root)
+            public Rig(string root, FileSystemInvoiceFileStore files = null)
             {
                 Portal = new TestPortal(Mst);
                 var context = new FixedContext(root);
@@ -167,7 +292,7 @@ namespace HoaDonDienTu.Infrastructure.Tests.Invoices
                 Downloads = new SqliteDownloadRepository(provider);
                 Invoices = new SqliteInvoiceRepository(provider);
                 _session.Set(new PortalSession(Id, TaxCode.Parse(Mst), new PortalSessionMaterial(null, null, "t"), DateTime.UtcNow));
-                var storage = new InvoiceStorageService(Invoices, new FileSystemInvoiceFileStore(), new InvoiceNormalizer(), context, new SystemClock(), new Quiet());
+                var storage = new InvoiceStorageService(Invoices, files ?? new FileSystemInvoiceFileStore(), new InvoiceNormalizer(), context, new SystemClock(), new Quiet());
                 Orchestrator = new DownloadOrchestrator(
                     Downloads, context, _session, () => Portal.Client, storage, new NoLimit(), DefaultRetryPolicy.Standard,
                     new EntitlementService(AppMode.Standard, false), new SystemClock(), new Quiet(), (span, token) => Task.FromResult(0));
