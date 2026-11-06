@@ -129,7 +129,7 @@ Mỗi phase kết thúc khi đạt đủ **tiêu chí thoát**; không bắt đ�
 | P6-03 | Rà soát bảo mật: token/log/WebView/XML viewer/licence (NFR-SEC-001…008) | 🟡 Đợt 1 xong ([báo cáo](../security/P6-03-security-review.md)): 8/8 yêu cầu đạt ở mức đọc mã và test, 1 phát hiện đã sửa (ghim baseUrl vào gdt.gov.vn); còn kiểm Chromium thật, thư viện bên thứ ba, ghim máy chủ licence (chờ G-06) |
 | P6-04 | Kiểm tra Release configuration không chứa development adapter/secret | ✅ `scripts/Check-Release.ps1` ([runbook](../runbooks/release-check.md)): Release đạt, Debug bị báo 28 vi phạm; chạy lại trước mỗi lần đóng gói |
 | P6-05 | Đóng gói/cài đặt (net45, WebView engine, SQLite native), ghi phiên bản app/schema/WebView (NFR-MNT-005) | ⬜ |
-| P6-06 | Runbook: build, release, xử lý sự cố, hỗ trợ khách hàng | ⬜ |
+| P6-06 | Runbook: build, release, xử lý sự cố, hỗ trợ khách hàng | ✅ [build-release-support](../runbooks/build-release-support.md) (chưa qua UAT nên bảng sự cố có thể thiếu tình huống thực tế) |
 | P6-07 | Hướng dẫn sử dụng và ghi chú phát hành | ⬜ |
 
 ## 4. Tổng hợp theo tính năng

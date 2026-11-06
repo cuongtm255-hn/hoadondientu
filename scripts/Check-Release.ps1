@@ -8,7 +8,7 @@
     1. Các assembly của ứng dụng không có kiểu nào thuộc namespace Development hoặc tên Mock/Fake/Dummy.
     2. Các chuỗi trong assembly không chứa nhãn dữ liệu giả ("[TEST]", "DỮ LIỆU GIẢ", "MOCK", "mô phỏng", "localhost").
     3. Không có mẫu bí mật (JWT, Bearer token, khóa riêng PEM, "password=") trong assembly và file cấu hình.
-    4. Thư mục Release không chứa file không được phép (*.raw.*, *.db, companies.json, license.dat, dữ liệu mẫu).
+    4. Thư mục Release không chứa file không được phép (*.raw.*, *.db, companies.json, license.dat, dữ liệu mẫu, file spike còn sót như CefSpike.exe).
   Thoát với mã 1 nếu có vi phạm. Build trước:  MSBuild src\HoaDonDienTu.WinForms\HoaDonDienTu.WinForms.csproj -p:Configuration=Release
 #>
 param(
@@ -85,7 +85,7 @@ foreach ($file in $configFiles) {
 }
 
 # ---- 4. File không được phép ----
-$forbiddenFiles = @('*.raw.*', '*.db', '*.db-wal', 'companies.json', 'license.dat', 'company.identity.json', 'sample-api-*', '*mock*', '*Mock*')
+$forbiddenFiles = @('*.raw.*', '*.db', '*.db-wal', 'companies.json', 'license.dat', 'company.identity.json', 'sample-api-*', '*mock*', '*Mock*', '*Spike*')
 foreach ($pattern in $forbiddenFiles) {
     Get-ChildItem $ReleaseDir -Recurse -File -Filter $pattern -ErrorAction SilentlyContinue |
         Where-Object { $_.FullName -notmatch '\\(locales|swiftshader|DawnCache|GPUCache)\\' } |
