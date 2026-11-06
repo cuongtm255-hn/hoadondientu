@@ -40,6 +40,8 @@ namespace HoaDonDienTu.Application.Invoices
             if (xml == null || xml.Length == 0) return InvoiceSignatureStatus.NotChecked;
             try
             {
+                // Chuẩn hóa C14N của chữ ký đệ quy theo độ sâu: XML lồng quá sâu bị bỏ qua ở đây (không kiểm được) thay vì làm tràn ngăn xếp.
+                XmlSafety.EnsureShallow(xml);
                 var document = new XmlDocument { PreserveWhitespace = true, XmlResolver = null };
                 var settings = new XmlReaderSettings { DtdProcessing = DtdProcessing.Prohibit, XmlResolver = null };
                 using (var reader = XmlReader.Create(new MemoryStream(xml), settings)) document.Load(reader);

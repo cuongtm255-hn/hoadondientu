@@ -308,7 +308,8 @@ namespace HoaDonDienTu.Application.Backup
 
         public Task<BackupInspection> InspectAsync(string backupPath, CancellationToken cancellationToken)
         {
-            return Task.FromResult(Inspect(backupPath, cancellationToken));
+            // Kiểm tra gói đọc và băm SHA-256 từng file (có thể hàng GB): ở thread pool để không chặn luồng giao diện (NFR-PERF-001).
+            return Task.Run(() => Inspect(backupPath, cancellationToken), cancellationToken);
         }
 
         private static BackupInspection Inspect(string backupPath, CancellationToken token)
@@ -399,6 +400,23 @@ namespace HoaDonDienTu.Application.Backup
             catch (FileNotFoundException)
             {
                 problems.Add("Không tìm thấy file sao lưu.");
+            }
+            catch (ArgumentException)
+            {
+                // .NET Framework đọc danh mục zip chậm và ném ArgumentException khi tên một mục có ký tự không hợp lệ (gói bị hỏng hoặc cố tình dựng sai).
+                problems.Add("File không phải gói zip hợp lệ hoặc bị hỏng (tên mục không hợp lệ).");
+            }
+            catch (NotSupportedException)
+            {
+                problems.Add("File không phải gói zip hợp lệ hoặc bị hỏng.");
+            }
+            catch (UnauthorizedAccessException)
+            {
+                problems.Add("Không có quyền đọc file sao lưu.");
+            }
+            catch (IOException ex)
+            {
+                problems.Add("Không đọc được file sao lưu: " + ex.Message);
             }
 
             return new BackupInspection { Manifest = manifest, Problems = problems };

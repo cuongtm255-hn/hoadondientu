@@ -52,6 +52,10 @@ Kiểm trên NuGet (03/11/2026, đọc metadata gói, không cài):
 - Spike [`spikes/CefSpike`](../../spikes/CefSpike/Program.cs): Chromium `109.0.5414.87` khởi động, `RequestContext` riêng trong bộ nhớ, cookie manager và JavaScript hoạt động (trang `data:` cục bộ).
 - Bản Release nặng khoảng 264 MB (chủ yếu `libcef.dll` và thư mục `locales`). Từ 03/11/2026 bước build Release (`TrimChromiumLocales` trong `HoaDonDienTu.WinForms.csproj`) xóa các gói ngôn ngữ ngoài `vi.pak` và `en-US.pak`, còn khoảng 237 MB; `Locale = "vi"` được đặt ở `CefPortalLoginBrowser`, `en-US` là dự phòng của Chromium. Chưa thử trên máy sạch.
 
+## Rủi ro bảo mật đã biết (06/11/2026)
+
+CefSharp 109.1.110 (Chromium 109, đã hết vòng đời) bị báo 4 advisory của nuget.org: GHSA-j646-gj5p-p45g (WebP, nghiêm trọng, vá ở 116), GHSA-4c29-gfrp-g6x9 (libvpx, cao, vá ở 117), GHSA-f87w-3j5w-v58p (Mojo Windows, cao, vá ở 134.3.90) và GHSA-85jm-cwp2-mvpv (`FolderSchemeHandlerFactory`, trung bình, ứng dụng không dùng). Quyết định giữ 109 vẫn đúng vì là bản cuối hỗ trợ Windows 7/8; rủi ro được giảm bằng việc chỉ mở trang đăng nhập cổng Thuế, chặn điều hướng ra ngoài tên miền, không cửa sổ mới, không bộ nhớ đệm xuống đĩa. Chi tiết và đề xuất nâng cấp: [P6-03](../security/P6-03-security-review.md). Khi bỏ hỗ trợ Windows 7/8, nâng lên 134.3.90 trở lên (net462, Windows 10+).
+
 ## Chưa kiểm
 
 Các mục 3-7 của G-01 phải được chứng minh bằng một lần người dùng đăng nhập tay trên cổng thật (ngoại lệ duy nhất của [ADR 0005](0005-mock-only-testing-policy.md)):

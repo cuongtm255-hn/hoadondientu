@@ -156,6 +156,7 @@ namespace HoaDonDienTu.Application.Invoices
             XDocument document;
             try
             {
+                XmlSafety.EnsureShallow(xml);
                 var settings = new XmlReaderSettings { DtdProcessing = DtdProcessing.Prohibit, XmlResolver = null };
                 using (var reader = XmlReader.Create(new MemoryStream(xml), settings))
                 {
