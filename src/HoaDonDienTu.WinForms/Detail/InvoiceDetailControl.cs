@@ -24,6 +24,7 @@ namespace HoaDonDienTu.WinForms.Detail
         public InvoiceDetailControl()
         {
             InitializeComponent();
+            HoaDonDienTu.WinForms.Common.UiIcons.Decorate(this);
         }
 
         public event EventHandler BackRequested;

@@ -13,6 +13,7 @@ namespace HoaDonDienTu.WinForms.Licensing
         public LicenseControl()
         {
             InitializeComponent();
+            HoaDonDienTu.WinForms.Common.UiIcons.Decorate(this);
         }
 
         public event EventHandler ActivateRequested;

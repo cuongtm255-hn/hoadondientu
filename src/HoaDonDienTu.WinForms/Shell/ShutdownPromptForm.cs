@@ -11,6 +11,7 @@ namespace HoaDonDienTu.WinForms.Shell
         public ShutdownPromptForm(string companyName)
         {
             InitializeComponent();
+            HoaDonDienTu.WinForms.Common.UiIcons.Decorate(this);
             lblMessage.Text = "Đang có tác vụ tải hóa đơn của " + companyName + ".\r\n"
                 + "Chọn cách xử lý trước khi thoát. Tạm dừng sẽ ghi lại tiến độ để tiếp tục lần sau.";
             Choice = ShutdownChoice.StayOpen;

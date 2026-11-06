@@ -40,6 +40,7 @@ namespace HoaDonDienTu.WinForms.History
         public HistoryControl()
         {
             InitializeComponent();
+            HoaDonDienTu.WinForms.Common.UiIcons.Decorate(this);
             _typingTimer = new Timer(components) { Interval = TypingDelayMs };
             _typingTimer.Tick += delegate
             {

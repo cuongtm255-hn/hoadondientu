@@ -17,6 +17,7 @@ namespace HoaDonDienTu.WinForms.Settings
         public SettingsControl()
         {
             InitializeComponent();
+            HoaDonDienTu.WinForms.Common.UiIcons.Decorate(this);
             _sections = new[]
             {
                 Map(btnSecCompany, SettingsSection.ActiveCompany),
@@ -63,6 +64,11 @@ namespace HoaDonDienTu.WinForms.Settings
                 {
                     var button = new KryptonButton { Width = 150, Height = 36, Enabled = a.Enabled, Tag = a.Id, Margin = new Padding(0, 0, 8, 0) };
                     button.Values.Text = a.Text;
+                    HoaDonDienTu.WinForms.Common.UiIcon icon;
+                    if (HoaDonDienTu.WinForms.Common.UiIcons.TryGetForAction(a.Id, out icon)) HoaDonDienTu.WinForms.Common.UiIcons.Apply(button, icon);
+
+                    // Chữ + icon + lề: rộng theo nội dung để "Đổi thư mục kho..." không bị cắt.
+                    button.Width = System.Math.Max(150, TextRenderer.MeasureText(a.Text, new System.Drawing.Font("Segoe UI", 9F)).Width + 66);
                     button.Name = "btnAction_" + a.Id;
                     button.Click += OnActionClick;
                     flowActions.Controls.Add(button);

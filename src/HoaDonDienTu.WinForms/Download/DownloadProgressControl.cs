@@ -14,6 +14,7 @@ namespace HoaDonDienTu.WinForms.Download
         public DownloadProgressControl()
         {
             InitializeComponent();
+            HoaDonDienTu.WinForms.Common.UiIcons.Decorate(this);
             gridSegments.CellFormatting += OnCellFormatting;
         }
 

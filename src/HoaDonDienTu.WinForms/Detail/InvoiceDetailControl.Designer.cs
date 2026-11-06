@@ -65,7 +65,7 @@ namespace HoaDonDienTu.WinForms.Detail
             this.lblBadge.AutoSize = false;
             this.lblBadge.Location = new System.Drawing.Point(330, 36);
             this.lblBadge.Name = "lblBadge";
-            this.lblBadge.Size = new System.Drawing.Size(240, 26);
+            this.lblBadge.Size = new System.Drawing.Size(170, 26);
             this.lblBadge.StateCommon.ShortText.Color1 = System.Drawing.Color.FromArgb(30, 110, 60);
             this.lblBadge.Values.Text = " ";
             //
@@ -85,13 +85,13 @@ namespace HoaDonDienTu.WinForms.Detail
             this.pnlTitleActions.Dock = System.Windows.Forms.DockStyle.Right;
             this.pnlTitleActions.Name = "pnlTitleActions";
             this.pnlTitleActions.Padding = new System.Windows.Forms.Padding(0, 30, 16, 30);
-            this.pnlTitleActions.Size = new System.Drawing.Size(460, 104);
+            this.pnlTitleActions.Size = new System.Drawing.Size(490, 104);
             //
             // btnBack
             //
             this.btnBack.Dock = System.Windows.Forms.DockStyle.Left;
             this.btnBack.Name = "btnBack";
-            this.btnBack.Size = new System.Drawing.Size(100, 44);
+            this.btnBack.Size = new System.Drawing.Size(116, 44);
             this.btnBack.Values.Text = "Quay lại";
             this.btnBack.Click += new System.EventHandler(this.OnBackClick);
             //
@@ -100,7 +100,7 @@ namespace HoaDonDienTu.WinForms.Detail
             this.btnExportZip.Dock = System.Windows.Forms.DockStyle.Right;
             this.btnExportZip.Enabled = false;
             this.btnExportZip.Name = "btnExportZip";
-            this.btnExportZip.Size = new System.Drawing.Size(130, 44);
+            this.btnExportZip.Size = new System.Drawing.Size(140, 44);
             this.btnExportZip.Values.Text = "Xuất ZIP XML";
             this.btnExportZip.Click += new System.EventHandler(this.OnExportZipClick);
             //

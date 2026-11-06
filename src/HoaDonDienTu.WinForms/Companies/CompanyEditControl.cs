@@ -16,6 +16,7 @@ namespace HoaDonDienTu.WinForms.Companies
         public CompanyEditControl()
         {
             InitializeComponent();
+            HoaDonDienTu.WinForms.Common.UiIcons.Decorate(this);
             _checkLabels = new[] { lblCheck1, lblCheck2, lblCheck3, lblCheck4, lblCheck5 };
         }
 

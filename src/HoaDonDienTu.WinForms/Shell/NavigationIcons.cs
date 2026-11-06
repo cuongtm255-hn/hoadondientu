@@ -17,18 +17,24 @@ namespace HoaDonDienTu.WinForms.Shell
             using (var brush = new SolidBrush(color))
             {
                 g.SmoothingMode = SmoothingMode.AntiAlias;
-                switch (screen)
-                {
-                    case ScreenId.Dashboard: Dashboard(g, brush); break;
-                    case ScreenId.Download: Download(g, pen); break;
-                    case ScreenId.InvoiceArchive: Archive(g, pen); break;
-                    case ScreenId.DownloadHistory: History(g, pen); break;
-                    case ScreenId.CompanyList: Building(g, pen, brush); break;
-                    case ScreenId.Settings: Gear(g, pen); break;
-                }
+                Draw(g, screen, pen, brush);
             }
 
             return bitmap;
+        }
+
+        /// <summary>Vẽ biểu tượng của một màn hình lên lưới 20x20 (người gọi có thể co giãn <paramref name="g"/> để ra kích thước khác).</summary>
+        internal static void Draw(Graphics g, ScreenId screen, Pen pen, Brush brush)
+        {
+            switch (screen)
+            {
+                case ScreenId.Dashboard: Dashboard(g, brush); break;
+                case ScreenId.Download: Download(g, pen); break;
+                case ScreenId.InvoiceArchive: Archive(g, pen); break;
+                case ScreenId.DownloadHistory: History(g, pen); break;
+                case ScreenId.CompanyList: Building(g, pen, brush); break;
+                case ScreenId.Settings: Gear(g, pen); break;
+            }
         }
 
         private static void Dashboard(Graphics g, Brush brush)

@@ -45,6 +45,7 @@ namespace HoaDonDienTu.WinForms.Archive
         public ArchiveControl()
         {
             InitializeComponent();
+            HoaDonDienTu.WinForms.Common.UiIcons.Decorate(this);
             _typingTimer = new Timer(components) { Interval = TypingDelayMs };
             _typingTimer.Tick += delegate
             {

@@ -12,6 +12,7 @@ namespace HoaDonDienTu.WinForms.Login
         public PortalLoginForm()
         {
             InitializeComponent();
+            HoaDonDienTu.WinForms.Common.UiIcons.Decorate(this);
         }
 
         public event EventHandler ViewShown;

@@ -4,6 +4,7 @@ using System.Windows.Forms;
 using ComponentFactory.Krypton.Ribbon;
 using ComponentFactory.Krypton.Toolkit;
 using HoaDonDienTu.Application.Navigation;
+using HoaDonDienTu.WinForms.Common;
 
 namespace HoaDonDienTu.WinForms.Shell
 {
@@ -16,15 +17,34 @@ namespace HoaDonDienTu.WinForms.Shell
         public MainShellForm()
         {
             InitializeComponent();
+            HoaDonDienTu.WinForms.Common.UiIcons.Decorate(this);
             _screenHost = new ScreenHost(pnlContent);
             _navButtons = new List<KryptonCheckButton>
             {
                 navDashboard, navDownload, navInvoiceArchive, navDownloadHistory, navCompanies, navSettings
             };
             StyleNavigationButtons();
+            DecorateRibbon();
 #if DEBUG
             ApplyTestMarker();
 #endif
+        }
+
+        /// <summary>Icon lớn (32) và nhỏ (16) cho các nút ribbon thay cho biểu tượng mặc định.</summary>
+        private void DecorateRibbon()
+        {
+            SetRibbonIcon(ribbonBtnDownload, UiIcon.Download);
+            SetRibbonIcon(ribbonBtnArchive, UiIcon.Archive);
+            SetRibbonIcon(ribbonBtnHistory, UiIcon.History);
+            SetRibbonIcon(ribbonBtnSwitchCompany, UiIcon.Switch);
+            SetRibbonIcon(ribbonBtnCompanies, UiIcon.Building);
+            SetRibbonIcon(ribbonBtnPortalLogin, UiIcon.Login);
+        }
+
+        private static void SetRibbonIcon(ComponentFactory.Krypton.Ribbon.KryptonRibbonGroupButton button, UiIcon icon)
+        {
+            button.ImageLarge = UiIcons.Create(icon, 32, UiIcons.Accent);
+            button.ImageSmall = UiIcons.Create(icon, 16, UiIcons.Accent);
         }
 
         private static readonly System.Drawing.Color NavActiveText = System.Drawing.Color.White;

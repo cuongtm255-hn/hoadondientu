@@ -19,6 +19,7 @@ namespace HoaDonDienTu.WinForms.Detail
         public InvoiceViewerControl()
         {
             InitializeComponent();
+            HoaDonDienTu.WinForms.Common.UiIcons.Decorate(this);
         }
 
         public event EventHandler CloseRequested;

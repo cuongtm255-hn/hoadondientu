@@ -18,6 +18,7 @@ namespace HoaDonDienTu.WinForms.Dashboard
         public DashboardControl()
         {
             InitializeComponent();
+            HoaDonDienTu.WinForms.Common.UiIcons.Decorate(this);
             ShowSession(null);
         }
 
@@ -126,6 +127,7 @@ namespace HoaDonDienTu.WinForms.Dashboard
             var panel = new Panel { Height = AttentionRowHeight, Margin = new Padding(0, 0, 0, 2), Width = Math.Max(200, flowAttention.ClientSize.Width - 14) };
             var button = new KryptonButton { Dock = DockStyle.Right, Width = 90, Tag = index };
             button.Values.Text = row.ActionText;
+            HoaDonDienTu.WinForms.Common.UiIcons.Apply(button, HoaDonDienTu.WinForms.Common.UiIcon.Next);
             button.Click += OnAttentionClick;
             var badge = new KryptonLabel { Dock = DockStyle.Left, AutoSize = false, Width = 86 };
             badge.Values.Text = row.Badge;

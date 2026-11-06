@@ -198,7 +198,7 @@ namespace HoaDonDienTu.WinForms.Shell
             // lblLicenseStatus
             //
             this.lblLicenseStatus.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.lblLicenseStatus.Location = new System.Drawing.Point(540, 20);
+            this.lblLicenseStatus.Location = new System.Drawing.Point(526, 20);
             this.lblLicenseStatus.Name = "lblLicenseStatus";
             this.lblLicenseStatus.Size = new System.Drawing.Size(130, 20);
             this.lblLicenseStatus.TabIndex = 2;
@@ -207,7 +207,7 @@ namespace HoaDonDienTu.WinForms.Shell
             // lblPortalSession
             //
             this.lblPortalSession.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.lblPortalSession.Location = new System.Drawing.Point(680, 20);
+            this.lblPortalSession.Location = new System.Drawing.Point(660, 20);
             this.lblPortalSession.Name = "lblPortalSession";
             this.lblPortalSession.Size = new System.Drawing.Size(110, 20);
             this.lblPortalSession.TabIndex = 3;
@@ -216,9 +216,9 @@ namespace HoaDonDienTu.WinForms.Shell
             // btnPortalLogin
             //
             this.btnPortalLogin.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnPortalLogin.Location = new System.Drawing.Point(800, 15);
+            this.btnPortalLogin.Location = new System.Drawing.Point(778, 15);
             this.btnPortalLogin.Name = "btnPortalLogin";
-            this.btnPortalLogin.Size = new System.Drawing.Size(90, 30);
+            this.btnPortalLogin.Size = new System.Drawing.Size(112, 30);
             this.btnPortalLogin.TabIndex = 4;
             this.btnPortalLogin.Values.Text = "Đăng nhập";
             this.btnPortalLogin.Click += new System.EventHandler(this.OnPortalLoginClick);
@@ -417,6 +417,7 @@ namespace HoaDonDienTu.WinForms.Shell
             this.MinimumSize = new System.Drawing.Size(900, 600);
             this.Name = "MainShellForm";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
+            this.WindowState = System.Windows.Forms.FormWindowState.Maximized;
             this.Text = "Hóa đơn điện tử";
             ((System.ComponentModel.ISupportInitialize)(this.ribbon)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.pnlContent)).EndInit();

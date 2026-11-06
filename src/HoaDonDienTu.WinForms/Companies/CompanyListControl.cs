@@ -14,6 +14,7 @@ namespace HoaDonDienTu.WinForms.Companies
         public CompanyListControl()
         {
             InitializeComponent();
+            HoaDonDienTu.WinForms.Common.UiIcons.Decorate(this);
             cboStatusFilter.Items.AddRange(new object[] { "Mọi trạng thái", "Sẵn sàng", "Cần xử lý" });
             cboStatusFilter.SelectedIndex = 0;
         }

@@ -81,6 +81,8 @@ namespace HoaDonDienTu.WinForms.Archive
             // pnlTitle
             //
             this.pnlTitle.Controls.Add(this.pnlTitleActions);
+            this.pnlTitle.Controls.Add(this.btnPurchase);
+            this.pnlTitle.Controls.Add(this.btnSold);
             this.pnlTitle.Controls.Add(this.lblSubtitle);
             this.pnlTitle.Controls.Add(this.lblTitle);
             this.pnlTitle.Dock = System.Windows.Forms.DockStyle.Top;
@@ -111,18 +113,18 @@ namespace HoaDonDienTu.WinForms.Archive
             this.pnlTitleActions.Dock = System.Windows.Forms.DockStyle.Right;
             this.pnlTitleActions.Name = "pnlTitleActions";
             this.pnlTitleActions.Padding = new System.Windows.Forms.Padding(0, 22, 16, 22);
-            this.pnlTitleActions.Size = new System.Drawing.Size(470, 84);
+            this.pnlTitleActions.Size = new System.Drawing.Size(500, 84);
             //
             // btnCheckFiles / btnExportZip / btnExportExcel (thứ tự thêm quyết định thứ tự xếp từ phải sang trái)
             //
             this.btnCheckFiles.Dock = System.Windows.Forms.DockStyle.Right;
             this.btnCheckFiles.Name = "btnCheckFiles";
-            this.btnCheckFiles.Size = new System.Drawing.Size(120, 40);
+            this.btnCheckFiles.Size = new System.Drawing.Size(140, 40);
             this.btnCheckFiles.Values.Text = "Kiểm tra file";
             this.btnCheckFiles.Click += new System.EventHandler(this.OnCheckFilesClick);
             this.btnExportZip.Dock = System.Windows.Forms.DockStyle.Right;
             this.btnExportZip.Name = "btnExportZip";
-            this.btnExportZip.Size = new System.Drawing.Size(150, 40);
+            this.btnExportZip.Size = new System.Drawing.Size(158, 40);
             this.btnExportZip.Values.Text = "Xuất ZIP XML";
             this.btnExportZip.Click += new System.EventHandler(this.OnExportZipClick);
             this.btnExportExcel.Dock = System.Windows.Forms.DockStyle.Right;
@@ -144,23 +146,19 @@ namespace HoaDonDienTu.WinForms.Archive
             // tlpFilter
             //
             this.tlpFilter.BackColor = System.Drawing.Color.Transparent;
-            this.tlpFilter.ColumnCount = 8;
-            this.tlpFilter.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 96F));
-            this.tlpFilter.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 86F));
+            this.tlpFilter.ColumnCount = 6;
             this.tlpFilter.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
             this.tlpFilter.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 112F));
             this.tlpFilter.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 150F));
             this.tlpFilter.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 190F));
             this.tlpFilter.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 150F));
             this.tlpFilter.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 80F));
-            this.tlpFilter.Controls.Add(this.btnPurchase, 0, 0);
-            this.tlpFilter.Controls.Add(this.btnSold, 1, 0);
-            this.tlpFilter.Controls.Add(this.txtQuick, 2, 0);
-            this.tlpFilter.Controls.Add(this.cboYear, 3, 0);
-            this.tlpFilter.Controls.Add(this.cboStatus, 4, 0);
-            this.tlpFilter.Controls.Add(this.cboCheckResult, 5, 0);
-            this.tlpFilter.Controls.Add(this.cboFile, 6, 0);
-            this.tlpFilter.Controls.Add(this.btnClear, 7, 0);
+            this.tlpFilter.Controls.Add(this.txtQuick, 0, 0);
+            this.tlpFilter.Controls.Add(this.cboYear, 1, 0);
+            this.tlpFilter.Controls.Add(this.cboStatus, 2, 0);
+            this.tlpFilter.Controls.Add(this.cboCheckResult, 3, 0);
+            this.tlpFilter.Controls.Add(this.cboFile, 4, 0);
+            this.tlpFilter.Controls.Add(this.btnClear, 5, 0);
             this.tlpFilter.Dock = System.Windows.Forms.DockStyle.Fill;
             this.tlpFilter.Name = "tlpFilter";
             this.tlpFilter.RowCount = 1;
@@ -169,16 +167,16 @@ namespace HoaDonDienTu.WinForms.Archive
             // btnPurchase
             //
             this.btnPurchase.Checked = true;
-            this.btnPurchase.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.btnPurchase.Margin = new System.Windows.Forms.Padding(0, 0, 6, 0);
+            this.btnPurchase.Location = new System.Drawing.Point(210, 10);
+            this.btnPurchase.Size = new System.Drawing.Size(108, 34);
             this.btnPurchase.Name = "btnPurchase";
             this.btnPurchase.Values.Text = "Mua vào";
             this.btnPurchase.Click += new System.EventHandler(this.OnDirectionClick);
             //
             // btnSold
             //
-            this.btnSold.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.btnSold.Margin = new System.Windows.Forms.Padding(0, 0, 6, 0);
+            this.btnSold.Location = new System.Drawing.Point(324, 10);
+            this.btnSold.Size = new System.Drawing.Size(96, 34);
             this.btnSold.Name = "btnSold";
             this.btnSold.Values.Text = "Bán ra";
             this.btnSold.Click += new System.EventHandler(this.OnDirectionClick);

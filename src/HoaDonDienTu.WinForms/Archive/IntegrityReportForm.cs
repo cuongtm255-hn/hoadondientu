@@ -23,6 +23,7 @@ namespace HoaDonDienTu.WinForms.Archive
             _report = report;
             _tempCleaner = tempCleaner;
             InitializeComponent();
+            HoaDonDienTu.WinForms.Common.UiIcons.Decorate(this);
             Fill();
         }
 

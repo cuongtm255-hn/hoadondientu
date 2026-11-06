@@ -15,6 +15,7 @@ namespace HoaDonDienTu.WinForms.Download
         public DownloadConfigControl()
         {
             InitializeComponent();
+            HoaDonDienTu.WinForms.Common.UiIcons.Decorate(this);
 
             for (var m = 1; m <= 12; m++) cboMonth.Items.Add("Tháng " + m);
             for (var q = 1; q <= 4; q++) cboQuarter.Items.Add("Quý " + q);

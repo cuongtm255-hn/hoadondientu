@@ -281,7 +281,7 @@ namespace HoaDonDienTu.WinForms.Companies
             //
             this.btnBrowse.Location = new System.Drawing.Point(436, 60);
             this.btnBrowse.Name = "btnBrowse";
-            this.btnBrowse.Size = new System.Drawing.Size(108, 28);
+            this.btnBrowse.Size = new System.Drawing.Size(134, 28);
             this.btnBrowse.Values.Text = "Chọn thư mục";
             this.btnBrowse.Click += new System.EventHandler(this.OnBrowseClick);
             //
