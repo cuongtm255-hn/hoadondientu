@@ -207,9 +207,9 @@ Trạng thái: ⬜ Chưa bắt đầu · 🟡 Đang làm · ✅ Hoàn thành · 
 | T02-04 | `CompanySetupControl` + presenter (StandardMode first-run) | WinForms | T01-05, T02-03 | ✅ | | First-run dùng lại CompanyEditControl (mode FirstRun), không tách CompanySetupControl |
 | T02-05 | `CompanyListControl` + presenter (SCR-10) + cache tổng quan | WinForms | T02-02, T01-07 | ✅ | | CompanyListControl/Presenter; cache tổng quan hiển thị từ catalog |
 | T02-06 | `CompanyEditControl` + presenter (SCR-11), ghi hai pha | WinForms | T02-03 | ✅ | | CompanyEditControl/Presenter, tạo hai pha + rollback |
-| T02-07 | Ngừng quản lý, relink, quét kho (recovery) | App/WinForms | T02-03 | 🟡 | | Unlink/relink xong; chưa có quét thư mục để recovery |
+| T02-07 | Ngừng quản lý, relink, quét kho (recovery) | App/WinForms | T02-03 | ✅ | 06/11/2026 | Unlink/relink; khôi phục danh mục: `CompanyRecoveryService` quét thư mục dữ liệu (và thư mục con trực tiếp) tìm kho có file định danh hợp lệ bằng đọc-chỉ (`ICompanyStorageScanner`, không ghi file thử vào thư mục lạ), đánh dấu kho đã có trong danh mục, trùng MST hoặc định danh hỏng; `RebuildAsync` đăng ký các kho được chọn, danh mục hỏng được đổi tên thành `companies.json.corrupt-<thời gian>` để giữ lại (`ICompanyCatalogRepair`). Màn hình "Cần khôi phục" thật thay placeholder: quét tự động, chọn thư mục khác, tick kho, đăng ký, khởi động lại. Tên hiển thị đặt tạm theo MST. 17 test + 9 test presenter/control |
 | T02-08 | Nâng cấp Standard → Service đăng ký kho đầu tiên | Application | T03-05 | ⬜ | | Chờ DD-03 |
-| T02-09 | Unit + integration test (mục 8.1–8.2) | Tests | T02-02..T02-08 | 🟡 | | Unit/integration/presenter test xong; thiếu phần nâng cấp Standard→Service và quét kho |
+| T02-09 | Unit + integration test (mục 8.1–8.2) | Tests | T02-02..T02-08 | 🟡 | | Unit/integration/presenter test xong, gồm quét kho khôi phục (06/11/2026); thiếu phần nâng cấp Standard→Service (T02-08, chờ DD-03) |
 | T02-10 | UI smoke test (mục 8.3) | Tests | T02-05 | ✅ | | 8 UI smoke test trong ShellUiSmokeTests |
 
 ### 9.2 Nhật ký tiến độ

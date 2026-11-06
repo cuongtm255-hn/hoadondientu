@@ -14,7 +14,7 @@ namespace HoaDonDienTu.Infrastructure.Companies
     /// Kho của một MST trên đĩa. File <c>company.identity.json</c> ghi mã doanh nghiệp + MST để không mở nhầm kho của MST khác
     /// và để liên kết lại được kho đã ngừng quản lý. company.db và các thư mục XML/PDF do DD-06 thêm vào cùng thư mục.
     /// </summary>
-    public sealed class FileSystemCompanyStorage : ICompanyStorage
+    public sealed class FileSystemCompanyStorage : ICompanyStorage, ICompanyStorageScanner
     {
         public const string IdentityFileName = "company.identity.json";
 
@@ -36,6 +36,14 @@ namespace HoaDonDienTu.Infrastructure.Companies
                 result.DatabaseProblem = CheckDatabase(Path.Combine(path, CompanyDatabaseProvider.RelativePath));
             }
 
+            return result;
+        }
+
+        /// <summary>Chỉ đọc định danh, không thử ghi và không mở cơ sở dữ liệu: dùng để quét hàng loạt thư mục chưa biết là kho hay không.</summary>
+        public StorageInspection ReadIdentity(string path)
+        {
+            var result = new StorageInspection { Exists = Directory.Exists(path) };
+            if (result.Exists) ReadIdentity(path, result);
             return result;
         }
 

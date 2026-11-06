@@ -309,6 +309,7 @@ namespace HoaDonDienTu.WinForms.Bootstrap
                 switchService, contextManager, SessionStore, entitlement, Confirmation, ErrorPresenter,
                 () => NavigationService, () => ShellActions);
             var folderPicker = new FolderPicker();
+            var recovery = new CompanyRecoveryService(registry, storage, registry, Logger);
             var folderLauncher = new ExplorerFolderLauncher();
             System.Func<string, string> suggestFolder = taxCode => Path.Combine(dataDirectory, "Companies", taxCode);
 
@@ -332,6 +333,14 @@ namespace HoaDonDienTu.WinForms.Bootstrap
                         view => new DownloadConfigPresenter(
                             view, splitter, startPolicy, storageProbe, capabilities, SessionStore, contextManager,
                             entitlement, starter, Confirmation, OperationRunner, ErrorPresenter, NavigationService, Clock))),
+                new ScreenDescriptor(
+                    HoaDonDienTu.Application.Navigation.ScreenId.Recovery, "Cần khôi phục", "Khôi phục danh sách doanh nghiệp",
+                    parameter => new RecoveryScreen(
+                        new RecoveryControl(),
+                        view => new RecoveryPresenter(
+                            view, recovery, OperationRunner, ErrorPresenter,
+                            () => new List<string> { Path.Combine(dataDirectory, "Companies") }, folderPicker,
+                            () => System.Windows.Forms.Application.Restart()))),
                 new ScreenDescriptor(
                     HoaDonDienTu.Application.Navigation.ScreenId.InvoiceArchive, "Kho hóa đơn", "SCR-05",
                     parameter => new ArchiveScreen(

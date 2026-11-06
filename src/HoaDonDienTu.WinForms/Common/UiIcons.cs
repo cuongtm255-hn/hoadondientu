@@ -59,6 +59,9 @@ namespace HoaDonDienTu.WinForms.Common
             { "btnSecCompany", UiIcon.Building }, { "btnSecStorage", UiIcon.Archive }, { "btnSecPortal", UiIcon.Link },
             { "btnSecDiagnostics", UiIcon.Info }, { "btnSecLicense", UiIcon.Key }, { "btnSecAbout", UiIcon.Info },
 
+            // Khôi phục danh mục doanh nghiệp
+            { "btnScan", UiIcon.Search }, { "btnBrowseFolder", UiIcon.Folder }, { "btnRebuild", UiIcon.Check }, { "btnRestart", UiIcon.Refresh },
+
             // Khung chính
             { "btnCompanyContext", UiIcon.Building }, { "btnPortalLogin", UiIcon.Login }
         };

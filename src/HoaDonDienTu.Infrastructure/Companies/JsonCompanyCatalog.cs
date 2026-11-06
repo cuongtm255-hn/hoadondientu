@@ -17,7 +17,7 @@ namespace HoaDonDienTu.Infrastructure.Companies
     /// <see cref="AtomicJsonWriter"/> và giữ <c>.bak</c>; file hỏng không có bản .bak hợp lệ thì từ chối ghi để không tạo
     /// danh mục rỗng đè lên dữ liệu có thể khôi phục (NFR-REL-007). Không mở SQLite của bất kỳ MST nào.
     /// </summary>
-    public sealed class JsonCompanyCatalog : ICompanyRegistry
+    public sealed class JsonCompanyCatalog : ICompanyRegistry, ICompanyCatalogRepair
     {
         private readonly string _path;
         private readonly AtomicJsonWriter _writer = new AtomicJsonWriter();
@@ -102,6 +102,32 @@ namespace HoaDonDienTu.Infrastructure.Companies
                 var removed = state.Items.RemoveAll(i => i.Id.Equals(id));
                 if (removed == 0) throw new CompanyCatalogException(CompanyCatalogErrorKind.NotFound, "Không tìm thấy doanh nghiệp trong danh mục.");
             });
+        }
+
+        /// <summary>Danh mục hỏng và không có bản sao hợp lệ: đổi tên file hỏng (và .bak hỏng) thành <c>.corrupt-&lt;thời gian&gt;</c> để giữ lại, danh mục mới tạo lại từ đầu.</summary>
+        public async Task<string> QuarantineCorruptAsync(CancellationToken cancellationToken)
+        {
+            await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                if (ReadState().Status != AtomicReadStatus.Corrupt) return null;
+
+                var stamp = DateTime.UtcNow.ToString("yyyyMMddHHmmssfff", System.Globalization.CultureInfo.InvariantCulture);
+                string moved = null;
+                foreach (var file in new[] { _path, _path + AtomicJsonWriter.BackupSuffix })
+                {
+                    if (!File.Exists(file)) continue;
+                    var target = file + AtomicJsonWriter.CorruptSuffix + "-" + stamp;
+                    File.Move(file, target);
+                    if (moved == null) moved = target;
+                }
+
+                return moved;
+            }
+            finally
+            {
+                _gate.Release();
+            }
         }
 
         private async Task Mutate(CancellationToken cancellationToken, Action<State> change)
