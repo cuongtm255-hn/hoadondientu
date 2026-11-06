@@ -136,6 +136,16 @@ namespace HoaDonDienTu.Application.Invoices
         void Delete(string storageRoot, string relativePath);
     }
 
+    /// <summary>
+    /// Tùy chọn của kho file: liệt kê tên file của một thư mục bằng một lần quét. Kiểm tra tồn tại hàng chục nghìn file bằng
+    /// <see cref="IInvoiceFileStore.Exists"/> từng file chậm hơn nhiều so với quét thư mục chứa chúng (NFR-PERF-002).
+    /// </summary>
+    public interface IInvoiceDirectoryLister
+    {
+        /// <summary>Tên file (không gồm đường dẫn) trong thư mục tương đối <paramref name="relativeDirectory"/>; rỗng nếu thư mục không có; null nếu không liệt kê được.</summary>
+        ISet<string> ListFileNames(string storageRoot, string relativeDirectory);
+    }
+
     public interface IInvoiceNormalizer
     {
         NormalizedInvoice Normalize(PortalInvoiceDto dto, InvoiceDirection direction);

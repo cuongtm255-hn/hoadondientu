@@ -377,6 +377,103 @@ namespace HoaDonDienTu.Application.Tests
             Assert.That((await service.QueryAsync(Q(), CancellationToken.None)).TotalCount, Is.EqualTo(0), "MST khác không thấy dữ liệu của MST kia");
         }
 
+        // ---- Quét thư mục thay cho từng lần kiểm tra file (NFR-PERF-002) ----
+
+        private async Task<ListingFiles> SeedMany(int count, int missingEvery)
+        {
+            var files = new ListingFiles();
+            _files = null;
+            _service = new InvoiceArchiveService(_repo, files, _context);
+            for (var n = 1; n <= count; n++)
+            {
+                var number = n.ToString("D6");
+                var invoice = new NormalizedInvoice
+                {
+                    Direction = InvoiceDirection.Purchase, InvoiceNumber = number, IssueDate = new DateTime(2026, 1, 1).AddDays(n % 28), FormSymbol = "1", InvoiceSymbol = "C26TAA",
+                    SellerTaxCode = "0100100001", SellerName = "Công ty ABC", BuyerTaxCode = "0101234567", BuyerName = "Công ty mẫu", StatusRaw = "1", CheckResultRaw = "5"
+                };
+                var path = @"2026\01\MuaVao\" + number + "_v1.xml";
+                if (missingEvery == 0 || n % missingEvery != 0) files.Existing.Add(path);
+                await _repo.AddAsync(new StoredInvoice
+                {
+                    InvoiceId = Guid.NewGuid(), BusinessKey = BusinessKey.Build(invoice), Invoice = invoice,
+                    Versions = new List<InvoiceVersionRecord> { new InvoiceVersionRecord { VersionId = Guid.NewGuid(), VersionNo = 1, RelativePath = path, Sha256 = "h", IsCurrent = true } },
+                    FirstSeenAtUtc = DateTime.UtcNow, LastSeenAtUtc = DateTime.UtcNow
+                }, CancellationToken.None);
+            }
+
+            return files;
+        }
+
+        [Test]
+        public async Task ManyFilesInOneFolder_AreCheckedWithOneScan_NotOneCallPerFile()
+        {
+            var files = await SeedMany(500, 0);
+
+            var page = await _service.QueryAsync(Q(), CancellationToken.None);
+
+            Assert.That(page.TotalCount, Is.EqualTo(500));
+            Assert.That(files.Scans, Is.EqualTo(new[] { @"2026\01\MuaVao" }));
+            Assert.That(files.ExistsCalls, Is.EqualTo(0));
+            Assert.That(page.Summary.ProblemCount, Is.EqualTo(0));
+        }
+
+        [Test]
+        public async Task TheScan_FindsMissingFiles_LikePerFileChecksWould()
+        {
+            var files = await SeedMany(500, 10);
+
+            var page = await _service.QueryAsync(Q(), CancellationToken.None);
+
+            Assert.That(page.Summary.ProblemCount, Is.EqualTo(50));
+            Assert.That(files.ExistsCalls, Is.EqualTo(0));
+            var problems = await _service.QueryAsync(new ArchiveQuery { Direction = InvoiceDirection.Purchase, FileFilter = FileIntegrityFilter.Problems, PageSize = 100 }, CancellationToken.None);
+            Assert.That(problems.TotalCount, Is.EqualTo(50));
+            Assert.That(problems.Rows.All(r => r.FileState == ArchiveFileState.Missing), Is.True);
+        }
+
+        [Test]
+        public async Task ARepeatedQuery_UsesTheCache_AndRefreshScansAgain()
+        {
+            var files = await SeedMany(500, 0);
+            await _service.QueryAsync(Q(), CancellationToken.None);
+            Assert.That(files.Scans.Count, Is.EqualTo(1));
+
+            await _service.QueryAsync(Q(), CancellationToken.None);
+            Assert.That(files.Scans.Count, Is.EqualTo(1), "Truy vấn lặp lại dùng bộ nhớ đệm");
+
+            var refreshed = Q();
+            refreshed.RefreshFiles = true;
+            files.Existing.Remove(@"2026\01\MuaVao\000007_v1.xml");
+            var page = await _service.QueryAsync(refreshed, CancellationToken.None);
+            Assert.That(files.Scans.Count, Is.EqualTo(2), "Kiểm tra file quét lại đĩa");
+            Assert.That(page.Summary.ProblemCount, Is.EqualTo(1));
+            Assert.That(files.ExistsCalls, Is.EqualTo(0), "Sau khi quét không còn hỏi từng file");
+        }
+
+        [Test]
+        public async Task SmallResults_StillUsePerFileChecks()
+        {
+            var files = await SeedMany(20, 0);
+
+            await _service.QueryAsync(Q(), CancellationToken.None);
+
+            Assert.That(files.Scans, Is.Empty, "Ít file thì quét cả thư mục không đáng");
+            Assert.That(files.ExistsCalls, Is.EqualTo(20));
+        }
+
+        [Test]
+        public async Task WhenTheFolderCannotBeScanned_FallsBackToPerFileChecks()
+        {
+            var files = await SeedMany(300, 0);
+            files.ScanFails = true;
+
+            var page = await _service.QueryAsync(Q(), CancellationToken.None);
+
+            Assert.That(page.Summary.ProblemCount, Is.EqualTo(0));
+            Assert.That(files.ExistsCalls, Is.EqualTo(300));
+        }
+
         // ---- Hỗ trợ ----
 
         private ArchiveQuery With(Action<ArchiveQuery> change)
@@ -406,6 +503,29 @@ namespace HoaDonDienTu.Application.Tests
             public int ExistsCalls;
             public bool Exists(string storageRoot, string relativePath) { ExistsCalls++; return Existing.Contains(relativePath); }
             public void Delete(string storageRoot, string relativePath) { }
+        }
+
+        /// <summary>Kho file có hỗ trợ quét thư mục; đếm số lần quét và số lần hỏi từng file.</summary>
+        private sealed class ListingFiles : IInvoiceFileStore, IInvoiceDirectoryLister
+        {
+            public HashSet<string> Existing = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            public int ExistsCalls;
+            public readonly List<string> Scans = new List<string>();
+            public bool ScanFails;
+
+            public Task<string> WriteTempAsync(string storageRoot, string relativeFolder, byte[] content, CancellationToken cancellationToken) { throw new NotSupportedException(); }
+            public string Commit(string storageRoot, string tempPath, string relativeFolder, string fileName) { throw new NotSupportedException(); }
+            public void DiscardTemp(string tempPath) { }
+            public bool Exists(string storageRoot, string relativePath) { ExistsCalls++; return Existing.Contains(relativePath); }
+            public void Delete(string storageRoot, string relativePath) { }
+
+            public ISet<string> ListFileNames(string storageRoot, string relativeDirectory)
+            {
+                Scans.Add(relativeDirectory);
+                if (ScanFails) return null;
+                var prefix = relativeDirectory.TrimEnd('\\') + "\\";
+                return new HashSet<string>(Existing.Where(p => p.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) && p.IndexOf('\\', prefix.Length) < 0).Select(p => p.Substring(prefix.Length)), StringComparer.OrdinalIgnoreCase);
+            }
         }
 
         private sealed class FakeContext : ICompanyContextAccessor

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -11,7 +12,7 @@ namespace HoaDonDienTu.Infrastructure.Invoices
     /// Ghi file XML vào thư mục kho của MST: ghi file tạm cùng thư mục đích rồi đổi tên (atomic trên cùng volume), nên file chính thức
     /// không bao giờ ở trạng thái ghi dở. Nếu tên đã tồn tại thì thêm hậu tố, không ghi đè file nào (DD-06 mục 3, 6).
     /// </summary>
-    public sealed class FileSystemInvoiceFileStore : IInvoiceFileStore, IInvoiceFileReader
+    public sealed class FileSystemInvoiceFileStore : IInvoiceFileStore, IInvoiceFileReader, IInvoiceDirectoryLister
     {
         public const string TempSuffix = ".tmp";
 
@@ -78,6 +79,31 @@ namespace HoaDonDienTu.Infrastructure.Invoices
             var full = Path.GetFullPath(Path.Combine(storageRoot, relativePath ?? string.Empty));
             if (!full.StartsWith(root, StringComparison.OrdinalIgnoreCase)) throw new FileNotFoundException("Đường dẫn nằm ngoài thư mục kho.", relativePath);
             return full;
+        }
+
+        public ISet<string> ListFileNames(string storageRoot, string relativeDirectory)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(relativeDirectory)) return null;
+                var path = ResolveInsideRoot(storageRoot, relativeDirectory);
+                var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                if (!Directory.Exists(path)) return names;
+                foreach (var file in Directory.EnumerateFiles(path)) names.Add(Path.GetFileName(file));
+                return names;
+            }
+            catch (IOException)
+            {
+                return null;
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return null;
+            }
+            catch (ArgumentException)
+            {
+                return null;
+            }
         }
 
         public bool Exists(string storageRoot, string relativePath)

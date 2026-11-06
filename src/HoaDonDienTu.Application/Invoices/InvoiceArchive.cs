@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -137,6 +138,7 @@ namespace HoaDonDienTu.Application.Invoices
         private readonly IInvoiceRepository _repository;
         private readonly IInvoiceFileStore _files;
         private readonly ICompanyContextAccessor _context;
+        private readonly IInvoiceDirectoryLister _lister;
         private readonly object _cacheGate = new object();
         private readonly Dictionary<string, CachedExistence> _existence = new Dictionary<string, CachedExistence>(StringComparer.OrdinalIgnoreCase);
 
@@ -151,6 +153,9 @@ namespace HoaDonDienTu.Application.Invoices
 
         private const int ExistenceCacheLimit = 200000;
 
+        /// <summary>Từ số file này trong cùng một thư mục trở lên thì quét thư mục một lần thay vì hỏi từng file.</summary>
+        private const int DirectoryScanThreshold = 200;
+
         public InvoiceArchiveService(IInvoiceRepository repository, IInvoiceFileStore files, ICompanyContextAccessor context)
         {
             if (repository == null) throw new ArgumentNullException("repository");
@@ -159,6 +164,7 @@ namespace HoaDonDienTu.Application.Invoices
             _repository = repository;
             _files = files;
             _context = context;
+            _lister = files as IInvoiceDirectoryLister;
         }
 
         public async Task<ArchivePage> QueryAsync(ArchiveQuery query, CancellationToken cancellationToken)
@@ -170,7 +176,8 @@ namespace HoaDonDienTu.Application.Invoices
             // Lọc và sắp xếp ở repository; ở đây chỉ còn kiểm tra file trên đĩa (không có trong cơ sở dữ liệu) và nạp đầy đủ đúng một trang.
             var refs = await _repository.ListFileRefsAsync(ArchiveCriteria.From(query), cancellationToken).ConfigureAwait(false);
             var states = new List<ArchiveFileState>(refs.Count);
-            foreach (var r in refs) states.Add(StateOf(root, r, refresh));
+            var scanned = ScanDirectories(root, refs, refresh);
+            foreach (var r in refs) states.Add(StateOf(root, r, refresh, scanned));
 
             var matched = new List<InvoiceFileRef>(refs.Count);
             var matchedStates = new List<ArchiveFileState>(refs.Count);
@@ -233,9 +240,81 @@ namespace HoaDonDienTu.Application.Invoices
             return _context.Current.StorageRoot;
         }
 
-        private ArchiveFileState StateOf(string root, InvoiceFileRef invoice, bool refresh)
+        /// <summary>
+        /// Với thư mục có nhiều file hóa đơn trong kết quả, quét thư mục một lần rồi đối chiếu tên (nhanh hơn nhiều so với một lần kiểm tra mỗi file).
+        /// Kết quả cũng được ghi vào bộ nhớ đệm tồn tại. Trả về null nếu không có thư mục nào đủ lớn hoặc kho không hỗ trợ quét.
+        /// </summary>
+        private Dictionary<string, bool> ScanDirectories(string root, IList<InvoiceFileRef> refs, bool refresh)
         {
-            if (invoice.RelativePath == null || !FileExists(root, invoice.RelativePath, refresh)) return ArchiveFileState.Missing;
+            if (_lister == null || refs.Count < DirectoryScanThreshold) return null;
+
+            var groups = new Dictionary<string, List<InvoiceFileRef>>(StringComparer.OrdinalIgnoreCase);
+            foreach (var r in refs)
+            {
+                if (string.IsNullOrEmpty(r.RelativePath)) continue;
+                string directory;
+                try
+                {
+                    directory = Path.GetDirectoryName(r.RelativePath);
+                }
+                catch (ArgumentException)
+                {
+                    continue;
+                }
+
+                // File nằm thẳng ở gốc kho thì để kiểm tra từng file như cũ.
+                if (string.IsNullOrEmpty(directory)) continue;
+                List<InvoiceFileRef> group;
+                if (!groups.TryGetValue(directory, out group)) groups[directory] = group = new List<InvoiceFileRef>();
+                group.Add(r);
+            }
+
+            Dictionary<string, bool> result = null;
+            var now = DateTime.UtcNow;
+            foreach (var pair in groups)
+            {
+                if (pair.Value.Count < DirectoryScanThreshold) continue;
+                if (!refresh && AllFresh(root, pair.Value, now)) continue;
+
+                var names = _lister.ListFileNames(root, pair.Key);
+                if (names == null) continue;
+
+                if (result == null) result = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+                lock (_cacheGate)
+                {
+                    foreach (var r in pair.Value)
+                    {
+                        var exists = names.Contains(Path.GetFileName(r.RelativePath));
+                        result[r.RelativePath] = exists;
+                        if (_existence.Count >= ExistenceCacheLimit) _existence.Clear();
+                        _existence[root + "|" + r.RelativePath] = new CachedExistence { Exists = exists, CheckedAtUtc = now };
+                    }
+                }
+            }
+
+            return result;
+        }
+
+        private bool AllFresh(string root, List<InvoiceFileRef> group, DateTime now)
+        {
+            lock (_cacheGate)
+            {
+                foreach (var r in group)
+                {
+                    CachedExistence cached;
+                    if (!_existence.TryGetValue(root + "|" + r.RelativePath, out cached) || now - cached.CheckedAtUtc >= ExistenceTtl) return false;
+                }
+            }
+
+            return true;
+        }
+
+        private ArchiveFileState StateOf(string root, InvoiceFileRef invoice, bool refresh, Dictionary<string, bool> scanned)
+        {
+            if (invoice.RelativePath == null) return ArchiveFileState.Missing;
+            bool scannedExists;
+            var exists = scanned != null && scanned.TryGetValue(invoice.RelativePath, out scannedExists) ? scannedExists : FileExists(root, invoice.RelativePath, refresh);
+            if (!exists) return ArchiveFileState.Missing;
 
             // "Thiếu file" luôn lấy theo đĩa lúc này (người dùng có thể đã chép file về); các lỗi nội dung là kết quả của lần kiểm tra gần nhất.
             if (invoice.StoredProblem.HasValue && invoice.StoredProblem.Value != IntegrityProblemKind.Missing) return ArchiveFileState.Damaged;

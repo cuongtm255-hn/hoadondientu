@@ -142,6 +142,24 @@ namespace HoaDonDienTu.Infrastructure.Tests.Invoices
             }
         }
 
+        [Test]
+        public void ListFileNames_ReturnsTheFilesOfOneFolder_AndRefusesPathsOutsideTheStore()
+        {
+            var folder = Path.Combine(_root, "2026", "01", "BanRa");
+            Directory.CreateDirectory(Path.Combine(folder, "con"));
+            File.WriteAllText(Path.Combine(folder, "A_0001_v1.xml"), "x");
+            File.WriteAllText(Path.Combine(folder, "B_0002_v1.xml"), "x");
+            File.WriteAllText(Path.Combine(folder, "con", "khong-tinh.xml"), "x");
+
+            var names = _files.ListFileNames(_root, @"2026\01\BanRa");
+
+            Assert.That(names, Is.EquivalentTo(new[] { "A_0001_v1.xml", "B_0002_v1.xml" }), "Chỉ file của đúng thư mục, không lấy thư mục con");
+            Assert.That(names.Contains("a_0001_V1.XML"), Is.True, "Không phân biệt hoa thường như hệ thống file Windows");
+            Assert.That(_files.ListFileNames(_root, @"2026\02\BanRa"), Is.Empty, "Thư mục không có thì rỗng, không lỗi");
+            Assert.That(_files.ListFileNames(_root, @"..\ngoai"), Is.Null, "Ra ngoài thư mục kho thì không liệt kê");
+            Assert.That(_files.ListFileNames(_root, string.Empty), Is.Null, "Gốc kho để kiểm tra từng file");
+        }
+
         // ---- Engine tải + kho trên cổng giả ----
 
         [Test]
