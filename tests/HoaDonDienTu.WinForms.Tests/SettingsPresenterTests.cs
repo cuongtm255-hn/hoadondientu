@@ -71,16 +71,25 @@ namespace HoaDonDienTu.WinForms.Tests
             Assert.That(_view.Title, Is.EqualTo("Thông tin ứng dụng"));
             Assert.That(_view.Rows[0].Value, Is.EqualTo("1.1.0 · Schema v1"));
             Assert.That(_view.Rows[1].Value, Is.EqualTo("Chế độ dịch vụ"));
-            Assert.That(_view.Rows[2].Value, Is.EqualTo("Đang hiệu lực ••••1234"));
+            Assert.That(_view.Rows[2].Value, Is.EqualTo("Đã kích hoạt ••••1234"));
         }
 
         [Test]
-        public void ReadOnly_SummaryShowsRenewalHint()
+        public void Expired_SummaryShowsTheTrialIsOver()
         {
-            Entitlement.Value = AppMode.ReadOnlyService;
+            _license.Info = new LicenseInfo(LicenseStatus.Expired, LicenseIssue.Expired, "Trial", null, null, null, null);
             _presenter.Initialize();
 
-            Assert.That(_view.LicenseSummary, Is.EqualTo("Chỉ đọc – cần gia hạn"));
+            Assert.That(_view.LicenseSummary, Is.EqualTo("Hết thời gian dùng thử"));
+        }
+
+        [Test]
+        public void Trial_SummaryShowsTheLastDay()
+        {
+            _license.Info = new LicenseInfo(LicenseStatus.Trial, LicenseIssue.None, "Trial", null, new DateTime(2026, 12, 7, 0, 0, 0, DateTimeKind.Utc), null, null);
+            _presenter.Initialize();
+
+            Assert.That(_view.LicenseSummary, Is.EqualTo("Dùng thử đến hết 06/12/2026"));
         }
 
         [TestCase(SettingsSection.Storage)]

@@ -58,9 +58,9 @@ VT="/c/Program Files/Microsoft Visual Studio/2022/Community/Common7/IDE/CommonEx
 |---|---|
 | Nhật ký | `%LOCALAPPDATA%\HoaDonDienTu\logs\app-yyyyMMdd.log` (mỗi ngày một file, đã che token/cookie/mật khẩu/XML) |
 | Danh mục doanh nghiệp | `%LOCALAPPDATA%\HoaDonDienTu\data\companies.json` (+ `.bak`) |
-| Licence | `%LOCALAPPDATA%\HoaDonDienTu\data\license.dat` (DPAPI, gắn máy) |
+| Licence | `%ProgramData%\HoaDonDienTu\Runtime\hddt-license.bin` và `HKCU\Software\HoaDonDienTu\Runtime` (DPAPI, gắn máy; mốc dùng thử + mã kích hoạt) |
 | Cấu hình API cổng Thuế | `portal-api.json`: bản trong `%LOCALAPPDATA%\HoaDonDienTu\` được ưu tiên, rồi bản cạnh `HoaDonDienTu.exe`. Thiếu thì dùng mặc định. `baseUrl` bắt buộc thuộc `gdt.gov.vn` (https), sai thì bị bỏ và dùng mặc định |
-| Cấu hình licence | `license-api.json`: cùng thứ tự tìm. Thiếu thì kích hoạt licence chưa dùng được, ứng dụng chạy chế độ chuẩn |
+| Cấp mã kích hoạt | [license-keys.md](license-keys.md): khách gửi mã máy, người phát hành chạy `scripts\New-ActivationKey.ps1` |
 | Kho của một doanh nghiệp | thư mục người dùng chọn (gợi ý `…\data\Companies\<MST>`): `company.identity.json`, `Data\company.db`, thư mục theo năm/tháng chứa XML, `Backups\`, `Exports\` |
 | Bản sao trước nâng cấp schema | `Data\company.db.v<N>.bak` cạnh cơ sở dữ liệu (có thể xóa khi đã dùng ổn định) |
 
@@ -80,7 +80,7 @@ Luôn bắt đầu bằng file log của ngày xảy ra lỗi. Mỗi lỗi hiể
 | Đăng nhập xong nhưng "Tải hóa đơn" vẫn khóa | Phiên cổng Thuế chưa xác minh được MST, hoặc phiên hết hạn | Đăng nhập lại; MST đăng nhập phải khớp MST doanh nghiệp đang mở |
 | Phiên tải chuyển sang "chờ đăng nhập lại" (`AUTH_EXPIRED`) | Phiên cổng Thuế hết hạn hoặc không còn khớp doanh nghiệp | Đăng nhập lại đúng MST rồi tiếp tục phiên tải |
 | `portal-api.json không hợp lệ, dùng cấu hình mặc định` trong log | File cấu hình sai cấu trúc/schema cũ hoặc `baseUrl` ngoài `gdt.gov.vn` | Xóa file tùy chỉnh ở `%LOCALAPPDATA%\HoaDonDienTu\` để dùng mặc định, hoặc sửa theo mẫu |
-| Licence "chưa kích hoạt" / chạy chế độ chuẩn | Thiếu `license-api.json` hợp lệ, hoặc chưa kích hoạt | Thêm `license-api.json`, kích hoạt ở Bản quyền (SCR-12) |
+| Hộp thoại "Đã hết 30 ngày dùng thử" / "Mã kích hoạt không còn hợp lệ" | Hết dùng thử, hoặc mã máy đổi (cài lại Windows, đổi ổ hệ thống) | Khách gửi mã máy hiện tại, cấp mã mới theo [license-keys.md](license-keys.md) |
 | Kho hóa đơn hiện "Thiếu XML" / "XML lỗi" | File bị xóa, di chuyển hoặc sửa ngoài ứng dụng | Kho hóa đơn → Kiểm tra file → báo cáo toàn vẹn; "Xóa file tạm" chỉ dọn `.tmp` sót; tải lại kỳ đó hoặc khôi phục từ sao lưu |
 | Xuất Excel/ZIP báo lỗi ghi | File đích đang mở bằng Excel, hoặc ổ đĩa đầy | Đóng file đang mở hoặc chọn nơi khác; file cũ vẫn nguyên, không để file tạm |
 | Sao lưu/khôi phục/đổi thư mục kho bị từ chối | Đang có phiên tải chạy | Tạm dừng hoặc chờ phiên tải xong |

@@ -87,7 +87,9 @@ Hãy sao lưu định kỳ và lưu bản sao lưu ở ổ khác. Mục **Kết 
 
 ## 9. Nhiều doanh nghiệp và bản quyền
 
-Chế độ **chuẩn** quản lý một doanh nghiệp. Với bản quyền dịch vụ, màn **Doanh nghiệp** cho thêm, đổi tên, **liên kết lại** thư mục kho khi bạn đã di chuyển nó, và chuyển giữa các MST (mỗi MST một kho riêng, dữ liệu không lẫn nhau). Khi bản quyền hết hạn ứng dụng chuyển sang **chỉ đọc**: vẫn xem, in, xuất dữ liệu cũ nhưng không tải mới. Kích hoạt bản quyền ở **Cài đặt → Bản quyền ứng dụng**; chỉ khóa bản quyền, mã máy đã băm và phiên bản ứng dụng được gửi đi, **không gửi MST, danh sách khách hàng hay hóa đơn**.
+Ứng dụng **dùng thử 30 ngày** đầy đủ chức năng kể từ lần mở đầu tiên. Màn **Doanh nghiệp** cho thêm, đổi tên, **liên kết lại** thư mục kho khi bạn đã di chuyển nó, và chuyển giữa các MST (mỗi MST một kho riêng, dữ liệu không lẫn nhau).
+
+Hết 30 ngày, ứng dụng hiện cửa sổ **Kích hoạt bản quyền** mỗi lần mở. Bấm **Sao chép** ở mã máy, gửi cho đơn vị phát hành, nhận lại **mã kích hoạt** rồi dán vào ô và bấm **Kích hoạt**. Không kích hoạt được thì không vào được ứng dụng, nhưng dữ liệu của bạn vẫn được giữ nguyên và dùng lại ngay sau khi kích hoạt. Mã chỉ đúng cho máy đó và không hết hạn; cài lại Windows thì mã máy đổi và cần mã mới. Xem trạng thái ở **Cài đặt → Bản quyền ứng dụng**. Việc kích hoạt chạy offline, **không gửi MST, danh sách khách hàng hay hóa đơn** đi đâu cả.
 
 ## 10. Khi danh sách doanh nghiệp bị hỏng
 

@@ -29,7 +29,7 @@ Ký hiệu: ⬜ Chưa bắt đầu · 🟡 Đang làm · ✅ Hoàn thành · ⛔
 |---|---|---|---|---|
 | 0 | Yêu cầu và thiết kế | SRS, wireframe, feature list, detail design, kế hoạch | Tất cả (tài liệu) | 🟡 Đang review |
 | 1 | Nền tảng và technical spike | Solution chạy build được; ADR chặn kiến trúc | FT-00 | 🟡 Solution xong; ADR 0001–0006 đã có (G-02 một phần, G-04 và G-08 đóng, G-09 Excel/ZIP); chưa có ADR cho G-01, G-03, G-05, G-06, G-07 và PDF |
-| 2 | Khung chương trình, doanh nghiệp, licence và đăng nhập | Chạy 3 chế độ bằng development adapter | FT-01, FT-02, FT-03, FT-04 | 🟡 DD-01 16/18 task xong; DD-02 7/10; DD-03 5/8 (khóa/hợp đồng licence thật chờ G-06) |
+| 2 | Khung chương trình, doanh nghiệp, licence và đăng nhập | Chạy 3 chế độ bằng development adapter | FT-01, FT-02, FT-03, FT-04 | 🟡 DD-01 16/18 task xong; DD-02 7/10; DD-03 9/10 (licence offline: dùng thử 30 ngày + mã kích hoạt, ADR 0010; còn thử bản cài thật) |
 | 3 | Tải hóa đơn end-to-end | Chọn kỳ → tải → lưu XML trên cổng thật | FT-05, FT-06, FT-07, FT-02 (production) | 🟡 DD-04 xong; DD-05 7/11 và DD-06 9/9 chạy trên cổng giả với SQLite thật ([ADR 0006](../decisions/0006-sqlite-provider.md)); còn đăng nhập WebView thật (G-01), UAT cổng thật |
 | 4 | Kho hóa đơn, chi tiết và trình xem | Tra cứu, xem XML/PDF | FT-08, FT-09 | ✅ DD-07 9/9; DD-08 8/8 (PDF dựng từ XML, ADR 0009) |
 | 5 | Xuất dữ liệu, tổng quan, lịch sử, cài đặt và sao lưu | Hoàn thiện tính năng còn lại | FT-10, FT-11, FT-12 | ✅ DD-09 7/7; DD-10 7/7; DD-11 7/8 (sao lưu/khôi phục có nút hủy, đổi thư mục kho, dung lượng, kiểm tra kết nối; còn thử kết nối cổng thật ở bản Release) |
@@ -69,7 +69,7 @@ Mỗi phase kết thúc khi đạt đủ **tiêu chí thoát**; không bắt đ�
 | T00-04 | Giới hạn tốc độ / 429 | DD-00 | ⬜ |
 | T00-05 | Chiến lược PDF | DD-00 | ⬜ |
 | T00-06 | Đối chiếu mẫu Excel | DD-00 | ✅ ([ADR 0002](../decisions/0002-excel-export-fidelity.md)) |
-| T00-07 | Chốt giao thức licence | DD-00 | ⬜ |
+| T00-07 | Chốt giao thức licence | DD-00 | ✅ (ADR 0010: offline, không máy chủ) |
 | T00-09 | Chọn SQLite provider net45 | DD-00 | ✅ ([ADR 0006](../decisions/0006-sqlite-provider.md), [spike](../../spikes/SqliteSpike/README.md)) |
 | T00-10 | Chọn thư viện Excel/PDF/ZIP net45 | DD-00 | 🟡 (Excel/ZIP chốt ở [ADR 0003](../decisions/0003-xlsx-and-zip-generation.md); còn PDF) |
 
@@ -82,7 +82,7 @@ Mỗi phase kết thúc khi đạt đủ **tiêu chí thoát**; không bắt đ�
 |---|---|---|---|
 | T01-02…T01-15 | Domain/Application nền, composition root, shell, startup, context/switch, login form, session, logging, test | [DD-01](../detail-design/DD-01-APP-SHELL-LOGIN.md#21-theo-dõi-tiến-độ-implement) | ✅ (T01-14 một phần, chờ DD-02/03/06) |
 | T02-01…T02-10 | Catalog, first-run, SCR-10/11, relink, nâng cấp Standard → Service | [DD-02](../detail-design/DD-02-COMPANY-MANAGEMENT.md#9-theo-dõi-tiến-độ-implement) | 🟡 (T02-07 xong 06/11; T02-08 chờ DD-03; T02-03/09 một phần) |
-| T03-01…T03-08 | Entitlement, licence dev + production, SCR-12 | [DD-03](../detail-design/DD-03-LICENSING.md#9-theo-dõi-tiến-độ-implement) | 🟡 (T03-01..03, 06, 08 xong; T03-04/05/07 một phần, chờ G-06) |
+| T03-01…T03-10 | Dùng thử 30 ngày, mã kích hoạt offline, cổng vào ứng dụng, SCR-12, công cụ cấp mã | [DD-03](../detail-design/DD-03-LICENSING.md#8-theo-dõi-tiến-độ-implement) | 🟡 (T03-01..09 xong 07/11; T03-10 thử bản cài thật còn lại) |
 | T06-02 (phần khởi tạo) | Khung `CompanyDatabaseInitializer` tối thiểu để DD-01/DD-02 mở kho | [DD-06](../detail-design/DD-06-INVOICE-STORAGE.md#91-công-việc) | ✅ (`CompanyDatabaseInitializer` + schema v1 + migration, 14 test) |
 | T00-08 | Spike an toàn chuyển MST / crash recovery | DD-00 | ⬜ |
 
@@ -141,7 +141,7 @@ Số task lấy từ bảng theo dõi trong từng DD (cập nhật khi đổi t
 | FT-00 Cổng kỹ thuật | [DD-00](../detail-design/DD-00-TECHNICAL-GATES.md) | 1 | 10 | 2 | 2 | 0 | ADR: [0001](../decisions/0001-portal-api-contract.md) (G-02, một phần), [0002](../decisions/0002-excel-export-fidelity.md) (G-04), [0003](../decisions/0003-xlsx-and-zip-generation.md) (G-09 Excel/ZIP), [0004](../decisions/0004-interim-in-memory-metadata.md) (tạm), [0005](../decisions/0005-mock-only-testing-policy.md), [0006](../decisions/0006-sqlite-provider.md) (G-08); chưa có ADR cho G-01, G-03, G-05, G-06, G-07 ||
 | FT-01/02 Khung + đăng nhập | [DD-01](../detail-design/DD-01-APP-SHELL-LOGIN.md) | 1–3 | 18 | 16 | 2 | 0 | T01-14 một phần; T01-16 Release chạy được, đăng nhập WebView chờ gate G-01; hợp đồng đăng nhập thật đã có (T01-18) |
 | FT-03 Doanh nghiệp | [DD-02](../detail-design/DD-02-COMPANY-MANAGEMENT.md) | 2 | 10 | 7 | 2 | 0 | T02-08 chờ DD-03; khôi phục danh mục bằng quét thư mục xong (T02-07) |
-| FT-04 Licence | [DD-03](../detail-design/DD-03-LICENSING.md) | 2 | 8 | 5 | 3 | 0 | Lõi + SCR-12 + HTTP client + nạp cấu hình xong; khóa/hợp đồng thật chờ G-06 |
+| FT-04 Licence | [DD-03](../detail-design/DD-03-LICENSING.md) | 2 | 10 | 9 | 1 | 0 | Offline: dùng thử 30 ngày + mã kích hoạt RSA theo máy ([ADR 0010](../decisions/0010-simple-offline-license.md), [runbook](../runbooks/license-keys.md)); còn thử bản cài thật |
 | FT-05 Chọn kỳ | [DD-04](../detail-design/DD-04-PERIOD-DOWNLOAD-CONFIG.md) | 3 | 10 | 10 | 0 | 0 | Bộ lọc bán ra và mua vào khớp mẫu thật (mua vào: `ttxly` 5/6/8, có CCCD); đã nối SCR-03 → SCR-04 |
 | FT-06 Hàng đợi tải | [DD-05](../detail-design/DD-05-DOWNLOAD-ENGINE.md) | 3 | 12 | 10 | 1 | 1 | Chạy toàn tuyến trên cổng giả (SCR-03 → engine → kho file → SCR-04) với SQLite; phiên bị ngắt được đưa về tạm dừng lúc mở doanh nghiệp; còn T05-04 chờ G-05, UAT cổng thật |
 | FT-07 Lưu trữ | [DD-06](../detail-design/DD-06-INVOICE-STORAGE.md) | 3 (T06-02 sớm ở 2) | 9 | 9 | 0 | 0 | Lõi lưu trữ, kho file thật, schema và repository SQLite xong (metadata bền vững); T06-06 có bộ kiểm tra toàn vẹn, quét file mồ côi, hộp thoại báo cáo ở nút Kiểm tra file và nút xóa file tạm sót; T06-07 chặn kho có company.db hỏng hoặc schema mới hơn |
@@ -175,7 +175,7 @@ Phase 1 (G-01, G-02, G-08, G-09)
    ├─> Phase 2: khung + login dev adapter   (không cần G-01/G-02 để dựng khung)
    └─> Phase 3: production login (T01-16), API client (T05-06), normalizer (T06-04)
 Phase 3 ──> Phase 4 (cần dữ liệu thật trong kho) ──> Phase 5 (xuất cần Kho/Storage)
-G-06 (licence) chặn T03-04/T03-05 nhưng không chặn Phase 2 nhờ DevelopmentLicenseService
+G-06 (licence) đã đóng bằng ADR 0010: licence offline, không cần máy chủ
 G-03/G-09 (PDF) chặn T08-04/05; Excel và ZIP (T09-03/04) không cần thư viện ngoài nên đã làm xong
 ```
 
@@ -185,7 +185,7 @@ G-03/G-09 (PDF) chặn T08-04/05; Excel và ZIP (T09-03/04) không cần thư vi
 |---|---|---|---|---|
 | R-01 | WebView nào chạy ổn với cổng Thuế trên net45 (WebBrowser/IE legacy hay CefSharp) | FT-02, đóng gói | — | Mở (G-01) |
 | R-02 | Cổng Thuế thay đổi API/giới hạn tốc độ | FT-06, FT-07 | — | Mở (G-02, G-05) |
-| R-03 | Giao thức licence và nhà cung cấp máy chủ licence | FT-04 | — | Mở (G-06) |
+| R-03 | Giao thức licence và nhà cung cấp máy chủ licence | FT-04 | — | Đóng (ADR 0010: offline). Rủi ro còn lại: mất khóa bí mật, xem runbook license-keys |
 | R-04 | Cần tài khoản cổng Thuế thật để spike và UAT | Phase 1, 3, 6 | — | Mở |
 | R-05 | Thư viện SQLite/Excel/PDF phù hợp net45 và giấy phép | FT-07, FT-09, FT-10 | — | Mở (G-09 PDF); SQLite chốt ([ADR 0006](../decisions/0006-sqlite-provider.md)); Excel/ZIP đã chốt ([ADR 0003](../decisions/0003-xlsx-and-zip-generation.md)) |
 | R-06 | Máy build cần Visual Studio + net45 targeting pack (môi trường dev hiện chỉ có `dotnet` CLI) | Phase 1 | — | Mở |

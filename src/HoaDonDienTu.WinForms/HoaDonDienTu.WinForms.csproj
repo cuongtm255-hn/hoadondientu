@@ -70,6 +70,7 @@
     <Compile Include="Licensing\LicenseControl.Designer.cs">
       <DependentUpon>LicenseControl.cs</DependentUpon>
     </Compile>
+    <Compile Include="Licensing\ActivationForm.cs" />
     <Compile Include="Licensing\ILicenseView.cs" />
     <Compile Include="Licensing\LicensePresenter.cs" />
     <Compile Include="Licensing\LicenseScreen.cs" />

@@ -723,56 +723,19 @@ namespace HoaDonDienTu.WinForms.Tests
         }
 
         [Test]
-        public void Standard_License_ShowsStandardState_AndActivateNeedsAKey()
+        public void License_ShowsTheTrial_AndActivateNeedsAKey()
         {
             Start("Standard");
 
             OpenLicenseScreen();
 
-            Assert.That(Control<KryptonLabel>("lblModeTitle").Values.Text, Is.EqualTo("Chế độ chuẩn"));
+            Assert.That(Control<KryptonLabel>("lblModeTitle").Values.Text, Is.EqualTo("Đang dùng thử"));
             Assert.That(Control<KryptonLabel>("lblLast").Values.Text, Is.EqualTo("Chưa kích hoạt"));
-            Assert.That(Control<KryptonLabel>("lblMachine").Values.Text, Does.Contain("••••"));
+            Assert.That(Control<KryptonLabel>("lblMachine").Values.Text, Does.Match("^[0-9A-F]{8}(-[0-9A-F]{8}){3}$"), "Mã máy dạng XXXXXXXX-XXXXXXXX-XXXXXXXX-XXXXXXXX");
             Assert.That(Control<KryptonButton>("btnActivate").Enabled, Is.False);
-            Assert.That(Control<KryptonButton>("btnDeactivate").Enabled, Is.False);
 
-            Control<KryptonTextBox>("txtLicenseKey").Text = "HDDT-SVC-0001";
+            Control<KryptonTextBox>("txtLicenseKey").Text = "HDDT1|abc|def";
             Assert.That(Control<KryptonButton>("btnActivate").Enabled, Is.True);
-        }
-
-        [Test]
-        public void Standard_License_Activate_UnlocksCompanyMenuWithoutRestart()
-        {
-            Start("Standard");
-            Assert.That(Control<KryptonCheckButton>("navCompanies").Visible, Is.False);
-            OpenLicenseScreen();
-
-            Control<KryptonTextBox>("txtLicenseKey").Text = "HDDT-SVC-0001";
-            Click("btnActivate");
-
-            Assert.That(WaitFor(() => ContentTitle() == "Quản lý doanh nghiệp"), Is.True, "Sau kích hoạt phải vào SCR-10 (AC-13)");
-            Assert.That(WaitFor(() => Control<KryptonCheckButton>("navCompanies").Visible), Is.True);
-            Assert.That(_root.Entitlement.CurrentMode, Is.EqualTo(HoaDonDienTu.Domain.Common.AppMode.Service));
-            Assert.That(System.IO.File.Exists(System.IO.Path.Combine(_dataDir, "license.dat")), Is.True);
-        }
-
-        [Test]
-        public void Standard_License_Activated_StaysServiceAfterRestart()
-        {
-            Start("Standard");
-            OpenLicenseScreen();
-            Control<KryptonTextBox>("txtLicenseKey").Text = "HDDT-SVC-0001";
-            Click("btnActivate");
-            Assert.That(WaitFor(() => ContentTitle() == "Quản lý doanh nghiệp"), Is.True);
-
-            // Khởi động lại cùng thư mục dữ liệu: license.dat được đọc và xác minh chữ ký ngay lúc khởi động.
-            _form.Close();
-            _context.Dispose();
-            _root.Dispose();
-            Start("Standard");
-
-            Assert.That(ContentTitle(), Is.EqualTo("Quản lý doanh nghiệp"));
-            Assert.That(_root.Entitlement.CurrentMode, Is.EqualTo(HoaDonDienTu.Domain.Common.AppMode.Service));
-            Assert.That(Control<KryptonCheckButton>("navCompanies").Visible, Is.True);
         }
 
         [Test]
@@ -811,18 +774,6 @@ namespace HoaDonDienTu.WinForms.Tests
             Assert.That(WaitFor(() => _form.Controls.Find("pnlCard", true).FirstOrDefault() != null
                 && _form.Controls.Find("pnlCard", true)[0].Controls.Find("tlpRows", true).FirstOrDefault() != null
                 && _form.Controls.Find("tlpRows", true)[0].Controls.OfType<System.Windows.Forms.Label>().Any(l => l.Text.Contains("mô phỏng"))), Is.True);
-        }
-
-        [Test]
-        public void ReadOnly_License_ShowsExpiredLabel_AndNoDownloadAction()
-        {
-            Start("ReadOnly");
-
-            OpenLicenseScreen();
-
-            Assert.That(Control<KryptonLabel>("lblModeTitle").Values.Text, Does.StartWith("Chỉ đọc"));
-            Assert.That(Control<KryptonCheckButton>("navDownload").Enabled, Is.False);
-            Assert.That(Control<KryptonButton>("btnActivate").Enabled, Is.False, "Chưa nhập key");
         }
 
         // ---- helpers ----

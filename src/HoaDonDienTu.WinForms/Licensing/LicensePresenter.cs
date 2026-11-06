@@ -2,30 +2,26 @@ using System;
 using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
-using HoaDonDienTu.Application.Abstractions;
 using HoaDonDienTu.Application.Common;
 using HoaDonDienTu.Application.Companies;
 using HoaDonDienTu.Application.Licensing;
 using HoaDonDienTu.Application.Navigation;
-using HoaDonDienTu.Domain.Common;
 using HoaDonDienTu.Domain.Licensing;
 
 namespace HoaDonDienTu.WinForms.Licensing
 {
     /// <summary>
-    /// SCR-12 Bản quyền (DD-03 mục 6). Hiển thị trạng thái licence, kích hoạt, xác thực lại và hủy kích hoạt.
-    /// Lỗi nghiệp vụ đi qua <see cref="IUserErrorPresenter"/>; key đầy đủ không bao giờ được hiển thị lại.
+    /// SCR-12 Bản quyền: trạng thái dùng thử 30 ngày hoặc đã kích hoạt, mã máy để gửi cho đơn vị phát hành và ô nhập mã kích hoạt.
+    /// Mã kích hoạt kiểm ngay trên máy (chữ ký số, đúng mã máy), không cần Internet. Lỗi nghiệp vụ đi qua <see cref="IUserErrorPresenter"/>;
+    /// mã đầy đủ không bao giờ được hiển thị lại.
     /// </summary>
     public sealed class LicensePresenter : IDisposable
     {
         private readonly ILicenseView _view;
-        private readonly ILicenseService _license;
-        private readonly IEntitlementService _entitlement;
+        private readonly MachineLicenseService _license;
         private readonly IEntitlementUpdater _updater;
         private readonly ICompanyCatalog _catalog;
-        private readonly IMachineIdentity _machine;
         private readonly Func<INavigationService> _navigation;
-        private readonly IConfirmationService _confirmation;
         private readonly IUiOperationRunner _runner;
         private readonly IUserErrorPresenter _errors;
         private readonly string _deviceName;
@@ -34,13 +30,10 @@ namespace HoaDonDienTu.WinForms.Licensing
 
         public LicensePresenter(
             ILicenseView view,
-            ILicenseService license,
-            IEntitlementService entitlement,
+            MachineLicenseService license,
             IEntitlementUpdater updater,
             ICompanyCatalog catalog,
-            IMachineIdentity machine,
             Func<INavigationService> navigation,
-            IConfirmationService confirmation,
             IUiOperationRunner runner,
             IUserErrorPresenter errors,
             string deviceName,
@@ -48,22 +41,16 @@ namespace HoaDonDienTu.WinForms.Licensing
         {
             if (view == null) throw new ArgumentNullException("view");
             if (license == null) throw new ArgumentNullException("license");
-            if (entitlement == null) throw new ArgumentNullException("entitlement");
             if (updater == null) throw new ArgumentNullException("updater");
             if (catalog == null) throw new ArgumentNullException("catalog");
-            if (machine == null) throw new ArgumentNullException("machine");
             if (navigation == null) throw new ArgumentNullException("navigation");
-            if (confirmation == null) throw new ArgumentNullException("confirmation");
             if (runner == null) throw new ArgumentNullException("runner");
             if (errors == null) throw new ArgumentNullException("errors");
             _view = view;
             _license = license;
-            _entitlement = entitlement;
             _updater = updater;
             _catalog = catalog;
-            _machine = machine;
             _navigation = navigation;
-            _confirmation = confirmation;
             _runner = runner;
             _errors = errors;
             _deviceName = deviceName ?? string.Empty;
@@ -75,16 +62,8 @@ namespace HoaDonDienTu.WinForms.Licensing
             if (_initialized) return;
             _initialized = true;
             _view.ActivateRequested += OnActivate;
-            _view.ValidateRequested += OnValidate;
-            _view.DeactivateRequested += OnDeactivate;
             _view.BackRequested += OnBack;
-
             Render();
-            Run("Đọc thông tin licence", async token =>
-            {
-                await _license.ValidateLocalAsync(token);
-                Render();
-            });
         }
 
         public void Dispose()
@@ -93,8 +72,6 @@ namespace HoaDonDienTu.WinForms.Licensing
             _initialized = false;
             _runner.CancelAll();
             _view.ActivateRequested -= OnActivate;
-            _view.ValidateRequested -= OnValidate;
-            _view.DeactivateRequested -= OnDeactivate;
             _view.BackRequested -= OnBack;
         }
 
@@ -103,48 +80,18 @@ namespace HoaDonDienTu.WinForms.Licensing
             var key = (_view.LicenseKeyInput ?? string.Empty).Trim();
             if (key.Length == 0)
             {
-                _view.ShowMessage("Nhập licence key do nhà cung cấp gửi.", true);
+                _view.ShowMessage("Nhập mã kích hoạt do đơn vị phát hành gửi.", true);
                 return;
             }
 
-            Run("Kích hoạt licence", async token =>
+            Run("Kích hoạt bản quyền", async token =>
             {
                 var status = await _license.ActivateAsync(key, token);
-                await ApplyAsync(status, token);
+                var catalog = await _catalog.LoadAsync(token);
+                _updater.ApplyLicense(status, catalog.HasServiceHistory);
                 _view.ClearKeyInput();
-                _view.ShowMessage("Đã kích hoạt licence. Các chức năng được cấp phép đã mở, không cần cài đặt lại.", false);
-                if (_entitlement.IsAllowed(AppFeature.MultiCompany))
-                {
-                    await _navigation().NavigateAsync(ScreenId.CompanyList, null, token);
-                }
-            });
-        }
-
-        private void OnValidate(object sender, EventArgs e)
-        {
-            Run("Xác thực licence", async token =>
-            {
-                var status = await _license.ValidateOnlineAsync(token);
-                await ApplyAsync(status, token);
-                _view.ShowMessage(DescribeValidation(_license.CurrentInfo), _license.CurrentInfo.Status != LicenseStatus.Valid);
-            });
-        }
-
-        private void OnDeactivate(object sender, EventArgs e)
-        {
-            var info = _license.CurrentInfo;
-            if (!_confirmation.Confirm(
-                    "Hủy kích hoạt licence",
-                    "Giải phóng licence " + info.KeyHint + " khỏi máy này? Dữ liệu hiện có được giữ nguyên nhưng ứng dụng chuyển sang chế độ không có licence."))
-            {
-                return;
-            }
-
-            Run("Hủy kích hoạt licence", async token =>
-            {
-                var status = await _license.DeactivateAsync(token);
-                await ApplyAsync(status, token);
-                _view.ShowMessage("Đã hủy kích hoạt. Bạn có thể kích hoạt licence này trên máy khác.", false);
+                Render();
+                _view.ShowMessage("Đã kích hoạt bản quyền cho máy này. Cảm ơn bạn đã sử dụng phần mềm.", false);
             });
         }
 
@@ -153,103 +100,65 @@ namespace HoaDonDienTu.WinForms.Licensing
             Run("Quay lại cài đặt", token => _navigation().NavigateAsync(ScreenId.Settings, null, token));
         }
 
-        private async Task ApplyAsync(LicenseStatus status, CancellationToken token)
-        {
-            var snapshot = await _catalog.LoadAsync(token);
-            _updater.ApplyLicense(status, snapshot.HasServiceHistory);
-            Render();
-        }
-
         private void Render()
         {
-            _view.ShowState(Build(_license.CurrentInfo, _entitlement.CurrentMode));
+            _view.ShowState(Build(_license.Evaluate(), _deviceName, _versionText));
         }
 
-        private LicenseViewModel Build(LicenseInfo info, AppMode mode)
+        /// <summary>Dựng nội dung màn hình từ kết quả đánh giá licence (tách ra để thử nghiệm không cần control).</summary>
+        public static LicenseViewModel Build(LicenseSnapshot snapshot, string deviceName, string versionText)
         {
             var model = new LicenseViewModel
             {
-                Device = _deviceName,
-                MachineShort = ShortMachine(_machine.GetMachineIdHash()),
-                LicenseType = string.IsNullOrEmpty(info.LicenseType) ? "—" : info.LicenseType,
-                ExpiresAt = info.ExpiresAtUtc.HasValue ? Format(info.ExpiresAtUtc.Value) : (info.Status == LicenseStatus.None ? "—" : "Không giới hạn"),
-                LastValidation = info.LastOnlineValidationUtc.HasValue ? Format(info.LastOnlineValidationUtc.Value) : "Chưa kích hoạt",
-                Version = _versionText,
-                HasLicense = info.Status != LicenseStatus.None || info.Issue == LicenseIssue.Corrupt
+                Device = deviceName ?? string.Empty,
+                MachineCode = snapshot.MachineCode,
+                Version = versionText ?? string.Empty
             };
 
-            switch (mode)
+            switch (snapshot.Status)
             {
-                case AppMode.Service:
-                    model.ModeLetter = "D";
-                    model.ModeTitle = "Chế độ dịch vụ";
-                    model.ModeSubtitle = info.Status == LicenseStatus.GracePeriod && info.MustReconnectBeforeUtc.HasValue
-                        ? "Đang dùng ngoại tuyến, cần kết nối lại trước " + Format(info.MustReconnectBeforeUtc.Value)
-                        : "Licence " + model.LicenseType + " đang hiệu lực " + info.KeyHint;
-                    model.Note = info.Status == LicenseStatus.GracePeriod
-                        ? "Máy chủ licence chưa xác thực lại gần đây. Licence đã xác thực vẫn hoạt động ngoại tuyến tối đa 30 ngày."
-                        : "Có thể thêm và chuyển giữa nhiều doanh nghiệp. Hủy kích hoạt để chuyển licence sang máy khác.";
+                case LicenseStatus.Valid:
+                    model.ModeLetter = "✓";
+                    model.ModeTitle = "Đã kích hoạt";
+                    model.ModeSubtitle = "Bản quyền theo máy " + snapshot.KeyHint;
+                    model.LicenseType = "Theo máy";
+                    model.ExpiresAt = "Không giới hạn";
+                    model.LastValidation = snapshot.ActivatedAtUtc.HasValue ? Format(snapshot.ActivatedAtUtc.Value) : "—";
+                    model.Note = "Dùng đầy đủ chức năng, có thể thêm và chuyển giữa nhiều doanh nghiệp. Mã kích hoạt chỉ đúng cho máy này.";
                     break;
-                case AppMode.ReadOnlyService:
-                    model.ModeLetter = "R";
-                    model.ModeTitle = "Chỉ đọc – cần gia hạn licence";
-                    model.ModeSubtitle = IssueText(info.Issue);
-                    model.Note = "Vẫn xem, tìm, in, xuất và sao lưu dữ liệu cũ. Đăng nhập cổng Thuế, tải mới và thêm doanh nghiệp bị khóa tới khi licence hợp lệ.";
+                case LicenseStatus.Trial:
+                    model.ModeLetter = "D";
+                    model.ModeTitle = "Đang dùng thử";
+                    model.ModeSubtitle = MachineLicenseService.DescribeRemaining(snapshot.RemainingTrialDays).Replace("còn", "Còn") + " (đến hết " + FormatDate(snapshot.TrialEndsUtc.AddDays(-1)) + ")";
+                    model.LicenseType = "Dùng thử " + MachineLicenseService.TrialDays.ToString(CultureInfo.InvariantCulture) + " ngày";
+                    model.ExpiresAt = FormatDate(snapshot.TrialEndsUtc.AddDays(-1));
+                    model.LastValidation = "Chưa kích hoạt";
+                    model.Note = snapshot.StoredKeyRejected
+                        ? "Mã kích hoạt đã lưu không còn đúng với máy này (" + snapshot.StoredKeyProblem + ") nên đang tính thời gian dùng thử. Gửi mã máy mới cho đơn vị phát hành."
+                        : "Dùng đầy đủ chức năng trong thời gian thử. Hết thời gian thử, ứng dụng yêu cầu mã kích hoạt mới cho vào; dữ liệu của bạn vẫn được giữ nguyên.";
                     break;
                 default:
-                    model.ModeLetter = "S";
-                    model.ModeTitle = "Chế độ chuẩn";
-                    model.ModeSubtitle = info.Issue == LicenseIssue.None || info.Issue == LicenseIssue.NotActivated
-                        ? "Không có licence mở rộng trên máy này"
-                        : IssueText(info.Issue);
-                    model.Note = "Mục kích hoạt luôn hiển thị. Các chức năng tương ứng với licence chỉ xuất hiện sau khi key được máy chủ xác thực thành công.";
+                    model.ModeLetter = "!";
+                    model.ModeTitle = "Hết thời gian dùng thử";
+                    model.ModeSubtitle = "Cần mã kích hoạt để tiếp tục";
+                    model.LicenseType = "Dùng thử " + MachineLicenseService.TrialDays.ToString(CultureInfo.InvariantCulture) + " ngày";
+                    model.ExpiresAt = FormatDate(snapshot.TrialEndsUtc.AddDays(-1));
+                    model.LastValidation = "Chưa kích hoạt";
+                    model.Note = "Nhập mã kích hoạt để tiếp tục sử dụng.";
                     break;
-            }
-
-            if (info.Issue == LicenseIssue.ClockTampered)
-            {
-                model.Note = "Đồng hồ hệ thống có dấu hiệu bị chỉnh lùi. Bấm Xác thực ngay (cần Internet) trước khi dùng chế độ dịch vụ.";
             }
 
             return model;
         }
 
-        private static string IssueText(LicenseIssue issue)
-        {
-            switch (issue)
-            {
-                case LicenseIssue.Expired: return "Licence đã hết hạn";
-                case LicenseIssue.Revoked: return "Licence đã bị thu hồi";
-                case LicenseIssue.OfflineGraceExceeded: return "Quá 30 ngày chưa xác thực trực tuyến";
-                case LicenseIssue.MachineMismatch: return "Licence gắn với máy khác; hủy kích hoạt ở máy cũ rồi kích hoạt lại";
-                case LicenseIssue.SignatureInvalid: return "Chữ ký licence không hợp lệ";
-                case LicenseIssue.Corrupt: return "File licence bị hỏng; kích hoạt lại để khôi phục";
-                case LicenseIssue.ClockTampered: return "Đồng hồ hệ thống bất thường; cần xác thực trực tuyến";
-                default: return "Chưa có licence hợp lệ";
-            }
-        }
-
-        private static string DescribeValidation(LicenseInfo info)
-        {
-            switch (info.Status)
-            {
-                case LicenseStatus.Valid: return "Licence hợp lệ, đã xác thực trực tuyến.";
-                case LicenseStatus.GracePeriod: return "Chưa kết nối được máy chủ licence; vẫn dùng được ngoại tuyến tới " + Format(info.MustReconnectBeforeUtc ?? DateTime.UtcNow) + ".";
-                case LicenseStatus.None: return "Máy này chưa kích hoạt licence.";
-                default: return IssueText(info.Issue) + ".";
-            }
-        }
-
-        /// <summary>Hiện 4 ký tự đầu và 4 ký tự cuối của mã đã băm, đủ để đối chiếu với nhà cung cấp mà không lộ toàn bộ.</summary>
-        public static string ShortMachine(string hash)
-        {
-            if (string.IsNullOrEmpty(hash) || hash.Length < 8) return hash ?? string.Empty;
-            return hash.Substring(0, 4).ToUpperInvariant() + "-••••-" + hash.Substring(hash.Length - 4).ToUpperInvariant();
-        }
-
         private static string Format(DateTime utc)
         {
             return utc.ToLocalTime().ToString("dd/MM/yyyy HH:mm", CultureInfo.InvariantCulture);
+        }
+
+        private static string FormatDate(DateTime utc)
+        {
+            return utc.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture);
         }
 
         private async void Run(string name, Func<CancellationToken, Task> operation)

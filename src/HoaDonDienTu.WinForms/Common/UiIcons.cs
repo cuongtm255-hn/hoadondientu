@@ -14,7 +14,7 @@ namespace HoaDonDienTu.WinForms.Common
     {
         Dashboard, Download, Archive, History, Building, Gear,
         Excel, Zip, CheckFiles, Clear, Search, Refresh, Back, Close, Save, Folder, Backup, Restore, Pdf, Print, View,
-        Login, Switch, Pause, Play, Retry, Add, Prev, Next, Info, Key, Calendar, Purchase, Sold, Power, Link, Check, Trash
+        Login, Switch, Pause, Play, Retry, Add, Prev, Next, Info, Key, Calendar, Purchase, Sold, Power, Link, Check, Trash, Copy
     }
 
     /// <summary>
@@ -61,6 +61,9 @@ namespace HoaDonDienTu.WinForms.Common
 
             // Khôi phục danh mục doanh nghiệp
             { "btnScan", UiIcon.Search }, { "btnBrowseFolder", UiIcon.Folder }, { "btnRebuild", UiIcon.Check }, { "btnRestart", UiIcon.Refresh },
+
+            // Bản quyền
+            { "btnCopyMachine", UiIcon.Copy }, { "btnExit", UiIcon.Close },
 
             // Khung chính
             { "btnCompanyContext", UiIcon.Building }, { "btnPortalLogin", UiIcon.Login }
@@ -330,6 +333,10 @@ namespace HoaDonDienTu.WinForms.Common
                 case UiIcon.Check:
                     g.DrawEllipse(pen, 3, 3, 14, 14);
                     g.DrawLines(pen, new[] { new PointF(6.5F, 10), new PointF(9, 12.5F), new PointF(13.5F, 7.5F) });
+                    break;
+                case UiIcon.Copy:
+                    g.DrawRectangle(pen, 7, 7, 10, 10.5F);
+                    g.DrawLines(pen, new[] { new PointF(13, 4.5F), new PointF(13, 2.5F), new PointF(3, 2.5F), new PointF(3, 13), new PointF(5, 13) });
                     break;
                 case UiIcon.Trash:
                     g.DrawLine(pen, 3.5F, 5.5F, 16.5F, 5.5F);

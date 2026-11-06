@@ -8,7 +8,7 @@ namespace HoaDonDienTu.WinForms.Licensing
     public partial class LicenseControl : KryptonPanel, ILicenseView
     {
         private bool _busy;
-        private bool _hasLicense;
+        private string _machineCode = string.Empty;
 
         public LicenseControl()
         {
@@ -17,8 +17,6 @@ namespace HoaDonDienTu.WinForms.Licensing
         }
 
         public event EventHandler ActivateRequested;
-        public event EventHandler ValidateRequested;
-        public event EventHandler DeactivateRequested;
         public event EventHandler BackRequested;
 
         public string LicenseKeyInput
@@ -32,13 +30,13 @@ namespace HoaDonDienTu.WinForms.Licensing
             lblModeTitle.Values.Text = model.ModeTitle;
             lblModeSubtitle.Values.Text = model.ModeSubtitle;
             lblDevice.Values.Text = model.Device;
-            lblMachine.Values.Text = model.MachineShort;
+            _machineCode = model.MachineCode ?? string.Empty;
+            lblMachine.Values.Text = _machineCode;
             lblType.Values.Text = model.LicenseType;
             lblExpires.Values.Text = model.ExpiresAt;
             lblLast.Values.Text = model.LastValidation;
             lblVersion.Values.Text = model.Version;
             lblNote.Text = model.Note;
-            _hasLicense = model.HasLicense;
             UpdateButtons();
         }
 
@@ -63,8 +61,7 @@ namespace HoaDonDienTu.WinForms.Licensing
         private void UpdateButtons()
         {
             btnActivate.Enabled = !_busy && txtLicenseKey.Text.Trim().Length > 0;
-            btnValidate.Enabled = !_busy && _hasLicense;
-            btnDeactivate.Enabled = !_busy && _hasLicense;
+            btnCopyMachine.Enabled = _machineCode.Length > 0;
             btnBack.Enabled = !_busy;
         }
 
@@ -78,14 +75,18 @@ namespace HoaDonDienTu.WinForms.Licensing
             Raise(ActivateRequested);
         }
 
-        private void OnValidateClick(object sender, EventArgs e)
+        private void OnCopyMachineClick(object sender, EventArgs e)
         {
-            Raise(ValidateRequested);
-        }
-
-        private void OnDeactivateClick(object sender, EventArgs e)
-        {
-            Raise(DeactivateRequested);
+            try
+            {
+                System.Windows.Forms.Clipboard.SetText(_machineCode);
+                ShowMessage("Đã sao chép mã máy. Dán vào email hoặc tin nhắn gửi cho đơn vị phát hành.", false);
+            }
+            catch (System.Runtime.InteropServices.ExternalException)
+            {
+                // Clipboard đang bị ứng dụng khác giữ: nhắc người dùng chọn và chép tay.
+                ShowMessage("Không sao chép được (bảng nhớ tạm đang bị chiếm). Hãy thử lại sau giây lát.", true);
+            }
         }
 
         private void OnBackClick(object sender, EventArgs e)

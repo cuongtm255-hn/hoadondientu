@@ -127,6 +127,7 @@ namespace HoaDonDienTu.Application.Startup
             switch (status)
             {
                 case LicenseStatus.Valid:
+                case LicenseStatus.Trial:
                 case LicenseStatus.GracePeriod:
                     return AppMode.Service;
                 case LicenseStatus.Expired:
@@ -144,6 +145,12 @@ namespace HoaDonDienTu.Application.Startup
             switch (mode)
             {
                 case AppMode.Service:
+                    // Chưa có doanh nghiệp nào (lần chạy đầu của bản có licence): vào thẳng màn khai báo thay vì danh sách trống.
+                    if (catalog.Companies.Count == 0)
+                    {
+                        return new StartupResult(mode, StartupRoute.StandardFirstRun, status, null, message, RecoveryReason.None);
+                    }
+
                     return new StartupResult(mode, StartupRoute.ServiceCompanySelection, status, null, message, RecoveryReason.None);
                 case AppMode.ReadOnlyService:
                     return new StartupResult(mode, StartupRoute.ReadOnlyCompanySelection, status, null, message, RecoveryReason.None);

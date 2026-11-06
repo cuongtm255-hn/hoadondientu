@@ -195,7 +195,7 @@ namespace HoaDonDienTu.WinForms.Settings
                     }
                     else
                     {
-                        _view.ShowSection(section, "Kết nối cổng Thuế", rows, "Kiểm tra máy chủ cổng Thuế và máy chủ licence có trả lời không. Không đăng nhập và không gọi API hóa đơn.");
+                        _view.ShowSection(section, "Kết nối cổng Thuế", rows, "Kiểm tra máy chủ cổng Thuế có trả lời không. Không đăng nhập và không gọi API hóa đơn.");
                         _view.ShowActions(new List<SettingsAction> { new SettingsAction("check-connection", "Kiểm tra kết nối", true, true) });
                     }
 
@@ -209,12 +209,17 @@ namespace HoaDonDienTu.WinForms.Settings
         private string LicenseSummary()
         {
             var info = _license.CurrentInfo;
-            switch (_entitlement.CurrentMode)
+            switch (info.Status)
             {
-                case AppMode.Service:
-                    return string.IsNullOrEmpty(info.KeyHint) ? "Đang hiệu lực" : "Đang hiệu lực " + info.KeyHint;
-                case AppMode.ReadOnlyService:
-                    return "Chỉ đọc – cần gia hạn";
+                case LicenseStatus.Trial:
+                    return info.ExpiresAtUtc.HasValue
+                        ? "Dùng thử đến hết " + info.ExpiresAtUtc.Value.AddDays(-1).ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)
+                        : "Đang dùng thử";
+                case LicenseStatus.Valid:
+                    return string.IsNullOrEmpty(info.KeyHint) ? "Đã kích hoạt" : "Đã kích hoạt " + info.KeyHint;
+                case LicenseStatus.Expired:
+                case LicenseStatus.Revoked:
+                    return "Hết thời gian dùng thử";
                 default:
                     return "Chưa kích hoạt";
             }

@@ -9,22 +9,21 @@ namespace HoaDonDienTu.WinForms.Licensing
         public string ModeTitle { get; set; }
         public string ModeSubtitle { get; set; }
         public string Device { get; set; }
-        public string MachineShort { get; set; }
+
+        /// <summary>Mã máy đầy đủ để gửi cho đơn vị phát hành.</summary>
+        public string MachineCode { get; set; }
         public string LicenseType { get; set; }
         public string ExpiresAt { get; set; }
+
+        /// <summary>Dòng "Kích hoạt lúc ..." hoặc "Chưa kích hoạt".</summary>
         public string LastValidation { get; set; }
         public string Version { get; set; }
         public string Note { get; set; }
-
-        /// <summary>Đã có licence trên máy: bật Xác thực ngay và Hủy kích hoạt.</summary>
-        public bool HasLicense { get; set; }
     }
 
     public interface ILicenseView
     {
         event EventHandler ActivateRequested;
-        event EventHandler ValidateRequested;
-        event EventHandler DeactivateRequested;
         event EventHandler BackRequested;
 
         string LicenseKeyInput { get; }

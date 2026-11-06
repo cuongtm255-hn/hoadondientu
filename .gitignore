@@ -12,3 +12,6 @@ docs/api-samples/raw/
 
 # Gói phát hành do scripts/Package-Release.ps1 tạo
 dist/
+
+# Khóa bí mật phát hành bản quyền: KHÔNG commit, KHÔNG gửi cho khách hàng
+.local-secrets/

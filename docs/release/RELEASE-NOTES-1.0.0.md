@@ -11,7 +11,7 @@ Bản dựng: 06/11/2026 · Gói: `HoaDonDienTu-1.0.0-win-x86.zip` (103 MB, gi�
 - **Kho hóa đơn:** tra cứu, lọc, sắp xếp, tìm nhanh không phân biệt dấu; **xuất Excel** theo mẫu cổng Thuế và **xuất ZIP XML** (kèm manifest SHA-256); kiểm tra toàn vẹn file.
 - **Chi tiết và xem chứng từ:** XML dạng cây/thô, PDF dựng từ XML, in, lưu bản sao nguyên văn.
 - **Sao lưu và khôi phục** có kiểm SHA-256 và rollback; **đổi thư mục kho** an toàn (chép, kiểm, giữ thư mục cũ); **khôi phục danh sách doanh nghiệp** khi file danh mục hỏng.
-- Nhiều doanh nghiệp (bản quyền dịch vụ), chế độ chỉ đọc khi hết hạn, Tổng quan, Lịch sử tải, lịch sử xuất.
+- Dùng thử 30 ngày rồi kích hoạt bằng mã theo máy (offline), nhiều doanh nghiệp, Tổng quan, Lịch sử tải, lịch sử xuất.
 
 ## Chất lượng đã kiểm
 
@@ -22,7 +22,7 @@ Bản dựng: 06/11/2026 · Gói: `HoaDonDienTu-1.0.0-win-x86.zip` (103 MB, gi�
 ## Hạn chế đã biết
 
 1. **Chưa thử trên cổng Thuế thật** (xem trên). Cấu hình API nằm trong `portal-api.json`; địa chỉ bắt buộc thuộc `gdt.gov.vn`.
-2. **Bản quyền:** chưa kèm `license-api.json` (chờ máy chủ bản quyền), nên ứng dụng chạy **chế độ chuẩn** (một doanh nghiệp). Nhiều doanh nghiệp cần cấu hình và bản quyền dịch vụ.
+2. **Bản quyền:** mặc định **dùng thử 30 ngày** đầy đủ chức năng; hết hạn thì hiện cửa sổ kích hoạt và không vào được ứng dụng nếu chưa nhập mã hợp lệ (dữ liệu được giữ nguyên). Mã kích hoạt cấp theo mã máy, kiểm offline. Chưa thử bằng bản cài thật trên máy khách.
 3. **Trình duyệt nhúng Chromium 109 đã hết vòng đời** và bị báo 4 lỗ hổng đã biết; được giữ vì là bản cuối hỗ trợ Windows 7/8. Rủi ro và biện pháp giảm thiểu: [P6-03 mục F-2](../security/P6-03-security-review.md). Chỉ dùng để đăng nhập cổng Thuế.
 4. **Chưa có trình cài đặt:** gói là bản giải nén chạy ngay, không có phím tắt hay mục gỡ cài đặt (gỡ bằng cách xóa thư mục chương trình; dữ liệu ở thư mục kho và `%LOCALAPPDATA%\HoaDonDienTu` được giữ). Chưa ký số file chạy nên Windows SmartScreen có thể cảnh báo.
 5. Mục **Nhật ký và chẩn đoán** trong Cài đặt chưa có thao tác.

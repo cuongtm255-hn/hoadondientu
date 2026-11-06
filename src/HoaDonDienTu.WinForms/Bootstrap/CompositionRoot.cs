@@ -137,12 +137,27 @@ namespace HoaDonDienTu.WinForms.Bootstrap
             return config;
         }
 
+        private sealed class FixedClock : IClock
+        {
+            private readonly DateTime _now;
+
+            public FixedClock(DateTime now)
+            {
+                _now = now;
+            }
+
+            public DateTime UtcNow { get { return _now; } }
+        }
+
         private static string AppVersion
         {
             get { return typeof(CompositionRoot).Assembly.GetName().Version.ToString(3); }
         }
 
         public ILicenseService LicenseService { get; private set; }
+
+        /// <summary>Licence theo máy: dùng thử 30 ngày rồi nhập mã kích hoạt (kiểm offline). <c>Program</c> dùng nó làm cổng vào ứng dụng.</summary>
+        public MachineLicenseService MachineLicense { get; private set; }
 
         private void ComposeEnvironment()
         {
@@ -157,8 +172,9 @@ namespace HoaDonDienTu.WinForms.Bootstrap
             IDownloadSessionStarter starter = null;
             var downloadsEnabled = false;
             var developmentJobs = false;
-            ILicenseServer licenseServer;
-            ILicenseSignatureVerifier licenseVerifier;
+            string licenseStatePath;
+            string licenseRegistryPath;
+            IClock licenseClock = Clock;
             IConnectivityChecker connectivity;
             PortalApiConfig portalConfig;
             try
@@ -203,11 +219,16 @@ namespace HoaDonDienTu.WinForms.Bootstrap
             jobs = new DevelopmentActiveJobService(developmentJobs);
             loginBrowser = () => new DevelopmentPortalLoginBrowser(
                 () => ContextManager.HasCurrent ? ContextManager.Current.TaxCode.Value : string.Empty);
-            var developmentServer = new DevelopmentLicenseServer(
-                () => string.Equals(Environment.GetEnvironmentVariable("HDDT_DEV_LICENSE_SERVER"), "down", StringComparison.OrdinalIgnoreCase),
-                Path.Combine(dataDirectory, "dev-license-key.xml"));
-            licenseServer = developmentServer;
-            licenseVerifier = new RsaLicenseSignatureVerifier(developmentServer.PublicKeyXml);
+            // Trạng thái licence của bản Debug nằm trong thư mục dữ liệu dev (không đụng ProgramData hay registry của máy);
+            // HDDT_DEV_NOW (ngày giờ UTC ISO) giả lập thời điểm hiện tại để thử hết thời gian dùng thử.
+            licenseStatePath = Path.Combine(dataDirectory, "dev-license.bin");
+            licenseRegistryPath = null;
+            var devNow = Environment.GetEnvironmentVariable("HDDT_DEV_NOW");
+            DateTime parsedNow;
+            if (!string.IsNullOrWhiteSpace(devNow) && DateTime.TryParse(devNow, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.RoundtripKind, out parsedNow))
+            {
+                licenseClock = new FixedClock(parsedNow.ToUniversalTime());
+            }
             connectivity = new DevelopmentConnectivityChecker();
 #else
             dataDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "HoaDonDienTu", "data");
@@ -216,23 +237,14 @@ namespace HoaDonDienTu.WinForms.Bootstrap
             downloadsEnabled = true;
             var loginTraffic = new PortalLoginTraffic(portalConfig.BaseUrl, portalConfig.Auth.AuthenticatePath);
             loginBrowser = () => new CefPortalLoginBrowser(loginTraffic);
-            var licenseSettings = LicenseApiSettingsLoader.TryLoad(LocateConfigFile("license-api.json"));
-            if (licenseSettings == null)
-            {
-                Logger.Warning("Chưa có license-api.json hợp lệ: kích hoạt licence chưa dùng được, ứng dụng chạy chế độ chuẩn");
-                licenseServer = new UnconfiguredLicenseServer();
-                licenseVerifier = new RsaLicenseSignatureVerifier(string.Empty);
-            }
-            else
-            {
-                licenseServer = new LicenseApiClient(licenseSettings.ToConfig(), null);
-                licenseVerifier = new RsaLicenseSignatureVerifier(licenseSettings.PublicKeyXml);
-            }
+            // Licence theo máy: file mã hóa DPAPI trong ProgramData và bản sao ở registry của người dùng (xóa một nơi không làm mới thời gian dùng thử).
+            licenseStatePath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "HoaDonDienTu", "Runtime", "hddt-license.bin");
+            licenseRegistryPath = @"Software\HoaDonDienTu\Runtime";
 
             connectivity = new HttpConnectivityChecker(new List<ConnectivityTarget>
             {
-                new ConnectivityTarget("Cổng Thuế", portalConfig.BaseUrl),
-                new ConnectivityTarget("Máy chủ licence", licenseSettings == null ? null : licenseSettings.BaseUrl)
+                new ConnectivityTarget("Cổng Thuế", portalConfig.BaseUrl)
             });
 #endif
 
@@ -240,16 +252,15 @@ namespace HoaDonDienTu.WinForms.Bootstrap
             var storage = new FileSystemCompanyStorage();
             Registry = registry;
 
-            // Licence thật (store DPAPI, chữ ký RSA, mã máy). Khởi động dùng nó khi đã có license.dat; chưa có thì Debug theo HDDT_DEV_MODE.
-            var machineIdentity = new MachineIdentityProvider();
-            var licenseService = new LicenseService(
-                new FileLicenseStore(Path.Combine(dataDirectory, "license.dat")), licenseServer, machineIdentity,
-                licenseVerifier, Clock, Logger, AppVersion);
+            // Licence đơn giản theo máy: dùng thử 30 ngày, sau đó nhập mã kích hoạt ký số offline (không máy chủ, không Internet).
+            var licenseService = new MachineLicenseService(
+                new FileRegistryLicenseStateStore(licenseStatePath, licenseRegistryPath), new MachineCodeProvider(),
+                new RsaActivationKeyVerifier(LicenseConstants.PublicKeyXml), licenseClock, Logger);
             LicenseService = licenseService;
+            MachineLicense = licenseService;
 
-            var startupLicense = developmentLicense == null || File.Exists(Path.Combine(dataDirectory, "license.dat"))
-                ? (ILicenseService)licenseService
-                : developmentLicense;
+            // Debug với HDDT_DEV_MODE dùng licence giả lập để thử các chế độ; Release luôn dùng licence thật ở trên.
+            var startupLicense = developmentLicense ?? (ILicenseService)licenseService;
             StartupCoordinator = new StartupCoordinator(startupLicense, registry, Logger);
 
             PortalApiConfig = portalConfig;
@@ -392,8 +403,8 @@ namespace HoaDonDienTu.WinForms.Bootstrap
                     parameter => new LicenseScreen(
                         new LicenseControl(),
                         view => new LicensePresenter(
-                            view, licenseService, entitlement, entitlement, registry, machineIdentity, () => NavigationService,
-                            Confirmation, OperationRunner, ErrorPresenter, Environment.MachineName, AppVersion + " · Schema v1"))),
+                            view, licenseService, entitlement, registry, () => NavigationService,
+                            OperationRunner, ErrorPresenter, Environment.MachineName, AppVersion + " · Schema v1"))),
                 new ScreenDescriptor(
                     HoaDonDienTu.Application.Navigation.ScreenId.CompanyList, "Doanh nghiệp", "SCR-10",
                     parameter => new CompanyListScreen(

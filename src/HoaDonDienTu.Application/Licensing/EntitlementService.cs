@@ -59,6 +59,7 @@ namespace HoaDonDienTu.Application.Licensing
             switch (status)
             {
                 case LicenseStatus.Valid:
+                case LicenseStatus.Trial:
                 case LicenseStatus.GracePeriod:
                     return AppMode.Service;
                 default:

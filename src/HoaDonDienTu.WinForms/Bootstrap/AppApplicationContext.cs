@@ -110,7 +110,7 @@ namespace HoaDonDienTu.WinForms.Bootstrap
                 updater.ApplyLicense(result.LicenseStatus, result.Mode == AppMode.ReadOnlyService);
             }
 
-            _presenter.SetMode(ShellModeMapper.ToModeState(result));
+            _presenter.SetMode(ShellModeMapper.WithLicense(ShellModeMapper.ToModeState(result), result.Mode, _compositionRoot.LicenseService.CurrentInfo, DateTime.UtcNow));
             _presenter.RefreshPortalSession();
             _mainShell.ShowOperation(new OperationViewState { Text = result.UserMessage ?? "Sẵn sàng", IsBusy = false });
 
@@ -131,7 +131,8 @@ namespace HoaDonDienTu.WinForms.Bootstrap
 
         private void OnModeChanged(object sender, EventArgs e)
         {
-            _presenter.SetMode(ShellModeMapper.ToModeState(_compositionRoot.Entitlement.CurrentMode));
+            var mode = _compositionRoot.Entitlement.CurrentMode;
+            _presenter.SetMode(ShellModeMapper.WithLicense(ShellModeMapper.ToModeState(mode), mode, _compositionRoot.LicenseService.CurrentInfo, DateTime.UtcNow));
         }
 
         private void OnMainShellClosed(object sender, FormClosedEventArgs e)

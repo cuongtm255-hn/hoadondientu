@@ -43,6 +43,13 @@ namespace HoaDonDienTu.WinForms
 
             using (compositionRoot)
             {
+                // Còn dùng thử hoặc đã kích hoạt thì vào thẳng; hết 30 ngày dùng thử mà không kích hoạt được thì không vào ứng dụng.
+                if (!HoaDonDienTu.WinForms.Licensing.ActivationGate.Allow(compositionRoot.MachineLicense, new HoaDonDienTu.WinForms.Licensing.ActivationDialogPrompt()))
+                {
+                    compositionRoot.Logger.Info("Thoát: chưa kích hoạt bản quyền sau thời gian dùng thử");
+                    return;
+                }
+
                 // Phải đăng ký trước khi tạo bất kỳ form nào (SetUnhandledExceptionMode không được gọi sau khi có window).
                 GlobalExceptionHandler.Register(compositionRoot.Logger);
                 using (var applicationContext = new AppApplicationContext(compositionRoot))

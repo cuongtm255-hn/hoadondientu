@@ -35,6 +35,10 @@ Planned layering (not yet created): UI (WinForms) → services (period splitting
 - **Sole exception: trying out the first-time login feature** (user-driven WebView login on the real portal to verify login capture). Even then: the user enters credentials and CAPTCHA manually, nothing is automated, no invoice/search/download API is called, and no secrets are stored or logged.
 - Never paste real traffic, tokens, passwords or cookies into the repo (see the API contract note below); commit only sanitized samples.
 
+## Licence (ADR 0010)
+
+Dùng thử 30 ngày rồi nhập mã kích hoạt ký RSA theo máy, kiểm offline ([DD-03](docs/detail-design/DD-03-LICENSING.md)). Hết dùng thử mà chưa kích hoạt thì `ActivationGate` trong `Program.Main` chặn vào ứng dụng. Khóa bí mật nằm ở `.local-secrets/` (git-ignored, **không bao giờ commit hay in ra**); cấp mã bằng `scripts/New-ActivationKey.ps1` ([runbook](docs/runbooks/license-keys.md)). Debug lưu trạng thái ở `dev-license.bin` và giả lập ngày bằng `HDDT_DEV_NOW`.
+
 ## Constraints
 
 - Target framework is `net452` (raised from net45 on 2026-11-03 for CefSharp, [ADR 0007](docs/decisions/0007-webview-cefsharp.md)): no `async Main`, no modern C# runtime APIs; check package compatibility with .NET 4.5.2 (a package with only a `net45` group is fine, one with only `net46x` is not). TLS 1.2 must be enabled explicitly (`ServicePointManager.SecurityProtocol`) for the portal.

@@ -55,8 +55,7 @@ namespace HoaDonDienTu.WinForms.Licensing
             this.lblMessage = new ComponentFactory.Krypton.Toolkit.KryptonWrapLabel();
             this.tlpButtons = new System.Windows.Forms.TableLayoutPanel();
             this.pnlKey = new ComponentFactory.Krypton.Toolkit.KryptonPanel();
-            this.btnDeactivate = new ComponentFactory.Krypton.Toolkit.KryptonButton();
-            this.btnValidate = new ComponentFactory.Krypton.Toolkit.KryptonButton();
+            this.btnCopyMachine = new ComponentFactory.Krypton.Toolkit.KryptonButton();
             this.btnActivate = new ComponentFactory.Krypton.Toolkit.KryptonButton();
             this.lblKeyHint = new ComponentFactory.Krypton.Toolkit.KryptonLabel();
             this.txtLicenseKey = new ComponentFactory.Krypton.Toolkit.KryptonTextBox();
@@ -93,7 +92,7 @@ namespace HoaDonDienTu.WinForms.Licensing
             //
             this.lblSubtitle.Location = new System.Drawing.Point(16, 66);
             this.lblSubtitle.Name = "lblSubtitle";
-            this.lblSubtitle.Values.Text = "Kích hoạt licence được nhà cung cấp cấp cho máy này";
+            this.lblSubtitle.Values.Text = "Dùng thử 30 ngày, sau đó nhập mã kích hoạt do đơn vị phát hành cấp riêng cho máy này";
             //
             // pnlTitleActions
             //
@@ -141,13 +140,13 @@ namespace HoaDonDienTu.WinForms.Licensing
             this.lblCardActivate.Dock = System.Windows.Forms.DockStyle.Top;
             this.lblCardActivate.Name = "lblCardActivate";
             this.lblCardActivate.StateCommon.ShortText.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
-            this.lblCardActivate.Values.Text = "Kích hoạt licence";
+            this.lblCardActivate.Values.Text = "Kích hoạt bản quyền";
             //
             // lblKey
             //
             this.lblKey.Dock = System.Windows.Forms.DockStyle.Top;
             this.lblKey.Name = "lblKey";
-            this.lblKey.Values.Text = "Licence key";
+            this.lblKey.Values.Text = "Mã kích hoạt";
             //
             // pnlKey
             //
@@ -172,7 +171,7 @@ namespace HoaDonDienTu.WinForms.Licensing
             this.lblKeyHint.Dock = System.Windows.Forms.DockStyle.Top;
             this.lblKeyHint.Name = "lblKeyHint";
             this.lblKeyHint.StateCommon.ShortText.Font = new System.Drawing.Font("Segoe UI", 8.25F);
-            this.lblKeyHint.Values.Text = "Key được kiểm tra trực tuyến và gắn với máy này. Không gửi MST hoặc dữ liệu hóa đơn.";
+            this.lblKeyHint.Values.Text = "Mã chỉ dùng được cho đúng máy này và được kiểm tra ngay trên máy, không cần Internet.";
             //
             // tlpButtons
             //
@@ -180,10 +179,9 @@ namespace HoaDonDienTu.WinForms.Licensing
             this.tlpButtons.ColumnCount = 4;
             this.tlpButtons.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
             this.tlpButtons.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 140F));
-            this.tlpButtons.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 130F));
+            this.tlpButtons.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 170F));
             this.tlpButtons.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 110F));
-            this.tlpButtons.Controls.Add(this.btnDeactivate, 1, 0);
-            this.tlpButtons.Controls.Add(this.btnValidate, 2, 0);
+            this.tlpButtons.Controls.Add(this.btnCopyMachine, 2, 0);
             this.tlpButtons.Controls.Add(this.btnActivate, 3, 0);
             this.tlpButtons.Dock = System.Windows.Forms.DockStyle.Top;
             this.tlpButtons.Name = "tlpButtons";
@@ -203,25 +201,16 @@ namespace HoaDonDienTu.WinForms.Licensing
             this.btnActivate.Values.Text = "Kích hoạt";
             this.btnActivate.Click += new System.EventHandler(this.OnActivateClick);
             //
-            // btnValidate
+            // btnCopyMachine
             //
-            this.btnValidate.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.btnValidate.Enabled = false;
-            this.btnValidate.Margin = new System.Windows.Forms.Padding(4, 6, 4, 6);
-            this.btnValidate.Name = "btnValidate";
-            this.btnValidate.TabIndex = 1;
-            this.btnValidate.Values.Text = "Xác thực ngay";
-            this.btnValidate.Click += new System.EventHandler(this.OnValidateClick);
+            this.btnCopyMachine.Dock = System.Windows.Forms.DockStyle.Fill;
+                        this.btnCopyMachine.Margin = new System.Windows.Forms.Padding(4, 6, 4, 6);
+            this.btnCopyMachine.Name = "btnCopyMachine";
+            this.btnCopyMachine.TabIndex = 1;
+            this.btnCopyMachine.Values.Text = "Sao chép mã máy";
+            this.btnCopyMachine.Click += new System.EventHandler(this.OnCopyMachineClick);
             //
-            // btnDeactivate
             //
-            this.btnDeactivate.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.btnDeactivate.Enabled = false;
-            this.btnDeactivate.Margin = new System.Windows.Forms.Padding(4, 6, 4, 6);
-            this.btnDeactivate.Name = "btnDeactivate";
-            this.btnDeactivate.TabIndex = 0;
-            this.btnDeactivate.Values.Text = "Hủy kích hoạt";
-            this.btnDeactivate.Click += new System.EventHandler(this.OnDeactivateClick);
             //
             // lblMessage
             //
@@ -247,7 +236,7 @@ namespace HoaDonDienTu.WinForms.Licensing
             this.lblCardSent.Location = new System.Drawing.Point(12, 8);
             this.lblCardSent.Name = "lblCardSent";
             this.lblCardSent.StateCommon.ShortText.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
-            this.lblCardSent.Values.Text = "Dữ liệu gửi khi kích hoạt";
+            this.lblCardSent.Values.Text = "Cách nhận mã kích hoạt";
             //
             // lblSent
             //
@@ -255,7 +244,7 @@ namespace HoaDonDienTu.WinForms.Licensing
             this.lblSent.Dock = System.Windows.Forms.DockStyle.Fill;
             this.lblSent.Font = new System.Drawing.Font("Segoe UI", 9F);
             this.lblSent.Name = "lblSent";
-            this.lblSent.Text = "Licence key: xác định quyền đã mua.\r\nMã máy đã băm: ràng buộc licence với thiết bị.\r\nPhiên bản ứng dụng: kiểm tra tương thích entitlement.\r\nKhông gửi: MST, danh sách khách hàng, hóa đơn, token Thuế, đường dẫn kho.";
+            this.lblSent.Text = "1. Bấm Sao chép mã máy rồi gửi cho đơn vị phát hành.\r\n2. Nhận lại mã kích hoạt dành riêng cho máy này.\r\n3. Dán vào ô Mã kích hoạt và bấm Kích hoạt.\r\nKhông gửi MST, danh sách khách hàng hay hóa đơn.";
             //
             // pnlCardAfter
             //
@@ -281,7 +270,7 @@ namespace HoaDonDienTu.WinForms.Licensing
             this.lblAfter.Dock = System.Windows.Forms.DockStyle.Fill;
             this.lblAfter.Font = new System.Drawing.Font("Segoe UI", 9F);
             this.lblAfter.Name = "lblAfter";
-            this.lblAfter.Text = "Ứng dụng kiểm tra chữ ký, lưu entitlement được bảo vệ theo máy và tự mở các chức năng được cấp phép mà không cần cài đặt lại. Khi máy chủ tạm thời không truy cập được, licence đã xác thực có thể tiếp tục hoạt động tối đa 30 ngày.";
+            this.lblAfter.Text = "Dùng đầy đủ chức năng, không giới hạn thời gian trên máy này. Đổi máy hoặc cài lại Windows thì cần mã kích hoạt mới cho mã máy mới. Dữ liệu hóa đơn không bị ảnh hưởng.";
             //
             // pnlLeft
             //
@@ -363,6 +352,7 @@ namespace HoaDonDienTu.WinForms.Licensing
             this.lblCapMachine.Values.Text = "Mã máy";
             this.lblMachine.Location = new System.Drawing.Point(130, 130);
             this.lblMachine.Name = "lblMachine";
+            this.lblMachine.StateCommon.ShortText.Font = new System.Drawing.Font("Segoe UI", 8.25F);
             this.lblMachine.Values.Text = "";
             //
             // lblCapType / lblType
@@ -370,7 +360,7 @@ namespace HoaDonDienTu.WinForms.Licensing
             this.lblCapType.Location = new System.Drawing.Point(12, 160);
             this.lblCapType.Name = "lblCapType";
             this.lblCapType.StateCommon.ShortText.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
-            this.lblCapType.Values.Text = "Loại licence";
+            this.lblCapType.Values.Text = "Loại bản quyền";
             this.lblType.Location = new System.Drawing.Point(130, 160);
             this.lblType.Name = "lblType";
             this.lblType.Values.Text = "";
@@ -380,7 +370,7 @@ namespace HoaDonDienTu.WinForms.Licensing
             this.lblCapExpires.Location = new System.Drawing.Point(12, 190);
             this.lblCapExpires.Name = "lblCapExpires";
             this.lblCapExpires.StateCommon.ShortText.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
-            this.lblCapExpires.Values.Text = "Hạn dùng";
+            this.lblCapExpires.Values.Text = "Thời hạn";
             this.lblExpires.Location = new System.Drawing.Point(130, 190);
             this.lblExpires.Name = "lblExpires";
             this.lblExpires.Values.Text = "";
@@ -390,7 +380,7 @@ namespace HoaDonDienTu.WinForms.Licensing
             this.lblCapLast.Location = new System.Drawing.Point(12, 220);
             this.lblCapLast.Name = "lblCapLast";
             this.lblCapLast.StateCommon.ShortText.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
-            this.lblCapLast.Values.Text = "Xác thực gần nhất";
+            this.lblCapLast.Values.Text = "Kích hoạt lúc";
             this.lblLast.Location = new System.Drawing.Point(130, 220);
             this.lblLast.Name = "lblLast";
             this.lblLast.Values.Text = "";
@@ -474,8 +464,7 @@ namespace HoaDonDienTu.WinForms.Licensing
         private ComponentFactory.Krypton.Toolkit.KryptonWrapLabel lblMessage;
         private System.Windows.Forms.TableLayoutPanel tlpButtons;
         private ComponentFactory.Krypton.Toolkit.KryptonPanel pnlKey;
-        private ComponentFactory.Krypton.Toolkit.KryptonButton btnDeactivate;
-        private ComponentFactory.Krypton.Toolkit.KryptonButton btnValidate;
+        private ComponentFactory.Krypton.Toolkit.KryptonButton btnCopyMachine;
         private ComponentFactory.Krypton.Toolkit.KryptonButton btnActivate;
         private ComponentFactory.Krypton.Toolkit.KryptonLabel lblKeyHint;
         private ComponentFactory.Krypton.Toolkit.KryptonTextBox txtLicenseKey;

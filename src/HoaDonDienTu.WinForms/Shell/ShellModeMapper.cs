@@ -16,6 +16,25 @@ namespace HoaDonDienTu.WinForms.Shell
             return ToModeState(result.Mode);
         }
 
+        /// <summary>
+        /// Nhãn bản quyền cho chế độ Service: "Dùng thử còn N ngày" khi đang dùng thử, "Đã kích hoạt" khi đã nhập mã. Chế độ khác giữ nguyên.
+        /// </summary>
+        public static ShellModeViewState WithLicense(ShellModeViewState state, AppMode mode, HoaDonDienTu.Application.Licensing.LicenseInfo info, System.DateTime utcNow)
+        {
+            if (mode != AppMode.Service || info == null) return state;
+            if (info.Status == HoaDonDienTu.Domain.Licensing.LicenseStatus.Trial && info.ExpiresAtUtc.HasValue)
+            {
+                var days = System.Math.Max(0, (int)(info.ExpiresAtUtc.Value.Date - utcNow.Date).TotalDays);
+                state.LicenseLabel = "Dùng thử còn " + days.ToString(System.Globalization.CultureInfo.InvariantCulture) + " ngày";
+            }
+            else if (info.Status == HoaDonDienTu.Domain.Licensing.LicenseStatus.Valid && info.LicenseType == "PerMachine")
+            {
+                state.LicenseLabel = "Đã kích hoạt";
+            }
+
+            return state;
+        }
+
         /// <summary>Dùng khi chế độ đổi giữa chừng (kích hoạt, hết hạn, hủy licence).</summary>
         public static ShellModeViewState ToModeState(AppMode mode)
         {

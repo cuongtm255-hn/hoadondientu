@@ -48,6 +48,7 @@ Không đưa API WebView cụ thể ra ngoài Infrastructure adapter.
 |  | **Trạng thái 02/11/2026: ✅ đóng** bằng [ADR 0002](../decisions/0002-excel-export-fidelity.md): file do ứng dụng xuất khớp mẫu về tiêu đề, 19 cột, ô gộp, độ rộng, kiểu chữ/số; khác biệt có chủ đích (ngày và tỷ giá dạng số, thêm dòng phạm vi) đã ghi lại. Còn cần đối chiếu mẫu mua vào/ngoại tệ khi có. |
 | G-05 Rate limit | Nhịp gọi an toàn; hành vi 429/giới hạn tương đương | ADR + cấu hình mặc định | DD-05 |
 | G-06 Licence protocol | API, thuật toán chữ ký, mã máy, mã hóa cục bộ, chu kỳ xác thực, hủy/reset, chính sách lệch đồng hồ | ADR + contract server | DD-03 (T03-04, T03-05) |
+|  | **Trạng thái 07/11/2026: ✅ đóng** bằng [ADR 0010](../decisions/0010-simple-offline-license.md): licence offline (dùng thử 30 ngày + mã kích hoạt RSA theo máy), không máy chủ |
 | G-07 Company switch safety | Chứng minh thứ tự đóng tác vụ/token/SQLite và phục hồi sau crash | Báo cáo spike + ADR | DD-01 mục 9, DD-02 |
 |  | **Trạng thái 03/11/2026: 🟡 đóng một phần** bằng [ADR 0008](../decisions/0008-company-switch-safety.md): thứ tự và phục hồi lỗi mở kho đã có test, phiên dở dang được khôi phục khi mở doanh nghiệp; còn spike giết tiến trình đúng lúc đang chuyển. |
 | G-08 SQLite provider | Chọn thư viện SQLite tương thích net45 (x86/x64, phân phối native), WAL, backup API | ADR | DD-06 |
