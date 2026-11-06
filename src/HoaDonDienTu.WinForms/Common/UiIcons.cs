@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.Linq;
 using System.Windows.Forms;
 using ComponentFactory.Krypton.Toolkit;
 using HoaDonDienTu.Application.Navigation;
@@ -124,8 +125,51 @@ namespace HoaDonDienTu.WinForms.Common
             };
         }
 
-        /// <summary>Gắn icon cho mọi nút có tên trong bảng ánh xạ ở <paramref name="root"/> và các điều khiển con; nút đã có ảnh được giữ nguyên.</summary>
+        /// <summary>Khoảng cách chuẩn giữa hai nút đứng cạnh nhau (px).</summary>
+        public const int ButtonGap = 8;
+
+        /// <summary>
+        /// Gắn icon cho mọi nút có tên trong bảng ánh xạ ở <paramref name="root"/> và các điều khiển con (nút đã có ảnh được giữ nguyên),
+        /// rồi chèn khoảng cách chuẩn giữa các nút xếp sát nhau bằng Dock.
+        /// </summary>
         public static void Decorate(Control root)
+        {
+            ApplyIcons(root);
+            SpaceDockedButtons(root);
+        }
+
+        /// <summary>
+        /// Nút xếp bằng Dock Trái/Phải liền nhau thì dính vào nhau (Dock không dùng Margin). Chèn một dải trong suốt rộng <see cref="ButtonGap"/>
+        /// giữa mỗi cặp. Điều khiển được xếp theo thứ tự ngược chỉ số: chỉ số cao nằm ngoài cùng, nên dải chèn ngay sau chỉ số của nút.
+        /// </summary>
+        public static void SpaceDockedButtons(Control root)
+        {
+            foreach (var side in new[] { DockStyle.Left, DockStyle.Right })
+            {
+                var buttons = new List<Control>();
+                foreach (Control child in root.Controls)
+                {
+                    if (child.Dock == side && (child is KryptonButton || child is KryptonCheckButton)) buttons.Add(child);
+                }
+
+                // Từ nút trong cùng tới nút ngoài cùng; nút ngoài cùng không cần dải phía sau.
+                buttons.Sort((a, b) => root.Controls.GetChildIndex(a).CompareTo(root.Controls.GetChildIndex(b)));
+                for (var i = 0; i < buttons.Count - 1; i++)
+                {
+                    var spacer = new Panel { Dock = side, Width = ButtonGap, BackColor = Color.Transparent, TabStop = false, Name = "spacerBetweenButtons" };
+                    root.Controls.Add(spacer);
+                    root.Controls.SetChildIndex(spacer, root.Controls.GetChildIndex(buttons[i]) + 1);
+                }
+            }
+
+            // Chỉ duyệt các điều khiển gốc; dải vừa chèn không có điều khiển con.
+            foreach (Control child in new List<Control>(root.Controls.Cast<Control>()))
+            {
+                if (child.HasChildren) SpaceDockedButtons(child);
+            }
+        }
+
+        private static void ApplyIcons(Control root)
         {
             foreach (Control child in root.Controls)
             {
@@ -134,7 +178,7 @@ namespace HoaDonDienTu.WinForms.Common
                 var check = child as KryptonCheckButton;
                 if (button != null && button.Values.Image == null && TryGetForName(button.Name, out icon)) Apply(button, icon);
                 else if (check != null && check.Values.Image == null && TryGetForName(check.Name, out icon)) Apply(check, icon);
-                if (child.HasChildren) Decorate(child);
+                if (child.HasChildren) ApplyIcons(child);
             }
         }
 

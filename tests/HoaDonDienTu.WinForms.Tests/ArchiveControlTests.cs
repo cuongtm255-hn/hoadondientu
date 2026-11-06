@@ -264,6 +264,68 @@ namespace HoaDonDienTu.WinForms.Tests
             Assert.That(_columnsChanged, Is.EqualTo(0));
         }
 
+        private KryptonButton Button(string name)
+        {
+            return (KryptonButton)_control.Controls.Find(name, true).Single();
+        }
+
+        [Test]
+        public void ExportAndCheckFiles_AreLocked_WhenTheResultHasNoRows()
+        {
+            _control.ShowExportAllowed(true);
+
+            _control.ShowResult(Model(0));
+
+            Assert.That(Button("btnExportExcel").Enabled, Is.False);
+            Assert.That(Button("btnExportZip").Enabled, Is.False);
+            Assert.That(Button("btnCheckFiles").Enabled, Is.False);
+
+            _control.ShowResult(Model(2));
+
+            Assert.That(Button("btnExportExcel").Enabled, Is.True);
+            Assert.That(Button("btnExportZip").Enabled, Is.True);
+            Assert.That(Button("btnCheckFiles").Enabled, Is.True);
+
+            _control.ShowResult(Model(0));
+
+            Assert.That(Button("btnExportExcel").Enabled, Is.False, "Lọc ra kết quả trống thì khóa lại");
+        }
+
+        [Test]
+        public void WithoutTheExportEntitlement_ExportStaysLocked_EvenWithRows()
+        {
+            _control.ShowExportAllowed(false);
+
+            _control.ShowResult(Model(3));
+
+            Assert.That(Button("btnExportExcel").Enabled, Is.False);
+            Assert.That(Button("btnExportZip").Enabled, Is.False);
+            Assert.That(Button("btnCheckFiles").Enabled, Is.True, "Kiểm tra file là chỉ đọc nên không cần quyền xuất");
+        }
+
+        [Test]
+        public void ButtonsInTheTitleRow_HaveTheStandardGapBetweenThem()
+        {
+            _form.PerformLayout();
+            var excel = Button("btnExportExcel");
+            var zip = Button("btnExportZip");
+            var check = Button("btnCheckFiles");
+
+            Assert.That(zip.Left - excel.Right, Is.GreaterThanOrEqualTo(HoaDonDienTu.WinForms.Common.UiIcons.ButtonGap));
+            Assert.That(check.Left - zip.Right, Is.GreaterThanOrEqualTo(HoaDonDienTu.WinForms.Common.UiIcons.ButtonGap));
+            Assert.That(Button("btnSold").Left - Button("btnPurchase").Right, Is.GreaterThanOrEqualTo(HoaDonDienTu.WinForms.Common.UiIcons.ButtonGap));
+        }
+
+        [Test]
+        public void TheSearchBox_GetsTheRemainingWidth_NowThatDirectionButtonsLeftTheFilterRow()
+        {
+            _form.PerformLayout();
+            var quick = _control.Controls.Find("txtQuick", true).Single();
+
+            // Trước khi chuyển hai nút lên hàng tiêu đề, ô này chỉ còn khoảng 12 px ở cửa sổ 1100 px.
+            Assert.That(quick.Width, Is.GreaterThan(300));
+        }
+
         [Test]
         public void RestoringEverythingHidden_StillKeepsOneColumnVisible()
         {

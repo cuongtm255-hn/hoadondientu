@@ -46,6 +46,7 @@ namespace HoaDonDienTu.WinForms.Archive
         {
             InitializeComponent();
             HoaDonDienTu.WinForms.Common.UiIcons.Decorate(this);
+            RefreshActionButtons();
             _typingTimer = new Timer(components) { Interval = TypingDelayMs };
             _typingTimer.Tick += delegate
             {
@@ -151,6 +152,8 @@ namespace HoaDonDienTu.WinForms.Archive
                 lblPage.Values.Text = m.PageText;
                 btnPrev.Enabled = m.CanPrevious;
                 btnNext.Enabled = m.CanNext;
+                _hasRows = m.Rows != null && m.Rows.Count > 0;
+                RefreshActionButtons();
 
                 // Dựng lại cả lưới thì lưới tự phát SelectionChanged nhiều lần; chỉ báo đúng một lần ở cuối.
                 _suppressSelection = true;
@@ -215,13 +218,24 @@ namespace HoaDonDienTu.WinForms.Archive
             });
         }
 
+        // Xuất và kiểm tra file chỉ có nghĩa khi kết quả đang lọc có ít nhất một hóa đơn; xuất còn cần quyền của chế độ ứng dụng.
+        private bool _exportEntitled;
+        private bool _hasRows;
+
         public void ShowExportAllowed(bool allowed)
         {
             OnUi(delegate
             {
-                btnExportExcel.Enabled = allowed;
-                btnExportZip.Enabled = allowed;
+                _exportEntitled = allowed;
+                RefreshActionButtons();
             });
+        }
+
+        private void RefreshActionButtons()
+        {
+            btnExportExcel.Enabled = _exportEntitled && _hasRows;
+            btnExportZip.Enabled = _exportEntitled && _hasRows;
+            btnCheckFiles.Enabled = _hasRows;
         }
 
         public void ShowMessage(string text, bool isError)

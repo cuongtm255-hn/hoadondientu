@@ -175,7 +175,7 @@ namespace HoaDonDienTu.WinForms.Archive
             //
             // btnSold
             //
-            this.btnSold.Location = new System.Drawing.Point(324, 10);
+            this.btnSold.Location = new System.Drawing.Point(326, 10);
             this.btnSold.Size = new System.Drawing.Size(96, 34);
             this.btnSold.Name = "btnSold";
             this.btnSold.Values.Text = "Bán ra";
