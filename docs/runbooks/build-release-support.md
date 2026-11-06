@@ -40,8 +40,13 @@ VT="/c/Program Files/Microsoft Visual Studio/2022/Community/Common7/IDE/CommonEx
    powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Check-Release.ps1
    ```
    Phải in "ĐẠT" và thoát mã 0 (không có mã giả, nhãn dữ liệu giả, mẫu bí mật, file cấm như `*Spike*`).
-5. Đối chiếu nội dung thư mục Release với danh sách ở mục 4, rồi đóng gói (P6-05 chưa làm: chưa có bộ cài).
-6. Ghi lại phiên bản ứng dụng (hiện ở Cài đặt → Thông tin ứng dụng, lấy từ phiên bản assembly), schema cơ sở dữ liệu (hiện là 4) và phiên bản CefSharp (109.1.110) vào ghi chú phát hành (NFR-MNT-005).
+5. **Đóng gói** bằng một lệnh (thực hiện luôn các bước 2–4: dọn, build, kiểm Release, đối chiếu file bắt buộc):
+   ```bash
+   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Package-Release.ps1
+   ```
+   Script tạo `dist\HoaDonDienTu-<phiên bản>-win-x86.zip` và file `.sha256`, trong gói có `release-info.json` (phiên bản ứng dụng, schema cơ sở dữ liệu, CefSharp, SQLite, thời điểm build, commit) và `SHA256SUMS.txt`; rồi giải nén thử, chạy lại Check-Release và đối chiếu SHA-256 từng file. Script cảnh báo nếu thư mục làm việc git còn thay đổi chưa commit: **không phát hành bản đó**.
+6. Phiên bản ứng dụng đặt ở `src/HoaDonDienTu.WinForms/Properties/AssemblyInfo.cs` (hiện ở chân cửa sổ chính, Cài đặt → Thông tin ứng dụng và `release-info.json`); đổi trước khi đóng gói bản mới và viết ghi chú phát hành ở `docs/release/`.
+7. Trước khi phát hành chạy thêm `dotnet list src/HoaDonDienTu.sln package --vulnerable --include-transitive` (cần mạng) và ghi kết quả vào ghi chú phát hành.
 
 ## 4. Nội dung bản Release
 
@@ -87,5 +92,6 @@ Xin: phiên bản ứng dụng (Cài đặt → Thông tin ứng dụng), file l
 
 ## 8. Giới hạn của runbook
 
-- Chưa có bộ cài và CI (P6-05): các bước đóng gói ở mục 3 là thủ công.
+- Gói là bản giải nén chạy ngay: chưa có trình cài đặt (phím tắt, gỡ cài đặt), chưa ký số file chạy, chưa có CI. Script đóng gói chạy thủ công.
+- Chưa thử gói trên máy Windows sạch (chưa cài sẵn Visual C++ Redistributable) hay máy Windows 7/8.
 - Bảng sự cố ở mục 6 dựa trên hành vi đã có trong mã và test; chưa qua UAT với người dùng thật (P6-01), nên có thể thiếu tình huống thực tế. Bổ sung khi có phản hồi.

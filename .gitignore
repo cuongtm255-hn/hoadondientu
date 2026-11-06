@@ -9,3 +9,6 @@ TestResults/
 # Bản ghi nguyên văn traffic cổng Thuế (mật khẩu, token, cookie thật): đặt tên *.raw.* hoặc trong thư mục raw/, không bao giờ commit.
 docs/api-samples/*.raw.*
 docs/api-samples/raw/
+
+# Gói phát hành do scripts/Package-Release.ps1 tạo
+dist/

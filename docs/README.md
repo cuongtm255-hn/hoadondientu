@@ -33,6 +33,8 @@ SRS và wireframe mô tả cả `StandardMode` một MST và `ServiceMode` đa M
 | `progress/` | Status log / handoff notes between sessions (what's done, next, blockers) |
 | `runbooks/` | Build, release, and troubleshooting procedures |
 | `security/` | Security reviews (P6-03) and their findings |
+| `user-guide/` | Hướng dẫn sử dụng cho người dùng cuối |
+| `release/` | Ghi chú phát hành theo từng phiên bản |
 | `performance/` | Performance measurements (P6-02) |
 
 ## Quy tắc đồng bộ tài liệu

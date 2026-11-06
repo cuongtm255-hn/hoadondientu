@@ -25,6 +25,7 @@ namespace HoaDonDienTu.WinForms.Shell
             };
             StyleNavigationButtons();
             DecorateRibbon();
+            lblApplicationVersion.Text = "Phiên bản " + typeof(MainShellForm).Assembly.GetName().Version.ToString(3);
 #if DEBUG
             ApplyTestMarker();
 #endif

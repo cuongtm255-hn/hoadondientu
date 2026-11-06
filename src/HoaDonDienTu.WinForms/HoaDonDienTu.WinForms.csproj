@@ -189,6 +189,7 @@
     </Compile>
     <Compile Include="Shell\MainShellPresenter.cs" />
     <Compile Include="Shell\NavigationIcons.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Common\UiIcons.cs" />
     <Compile Include="Companies\RecoveryControl.cs" />
     <Compile Include="Companies\RecoveryPresenter.cs" />
