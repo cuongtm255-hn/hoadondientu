@@ -130,7 +130,11 @@ namespace HoaDonDienTu.WinForms.Bootstrap
             var userFile = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "HoaDonDienTu", "portal-api.json");
             var appFile = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "portal-api.json");
-            return PortalApiConfigLoader.LoadOrDefault(File.Exists(userFile) ? userFile : appFile);
+            var config = PortalApiConfigLoader.LoadOrDefault(File.Exists(userFile) ? userFile : appFile);
+
+            // File cấu hình trong thư mục người dùng ghi được không cần quyền quản trị: không cho đổi máy chủ ra ngoài cổng Thuế.
+            if (!PortalHostPolicy.IsTrusted(config.BaseUrl)) throw new PortalApiConfigException(new[] { PortalHostPolicy.Describe() });
+            return config;
         }
 
         private static string AppVersion

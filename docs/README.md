@@ -32,6 +32,7 @@ SRS và wireframe mô tả cả `StandardMode` một MST và `ServiceMode` đa M
 | `plans/` | `PROJECT-PLAN.md` — kế hoạch và tiến độ chung theo phase, tham chiếu SRS/feature/DD |
 | `progress/` | Status log / handoff notes between sessions (what's done, next, blockers) |
 | `runbooks/` | Build, release, and troubleshooting procedures |
+| `security/` | Security reviews (P6-03) and their findings |
 
 ## Quy tắc đồng bộ tài liệu
 
