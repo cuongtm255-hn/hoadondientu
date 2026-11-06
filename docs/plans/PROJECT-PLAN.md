@@ -29,7 +29,7 @@ Ký hiệu: ⬜ Chưa bắt đầu · 🟡 Đang làm · ✅ Hoàn thành · ⛔
 |---|---|---|---|---|
 | 0 | Yêu cầu và thiết kế | SRS, wireframe, feature list, detail design, kế hoạch | Tất cả (tài liệu) | 🟡 Đang review |
 | 1 | Nền tảng và technical spike | Solution chạy build được; ADR chặn kiến trúc | FT-00 | 🟡 Solution xong; ADR 0001–0006 đã có (G-02 một phần, G-04 và G-08 đóng, G-09 Excel/ZIP); chưa có ADR cho G-01, G-03, G-05, G-06, G-07 và PDF |
-| 2 | Khung chương trình, doanh nghiệp, licence và đăng nhập | Chạy 3 chế độ bằng development adapter | FT-01, FT-02, FT-03, FT-04 | 🟡 DD-01 16/18 task xong; DD-02 6/10; DD-03 5/8 (khóa/hợp đồng licence thật chờ G-06) |
+| 2 | Khung chương trình, doanh nghiệp, licence và đăng nhập | Chạy 3 chế độ bằng development adapter | FT-01, FT-02, FT-03, FT-04 | 🟡 DD-01 16/18 task xong; DD-02 7/10; DD-03 5/8 (khóa/hợp đồng licence thật chờ G-06) |
 | 3 | Tải hóa đơn end-to-end | Chọn kỳ → tải → lưu XML trên cổng thật | FT-05, FT-06, FT-07, FT-02 (production) | 🟡 DD-04 xong; DD-05 7/11 và DD-06 9/9 chạy trên cổng giả với SQLite thật ([ADR 0006](../decisions/0006-sqlite-provider.md)); còn đăng nhập WebView thật (G-01), UAT cổng thật |
 | 4 | Kho hóa đơn, chi tiết và trình xem | Tra cứu, xem XML/PDF | FT-08, FT-09 | ✅ DD-07 9/9; DD-08 8/8 (PDF dựng từ XML, ADR 0009) |
 | 5 | Xuất dữ liệu, tổng quan, lịch sử, cài đặt và sao lưu | Hoàn thiện tính năng còn lại | FT-10, FT-11, FT-12 | ✅ DD-09 7/7; DD-10 7/7; DD-11 7/8 (sao lưu/khôi phục có nút hủy, đổi thư mục kho, dung lượng, kiểm tra kết nối; còn thử kết nối cổng thật ở bản Release) |
@@ -140,7 +140,7 @@ Số task lấy từ bảng theo dõi trong từng DD (cập nhật khi đổi t
 |---|---|---|---:|---:|---:|---:|---|
 | FT-00 Cổng kỹ thuật | [DD-00](../detail-design/DD-00-TECHNICAL-GATES.md) | 1 | 10 | 2 | 2 | 0 | ADR: [0001](../decisions/0001-portal-api-contract.md) (G-02, một phần), [0002](../decisions/0002-excel-export-fidelity.md) (G-04), [0003](../decisions/0003-xlsx-and-zip-generation.md) (G-09 Excel/ZIP), [0004](../decisions/0004-interim-in-memory-metadata.md) (tạm), [0005](../decisions/0005-mock-only-testing-policy.md), [0006](../decisions/0006-sqlite-provider.md) (G-08); chưa có ADR cho G-01, G-03, G-05, G-06, G-07 ||
 | FT-01/02 Khung + đăng nhập | [DD-01](../detail-design/DD-01-APP-SHELL-LOGIN.md) | 1–3 | 18 | 16 | 2 | 0 | T01-14 một phần; T01-16 Release chạy được, đăng nhập WebView chờ gate G-01; hợp đồng đăng nhập thật đã có (T01-18) |
-| FT-03 Doanh nghiệp | [DD-02](../detail-design/DD-02-COMPANY-MANAGEMENT.md) | 2 | 10 | 6 | 3 | 0 | T02-08 chờ DD-03; 486 test pass |
+| FT-03 Doanh nghiệp | [DD-02](../detail-design/DD-02-COMPANY-MANAGEMENT.md) | 2 | 10 | 7 | 2 | 0 | T02-08 chờ DD-03; khôi phục danh mục bằng quét thư mục xong (T02-07) |
 | FT-04 Licence | [DD-03](../detail-design/DD-03-LICENSING.md) | 2 | 8 | 5 | 3 | 0 | Lõi + SCR-12 + HTTP client + nạp cấu hình xong; khóa/hợp đồng thật chờ G-06 |
 | FT-05 Chọn kỳ | [DD-04](../detail-design/DD-04-PERIOD-DOWNLOAD-CONFIG.md) | 3 | 10 | 10 | 0 | 0 | Bộ lọc bán ra và mua vào khớp mẫu thật (mua vào: `ttxly` 5/6/8, có CCCD); đã nối SCR-03 → SCR-04 |
 | FT-06 Hàng đợi tải | [DD-05](../detail-design/DD-05-DOWNLOAD-ENGINE.md) | 3 | 12 | 10 | 1 | 1 | Chạy toàn tuyến trên cổng giả (SCR-03 → engine → kho file → SCR-04) với SQLite; phiên bị ngắt được đưa về tạm dừng lúc mở doanh nghiệp; còn T05-04 chờ G-05, UAT cổng thật |
