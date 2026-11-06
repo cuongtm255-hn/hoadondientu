@@ -127,7 +127,7 @@ Mỗi phase kết thúc khi đạt đủ **tiêu chí thoát**; không bắt đ�
 | P6-01 | UAT trên cổng thật theo SRS mục 16.3 (đủ kịch bản) | ⬜ |
 | P6-02 | Kiểm thử hiệu năng (NFR-PERF-001…007) và độ tin cậy (NFR-REL-001…007) | ⬜ |
 | P6-03 | Rà soát bảo mật: token/log/WebView/XML viewer/licence (NFR-SEC-001…008) | ⬜ |
-| P6-04 | Kiểm tra Release configuration không chứa development adapter/secret | ⬜ |
+| P6-04 | Kiểm tra Release configuration không chứa development adapter/secret | ✅ `scripts/Check-Release.ps1` ([runbook](../runbooks/release-check.md)): Release đạt, Debug bị báo 28 vi phạm; chạy lại trước mỗi lần đóng gói |
 | P6-05 | Đóng gói/cài đặt (net45, WebView engine, SQLite native), ghi phiên bản app/schema/WebView (NFR-MNT-005) | ⬜ |
 | P6-06 | Runbook: build, release, xử lý sự cố, hỗ trợ khách hàng | ⬜ |
 | P6-07 | Hướng dẫn sử dụng và ghi chú phát hành | ⬜ |
