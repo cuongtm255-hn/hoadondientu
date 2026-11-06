@@ -288,19 +288,25 @@ namespace HoaDonDienTu.Application.Exports
             var temp = BeginWrite(request);
             try
             {
-                using (var stream = new FileStream(temp, FileMode.CreateNew, FileAccess.Write, FileShare.None))
-                {
-                    InvoiceExcelWriter.Write(
-                        stream,
-                        ScopeText(request.Scope, total),
-                        RangeText(request.Scope, invoices),
-                        invoices.Select(i => i.Invoice),
-                        done =>
+                // Ghi hàng chục nghìn dòng là việc nặng: luôn ở thread pool, không để chạy trên luồng giao diện dù các await trước đó hoàn tất ngay.
+                await Task.Run(
+                    () =>
+                    {
+                        using (var stream = new FileStream(temp, FileMode.CreateNew, FileAccess.Write, FileShare.None))
                         {
-                            cancellationToken.ThrowIfCancellationRequested();
-                            Report(progress, done, total);
-                        });
-                }
+                            InvoiceExcelWriter.Write(
+                                stream,
+                                ScopeText(request.Scope, total),
+                                RangeText(request.Scope, invoices),
+                                invoices.Select(i => i.Invoice),
+                                done =>
+                                {
+                                    cancellationToken.ThrowIfCancellationRequested();
+                                    Report(progress, done, total);
+                                });
+                        }
+                    },
+                    cancellationToken).ConfigureAwait(false);
 
                 Commit(temp, request);
                 var skippedNone = new List<ExportProblem>();
@@ -331,33 +337,39 @@ namespace HoaDonDienTu.Application.Exports
                 var exported = 0;
                 var usedNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ManifestName };
 
-                using (var stream = new FileStream(temp, FileMode.CreateNew, FileAccess.Write, FileShare.None))
-                using (var zip = new ZipArchive(stream, ZipArchiveMode.Create))
-                {
-                    var done = 0;
-                    foreach (var stored in invoices)
+                // Đọc file, băm SHA-256 và nén là việc nặng: luôn ở thread pool (NFR-PERF-001).
+                await Task.Run(
+                    () =>
                     {
-                        cancellationToken.ThrowIfCancellationRequested();
-                        var line = Pack(zip, root, stored, usedNames, invoices.Count == 1);
-                        manifest.Add(line);
-                        if (line.Problem != null) problems.Add(line.Problem);
-                        else exported++;
-                        Report(progress, ++done, total);
+                        using (var stream = new FileStream(temp, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+                        using (var zip = new ZipArchive(stream, ZipArchiveMode.Create))
+                        {
+                            var done = 0;
+                            foreach (var stored in invoices)
+                            {
+                                cancellationToken.ThrowIfCancellationRequested();
+                                var line = Pack(zip, root, stored, usedNames, invoices.Count == 1);
+                                manifest.Add(line);
+                                if (line.Problem != null) problems.Add(line.Problem);
+                                else exported++;
+                                Report(progress, ++done, total);
 
-                        if (problems.Count > 0 && policy == ZipFailurePolicy.Abort) break;
-                    }
+                                if (problems.Count > 0 && policy == ZipFailurePolicy.Abort) break;
+                            }
 
-                    if (problems.Count > 0 && policy != ZipFailurePolicy.SkipAndRecord)
-                    {
-                        // Bỏ gói đang ghi dở: chưa có gì ở vị trí đích.
-                        throw policy == ZipFailurePolicy.Abort
-                            ? (Exception)new ExportAbortedException(problems)
-                            : new ExportNeedsDecisionException(problems, exported);
-                    }
+                            if (problems.Count > 0 && policy != ZipFailurePolicy.SkipAndRecord)
+                            {
+                                // Bỏ gói đang ghi dở: chưa có gì ở vị trí đích.
+                                throw policy == ZipFailurePolicy.Abort
+                                    ? (Exception)new ExportAbortedException(problems)
+                                    : new ExportNeedsDecisionException(problems, exported);
+                            }
 
-                    if (exported == 0) throw new InvoiceStorageException("Không có hóa đơn nào có file XML hợp lệ để xuất.");
-                    if (invoices.Count > 1) WriteManifest(zip, manifest);
-                }
+                            if (exported == 0) throw new InvoiceStorageException("Không có hóa đơn nào có file XML hợp lệ để xuất.");
+                            if (invoices.Count > 1) WriteManifest(zip, manifest);
+                        }
+                    },
+                    cancellationToken).ConfigureAwait(false);
 
                 Commit(temp, request);
                 await RecordAsync(ExportKind.Zip, request, request.Scope, total, exported, problems).ConfigureAwait(false);

@@ -1,4 +1,4 @@
-# P6-02 — Hiệu năng kho 100.000 hóa đơn (đợt 1, 06/11/2026)
+# P6-02 — Hiệu năng và độ tin cậy (đợt 1 và 2, 06/11/2026)
 
 Phạm vi đợt này: **NFR-PERF-002** (tìm theo số/MST và mở trang đầu không quá 2 giây ở percentile 95 với kho 100.000 hóa đơn) và **NFR-PERF-007** / **NFR-REL-006** (chuyển kho, mục cuối). Các yêu cầu PERF/REL khác chưa đo.
 
@@ -44,10 +44,29 @@ Test `SwitchScaleTests` dùng chính bộ dữ liệu 100.000 hóa đơn làm m�
 
 Đạt NFR-PERF-007, nhưng lần đầu nguội dùng gần 2/3 ngưỡng trên máy phát triển; ổ cứng cơ hoặc máy yếu hơn có thể vượt 5 s. NFR-REL-006 phần "không có hai kho cùng hoạt động qua nhiều lần chuyển" cũng được kiểm với kho thật (test `OnlyOneStoreContextIsOpenAtATime…`); phần "đóng tiến trình giữa lúc chuyển" chưa kiểm ở mức tiến trình thật.
 
+## Đợt 2: các yêu cầu còn lại
+
+| Yêu cầu | Kết quả | Căn cứ |
+|---|---|---|
+| NFR-PERF-001 UI không treo khi tính hash, xuất file | **Đạt ở mức dịch vụ** | `UiResponsivenessTests`: chạy thao tác từ một luồng giao diện giả (vòng lặp thông điệp một luồng có SynchronizationContext) và đo độ trễ của thông điệp 10 ms. Excel 20.000 dòng: đứng hình tối đa 4 ms; ZIP 300 hóa đơn kèm băm SHA-256: 0–3 ms; sao lưu 500 file: 11 ms; khôi phục 500 file: 100 ms (ngưỡng 250 ms). Bài đối chứng cho thấy phép đo phát hiện được luồng bị chặn 600 ms |
+| NFR-PERF-003 mở ứng dụng ≤ 5 s | **Đạt (Debug, dữ liệu giả)** | Smoke: từ dựng CompositionRoot tới màn Tổng quan 1,35 s, gồm lần chạy đầu (JIT). Chưa đo bản Release trên máy chuẩn |
+| NFR-PERF-006 danh mục từ cache | **Đạt** | 200 doanh nghiệp liệt kê trong 8 ms; không có file `company.db` nào được mở hay tạo; số liệu tổng quan (số hóa đơn, dung lượng) lấy từ danh mục |
+| NFR-REL-001 không mất hóa đơn đã commit | **Đạt** | Chép các file cơ sở dữ liệu đúng lúc kết nối còn mở (mô phỏng dừng đột ngột/mất điện) rồi mở bản chép: đủ 150/150 hóa đơn, kiểm toàn vẹn đạt; một lần ghi thất bại giữa chừng không để lại dòng dở dang |
+| NFR-REL-002 tiếp tục không tạo bản ghi trùng | **Đạt** | Ngắt do đĩa đầy ở file thứ 6 rồi tiếp tục: đủ hóa đơn, mỗi hóa đơn một phiên bản (T06-09); các test checkpoint của engine |
+| NFR-REL-003 transaction và integrity | **Đạt** | Mọi ghi đi qua transaction; `IsIntact` chạy khi mở và khi sao lưu/khôi phục |
+| NFR-REL-004 SHA-256 và trạng thái kiểm tra | **Đạt** | SHA-256 từng phiên bản, `file_problem` và `file_checked_utc` lưu theo hóa đơn, hiện ở Kho hóa đơn |
+| NFR-REL-005 không báo hoàn tất khi còn đoạn lỗi | **Đạt** | Export hỏng của cổng giả → phiên `CompletedWithErrors`, không lưu gì |
+| NFR-REL-006 chuyển kho an toàn | **Một phần** | Qua nhiều lần chuyển chỉ có một kho mở (kho thật); **chưa kiểm** đóng tiến trình giữa lúc chuyển và "lần mở sau chọn kho hợp lệ cuối cùng" |
+| NFR-REL-007 danh mục hỏng không tạo kho rỗng | **Đạt** | Danh mục hỏng không bị ghi đè; màn hình khôi phục quét thư mục và đăng ký lại kho, giữ bản hỏng (T02-07) |
+
+### Gia cố tìm được khi đo PERF-001
+
+Khi chạy thử với kho trả kết quả ngay (không có điểm bất đồng bộ thật), cả Excel, ZIP và sao lưu chạy trọn trên luồng giao diện (đứng hình 0,7–2,4 s). Bản chạy thật không bị vì repository SQLite chạy truy vấn bằng `Task.Run` nên các tiếp nối rời luồng giao diện, nhưng sự an toàn đó phụ thuộc vào chi tiết của repository. Đã gia cố: `InvoiceExportService` giờ ghi Excel và đóng gói ZIP (đọc file, băm, nén) trong `Task.Run`, không còn phụ thuộc. `BackupService` vẫn dựa vào việc chụp/thay cơ sở dữ liệu là bất đồng bộ thật (đúng với `SqliteCompanyDatabaseBackup`); nếu thay cách cài đặt thì cần chạy lại `UiResponsivenessTests`.
+
 ## Giới hạn và điểm cần theo dõi
 
 1. **Lần truy cập đầu khi bộ nhớ đệm hệ điều hành còn nguội (cả mở trang đầu lẫn chuyển kho, đo được 3,2–3,3 s):** trong 20 lần đo của lượt chạy sau tối ưu có một mẫu chậm 3,3 giây (không ghi lại là lần thứ mấy, nhiều khả năng là lần đầu khi bộ nhớ đệm hệ điều hành còn nguội). p95 của 20 mẫu không phản ánh mẫu này. Người dùng mở kho lần đầu sau khi khởi động máy, nhất là ổ cứng cơ, có thể gặp độ trễ đó; chưa đo trên cấu hình triển khai.
 2. **Chưa đo kho lớn thật trên một chiều:** số liệu một chiều 100.000 là ngoại suy tuyến tính từ 50.000.
 3. **Tìm nhanh bằng `LIKE '%...%'`** quét toàn bảng (0,12–0,18 s ở 100.000); chấp nhận được, nếu kho lớn hơn nhiều thì cần chỉ mục toàn văn.
 4. **Tóm tắt vẫn tính trên toàn bộ kết quả lọc** (tổng tiền, số lỗi) mỗi lần tra cứu; một cách giảm thêm là tính nền, chưa cần ở quy mô này.
-5. **Chưa đo:** NFR-PERF-003 (mở ứng dụng ≤ 5 s), NFR-PERF-006 (danh mục từ cache), NFR-PERF-001 (UI không treo, cần chạy giao diện), cùng các NFR-REL ngoài REL-006. Nên đo khi có bản Release chạy với kho thật.
+5. **Chưa đo:** NFR-PERF-001 ở mức giao diện (vẽ lưới, tab PDF; mới đo dịch vụ), mở ứng dụng bản Release trên máy chuẩn, và hai ý còn thiếu của NFR-REL-006. Nên đo khi có bản Release chạy với kho thật.

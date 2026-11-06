@@ -827,6 +827,22 @@ namespace HoaDonDienTu.WinForms.Tests
 
         // ---- helpers ----
 
+        // ---- NFR-PERF-003: mở ứng dụng ----
+
+        [Test]
+        public void Startup_ReachesTheDashboard_WithinFiveSeconds_NFR_PERF_003()
+        {
+            // Đo cả dựng CompositionRoot, tạo cửa sổ chính, đọc danh mục + kiểm tra licence và hiện màn hình Tổng quan (Debug, dữ liệu giả,
+            // thư mục dữ liệu mới). Trên máy phát triển; số tuyệt đối chỉ để theo dõi xu hướng.
+            var watch = Stopwatch.StartNew();
+            Start("Standard");
+            watch.Stop();
+
+            TestContext.WriteLine("PERF startup to dashboard: {0:N0} ms", watch.Elapsed.TotalMilliseconds);
+            Assert.That(ContentTitle(), Is.EqualTo("Tổng quan"));
+            Assert.That(watch.Elapsed, Is.LessThan(TimeSpan.FromSeconds(5)), "NFR-PERF-003");
+        }
+
         // ---- Smoke 05 → 06 → 07 với kho thật (T08-08) và khôi phục danh mục ----
 
         private const string SmokeInvoiceNumber = "0000128";
