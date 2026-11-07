@@ -74,7 +74,7 @@ Trạng thái: ⬜ Chưa bắt đầu · 🟡 Đang làm · ✅ Hoàn thành · 
 | T03-07 | Unit + integration test | Tests | ✅ | xem mục 7 |
 | T03-08 | UI smoke SCR-12 | Tests | ✅ | |
 | T03-09 | Công cụ sinh khóa/cấp mã + runbook | Scripts, docs | ✅ | [license-keys.md](../runbooks/license-keys.md) |
-| T03-10 | Thử bản cài thật: hết dùng thử → hộp thoại → dán mã → vào | Thủ công | ⬜ | cần bản Release và một máy sạch |
+| T03-10 | Thử bản cài thật: hết dùng thử → hộp thoại → dán mã → vào | Thủ công | 🟡 | gói và kịch bản sẵn ([license-uat.md](../runbooks/license-uat.md)); chờ chạy trên máy sạch |
 
 ### Nhật ký tiến độ
 
