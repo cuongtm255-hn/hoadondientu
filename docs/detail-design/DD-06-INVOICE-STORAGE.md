@@ -144,6 +144,7 @@ Trạng thái: ⬜ Chưa bắt đầu · 🟡 Đang làm · ✅ Hoàn thành · 
 | Ngày | Nội dung | Người thực hiện |
 |---|---|---|
 | 01/11/2026 | Tạo tài liệu; chưa có code | Claude Code |
+| 07/11/2026 | Lưu nguyên **file zip cổng trả về** cạnh XML (cùng tên, đuôi `.zip`, không có bảng riêng): `InvoiceXmlPayload.PortalPackage` → `InvoiceStorageService.StorePackageAsync`. Lỗi ghi zip (đĩa đầy) được ném như lỗi ghi XML để phiên tải tạm dừng, lần tải lại bổ sung zip (hóa đơn cũ chưa có zip cũng được bổ sung khi tải lại). Xuất ZIP dùng đúng các file của zip này khi XML trong zip trùng hash đã lưu, nếu không thì dựng lại trang xem từ XML. Sao lưu/khôi phục cho phép `.zip` | Claude Code |
 
 ## 10. Lịch sử thay đổi tài liệu
 

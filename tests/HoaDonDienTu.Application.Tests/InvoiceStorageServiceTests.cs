@@ -291,6 +291,73 @@ namespace HoaDonDienTu.Application.Tests
             Assert.ThrowsAsync<StorageGuardException>(() => _service.UpsertAsync(session, Dto(), Xml(), CancellationToken.None));
         }
 
+        // ---- File zip của cổng (xem và in) ----
+
+        private static InvoiceXmlPayload XmlWithPackage()
+        {
+            return new InvoiceXmlPayload(Encoding.UTF8.GetBytes("<HDon><DLHDon><TTChung><SHDon>40</SHDon></TTChung></DLHDon></HDon>"), "x.xml", new byte[] { 80, 75, 3, 4, 1, 2, 3 });
+        }
+
+        [Test]
+        public async Task PortalPackage_IsStoredNextToTheXml_WithTheSameNameAndZipExtension()
+        {
+            var result = await _service.UpsertAsync(_session, Dto(), XmlWithPackage(), CancellationToken.None);
+
+            Assert.That(result, Is.EqualTo(InvoiceSaveResult.Saved));
+            var xml = _files.Committed.Single(c => c.EndsWith(".xml", StringComparison.OrdinalIgnoreCase));
+            Assert.That(_files.Committed, Does.Contain(InvoiceStorageService.PackagePathFor(xml)));
+            Assert.That(_files.Committed.Count, Is.EqualTo(2));
+            Assert.That(_files.TempCount, Is.EqualTo(0));
+        }
+
+        [Test]
+        public async Task WithoutAPortalPackage_OnlyTheXmlIsStored()
+        {
+            await _service.UpsertAsync(_session, Dto(), Xml(), CancellationToken.None);
+
+            Assert.That(_files.Committed.Count, Is.EqualTo(1));
+        }
+
+        [Test]
+        public async Task DownloadingAgain_AddsTheMissingPackage_WithoutCountingANewInvoice()
+        {
+            await _service.UpsertAsync(_session, Dto(), Xml(), CancellationToken.None);
+
+            var again = await _service.UpsertAsync(_session, Dto(), XmlWithPackage(), CancellationToken.None);
+
+            Assert.That(again, Is.EqualTo(InvoiceSaveResult.AlreadyExists));
+            Assert.That(_files.Committed.Count, Is.EqualTo(2), "Hóa đơn tải từ trước được bổ sung file zip");
+        }
+
+        [Test]
+        public async Task DownloadingAgain_DoesNotRewriteAnExistingPackage()
+        {
+            await _service.UpsertAsync(_session, Dto(), XmlWithPackage(), CancellationToken.None);
+            var before = _files.CommitCount;
+
+            await _service.UpsertAsync(_session, Dto(), XmlWithPackage(), CancellationToken.None);
+
+            Assert.That(_files.CommitCount, Is.EqualTo(before));
+        }
+
+        [Test]
+        public async Task APackageThatCannotBeWritten_ReportsTheStorageError_WithoutLosingTheInvoice_AndTheRetryAddsIt()
+        {
+            _files.FailWriteForZip = true;
+
+            Assert.ThrowsAsync<System.IO.IOException>(() => _service.UpsertAsync(_session, Dto(), XmlWithPackage(), CancellationToken.None));
+
+            Assert.That(_files.Committed.Count, Is.EqualTo(1), "XML đã lưu");
+            Assert.That(_files.TempCount, Is.EqualTo(0));
+            Assert.That(await _repo.FindAsync(BusinessKey.Build(new InvoiceNormalizer().Normalize(Dto(), InvoiceDirection.Sold)), CancellationToken.None), Is.Not.Null);
+
+            _files.FailWriteForZip = false;
+            var retry = await _service.UpsertAsync(_session, Dto(), XmlWithPackage(), CancellationToken.None);
+
+            Assert.That(retry, Is.EqualTo(InvoiceSaveResult.AlreadyExists));
+            Assert.That(_files.Committed.Count, Is.EqualTo(2));
+        }
+
         // ---- Fakes ----
 
         private sealed class FakeFiles : IInvoiceFileStore
@@ -299,6 +366,8 @@ namespace HoaDonDienTu.Application.Tests
             public List<string> Committed = new List<string>();
             public bool FailWrite;
             public bool FailCommit;
+            public bool FailWriteForZip;
+            public int CommitCount;
 
             public int TempCount
             {
@@ -308,6 +377,7 @@ namespace HoaDonDienTu.Application.Tests
             public Task<string> WriteTempAsync(string storageRoot, string relativeFolder, byte[] content, CancellationToken cancellationToken)
             {
                 if (FailWrite) throw new System.IO.IOException("disk full");
+                if (FailWriteForZip && content.Length == 7) throw new System.IO.IOException("disk full for zip");
                 var temp = relativeFolder + "\\" + Guid.NewGuid().ToString("N") + ".tmp";
                 _temps.Add(temp);
                 return Task.FromResult(temp);
@@ -319,6 +389,7 @@ namespace HoaDonDienTu.Application.Tests
                 _temps.Remove(tempPath);
                 var path = relativeFolder + "\\" + fileName;
                 Committed.Add(path);
+                CommitCount++;
                 return path;
             }
 

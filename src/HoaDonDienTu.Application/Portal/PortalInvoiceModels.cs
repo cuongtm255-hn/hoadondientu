@@ -154,14 +154,18 @@ namespace HoaDonDienTu.Application.Portal
 
     public sealed class InvoiceXmlPayload
     {
-        public InvoiceXmlPayload(byte[] content, string suggestedFileName)
+        public InvoiceXmlPayload(byte[] content, string suggestedFileName, byte[] portalPackage = null)
         {
             if (content == null) throw new ArgumentNullException("content");
             Content = content;
             SuggestedFileName = suggestedFileName;
+            PortalPackage = portalPackage;
         }
 
         public byte[] Content { get; private set; }
+
+        /// <summary>Nguyên file zip cổng trả về (invoice.xml cùng trang xem HTML, script, ảnh); null khi cổng chỉ trả XML. Lưu cạnh XML để xem và in đúng như cổng.</summary>
+        public byte[] PortalPackage { get; private set; }
         public string SuggestedFileName { get; private set; }
     }
 }

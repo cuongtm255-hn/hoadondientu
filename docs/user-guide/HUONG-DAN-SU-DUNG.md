@@ -57,7 +57,7 @@ Hóa đơn đã tải được lưu nguyên văn dưới dạng XML. Tải lại
 - **Thẻ tổng hợp:** số hóa đơn, tổng chưa thuế, tổng thuế, tổng thanh toán của kết quả đang lọc.
 - Bấm tiêu đề cột để sắp xếp; chọn nhiều dòng bằng Ctrl/Shift; bấm đúp một dòng để mở chi tiết.
 
-**Xuất Excel** tạo bảng kê theo mẫu của cổng Thuế; **Xuất ZIP XML** tạo gói chứa file XML (kèm `manifest.csv` có mã SHA-256 khi xuất nhiều hóa đơn). Nếu bạn đã chọn dòng thì chỉ xuất các dòng đó, không thì xuất toàn bộ kết quả đang lọc. Hộp thoại lưu nêu rõ tên và MST của doanh nghiệp. Khi không có dòng nào, các nút xuất và **Kiểm tra file** bị khóa. Mỗi lần xuất xong được ghi vào lịch sử xuất của doanh nghiệp.
+**Xuất Excel** tạo bảng kê theo mẫu của cổng Thuế; **Xuất ZIP XML** tạo gói chứa file XML cùng trang xem `invoice.html` (mở bằng trình duyệt để xem và in, giữ nguyên các file đi kèm như `details.js`, ảnh), kèm `manifest.csv` có mã SHA-256 khi xuất nhiều hóa đơn. Hóa đơn tải từ bản này trở đi được lưu kèm đúng file zip của cổng Thuế nên trang xem giống hệt trên cổng; hóa đơn tải trước đó dùng trang xem do ứng dụng dựng lại từ XML, tải lại hóa đơn đó để bổ sung bản của cổng. Nếu bạn đã chọn dòng thì chỉ xuất các dòng đó, không thì xuất toàn bộ kết quả đang lọc. Hộp thoại lưu nêu rõ tên và MST của doanh nghiệp. Khi không có dòng nào, các nút xuất và **Kiểm tra file** bị khóa. Mỗi lần xuất xong được ghi vào lịch sử xuất của doanh nghiệp.
 
 **Kiểm tra file** kiểm lại file XML trên đĩa: thiếu file, file bị sửa (sai SHA-256), không phải XML, file lạ không thuộc hóa đơn nào, file tạm sót. Kết quả hiện trong báo cáo; **Xóa file tạm** chỉ xóa các file `.tmp` sót trong kho. Hóa đơn có vấn đề được đánh dấu *Thiếu XML* hoặc *XML lỗi* ở cột File và ở Tổng quan.
 

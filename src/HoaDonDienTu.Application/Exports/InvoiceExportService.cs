@@ -429,9 +429,19 @@ namespace HoaDonDienTu.Application.Exports
                 return line;
             }
 
+            // Có file zip của cổng đã lưu cạnh XML: đóng gói nguyên các file đó (đúng trang xem của cổng). Không có hoặc zip hỏng/không khớp XML
+            // thì dựng lại từ XML như dưới đây.
+            var folder0 = single ? string.Empty : UniqueName(Path.GetFileNameWithoutExtension(current.RelativePath), usedNames) + "/";
+            string packedXmlName;
+            if (TryPackPortalPackage(zip, root, current.RelativePath, folder0, current.Sha256, out packedXmlName))
+            {
+                line.FileName = folder0 + packedXmlName;
+                return line;
+            }
+
             // Gói giống gói "Xuất xml" của cổng: invoice.xml + invoice.html + details.js + sign-check.jpg + viewinvoice-bg.jpg. Một hóa đơn thì năm file nằm ngay trong zip như cổng;
             // nhiều hóa đơn thì mỗi hóa đơn một thư mục (tên theo file XML trong kho) để trang xem của hóa đơn nào mở được ngay trong thư mục của nó.
-            var folder = single ? string.Empty : UniqueName(Path.GetFileNameWithoutExtension(current.RelativePath), usedNames) + "/";
+            var folder = folder0;
             line.FileName = folder + InvoiceViewerPackage.XmlName;
             foreach (var file in InvoiceViewerPackage.Files(bytes))
             {
@@ -443,6 +453,65 @@ namespace HoaDonDienTu.Application.Exports
             }
 
             return line;
+        }
+
+        /// <summary>Tổng dung lượng tối đa của các file trong một gói của cổng (chặn zip phình to).</summary>
+        private const long MaxPackageBytes = 4 * MaxEntryBytes;
+
+        /// <summary>
+        /// Đọc file zip của cổng cạnh XML và chép các file của nó vào gói xuất. Chỉ dùng khi zip đọc được và có đúng file XML trùng hash đã lưu;
+        /// tên file lấy phần cuối (không thư mục) nên không thể thoát khỏi thư mục của hóa đơn. Đọc hết vào bộ nhớ trước khi ghi nên lỗi giữa chừng không để lại file dở.
+        /// </summary>
+        private bool TryPackPortalPackage(ZipArchive zip, string root, string xmlRelativePath, string folder, string xmlSha256, out string xmlName)
+        {
+            xmlName = null;
+            var files = new List<KeyValuePair<string, byte[]>>();
+            try
+            {
+                var bytes = _reader.Read(root, HoaDonDienTu.Application.Invoices.InvoiceStorageService.PackagePathFor(xmlRelativePath), MaxEntryBytes);
+                using (var source = new ZipArchive(new MemoryStream(bytes), ZipArchiveMode.Read))
+                {
+                    long total = 0;
+                    var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    foreach (var entry in source.Entries)
+                    {
+                        var name = entry.Name;
+                        if (string.IsNullOrEmpty(name) || !names.Add(name)) continue;
+                        if (entry.Length > MaxEntryBytes) return false;
+                        total += entry.Length;
+                        if (total > MaxPackageBytes) return false;
+
+                        using (var stream = entry.Open())
+                        using (var buffer = new MemoryStream())
+                        {
+                            stream.CopyTo(buffer);
+                            var content = buffer.ToArray();
+                            files.Add(new KeyValuePair<string, byte[]>(name, content));
+                            if (xmlName == null && name.EndsWith(".xml", StringComparison.OrdinalIgnoreCase)
+                                && string.Equals(Hex(content), xmlSha256, StringComparison.OrdinalIgnoreCase))
+                            {
+                                xmlName = name;
+                            }
+                        }
+                    }
+                }
+            }
+            catch (InvalidDataException) { xmlName = null; return false; }
+            catch (FileNotFoundException) { xmlName = null; return false; }
+            catch (DirectoryNotFoundException) { xmlName = null; return false; }
+            catch (InvoiceFileTooLargeException) { xmlName = null; return false; }
+
+            if (xmlName == null) return false;
+            foreach (var file in files)
+            {
+                var entry = zip.CreateEntry(folder + file.Key, CompressionLevel.Optimal);
+                using (var s = entry.Open())
+                {
+                    s.Write(file.Value, 0, file.Value.Length);
+                }
+            }
+
+            return true;
         }
 
         private static string UniqueName(string name, HashSet<string> used)

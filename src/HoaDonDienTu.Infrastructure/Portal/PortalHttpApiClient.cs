@@ -56,14 +56,19 @@ namespace HoaDonDienTu.Infrastructure.Portal
             var message = PortalRequestBuilder.BuildDownload(_config, invoice);
 
             var content = await SendForBytesAsync(message, cancellationToken).ConfigureAwait(false);
-            if (_config.Download.ResponseMode == "Zip" && content.Length > 0) content = PortalResponseParser.ExtractXml(_config.Download, content);
+            byte[] package = null;
+            if (_config.Download.ResponseMode == "Zip" && content.Length > 0)
+            {
+                package = content;
+                content = PortalResponseParser.ExtractXml(_config.Download, content);
+            }
 
             if (content.Length == 0)
             {
                 throw new PortalApiException(PortalErrorKind.SchemaChanged, "Cổng Thuế trả về nội dung XML rỗng.", null, null);
             }
 
-            return new InvoiceXmlPayload(content, FileName(invoice));
+            return new InvoiceXmlPayload(content, FileName(invoice), package);
         }
 
         /// <summary>

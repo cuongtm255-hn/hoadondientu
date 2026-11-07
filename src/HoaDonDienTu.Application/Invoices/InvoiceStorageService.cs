@@ -72,6 +72,9 @@ namespace HoaDonDienTu.Application.Invoices
                 if (existing != null && existing.Current != null && string.Equals(existing.Current.Sha256, sha, StringComparison.OrdinalIgnoreCase))
                 {
                     var restored = await RestoreIfMissingAsync(session, existing, xml.Content, cancellationToken).ConfigureAwait(false);
+
+                    // Hóa đơn tải từ trước khi có gói của cổng, hoặc file zip bị mất: bổ sung nếu lần này cổng trả về gói.
+                    await StorePackageAsync(session, restored ?? existing.Current.RelativePath, xml.PortalPackage, false, cancellationToken).ConfigureAwait(false);
                     await _repository.TouchAsync(existing.InvoiceId, now, invoice, restored, cancellationToken).ConfigureAwait(false);
 
                     // File vừa được ghi lại nghĩa là kho có thêm dữ liệu thật, không phải bản trùng.
@@ -136,11 +139,47 @@ namespace HoaDonDienTu.Application.Invoices
                     throw;
                 }
 
+                await StorePackageAsync(session, relativePath, xml.PortalPackage, true, cancellationToken).ConfigureAwait(false);
                 return InvoiceSaveResult.Saved;
             }
             finally
             {
                 _gate.Release();
+            }
+        }
+
+        /// <summary>Đường dẫn file zip của cổng nằm cạnh file XML: cùng tên, đuôi <c>.zip</c> (kho không có bảng riêng cho nó).</summary>
+        public static string PackagePathFor(string xmlRelativePath)
+        {
+            return System.IO.Path.ChangeExtension(xmlRelativePath, ".zip");
+        }
+
+        /// <summary>
+        /// Lưu nguyên file zip cổng trả về cạnh XML. Lỗi ghi (đĩa đầy, bị khóa) được ném lên như lỗi ghi XML để phiên tải tạm dừng đúng điểm;
+        /// XML và metadata của hóa đơn đã lưu xong nên không mất gì, và lần tải lại hóa đơn này sẽ bổ sung file zip. Lúc xuất, gói chỉ được dùng
+        /// nếu XML trong zip trùng hash XML đã lưu.
+        /// </summary>
+        private async Task StorePackageAsync(DownloadSession session, string xmlRelativePath, byte[] package, bool replace, CancellationToken cancellationToken)
+        {
+            if (package == null || package.Length == 0 || string.IsNullOrEmpty(xmlRelativePath)) return;
+
+            var target = PackagePathFor(xmlRelativePath);
+            if (_files.Exists(session.StorageRoot, target))
+            {
+                if (!replace) return;
+                _files.Delete(session.StorageRoot, target);
+            }
+
+            var folder = System.IO.Path.GetDirectoryName(target) ?? string.Empty;
+            var temp = await _files.WriteTempAsync(session.StorageRoot, folder, package, cancellationToken).ConfigureAwait(false);
+            try
+            {
+                _files.Commit(session.StorageRoot, temp, folder, System.IO.Path.GetFileName(target));
+            }
+            catch
+            {
+                _files.DiscardTemp(temp);
+                throw;
             }
         }
 

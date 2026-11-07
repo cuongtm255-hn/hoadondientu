@@ -181,6 +181,18 @@ namespace HoaDonDienTu.Infrastructure.Tests.Invoices
                 var first = expected.First();
                 var path = files.Single(f => f.EndsWith("_" + first.Dto.InvoiceNumber + "_v1.xml", StringComparison.Ordinal) && f.Contains(first.Dto.InvoiceSymbol));
                 Assert.That(File.ReadAllBytes(path), Is.EqualTo(MockInvoiceDataset.BuildXml(first)));
+
+                // Cổng trả về file zip: lưu nguyên cạnh XML (cùng tên, đuôi .zip) để xem và in đúng như cổng.
+                var zips = Directory.GetFiles(Path.Combine(_root, "2026", "01", "BanRa", "XML"), "*.zip");
+                Assert.That(zips.Length, Is.EqualTo(expected.Count));
+                var zipPath = Path.ChangeExtension(path, ".zip");
+                Assert.That(File.Exists(zipPath), Is.True);
+                using (var zip = System.IO.Compression.ZipFile.OpenRead(zipPath))
+                {
+                    var names = zip.Entries.Select(e => e.Name).ToList();
+                    Assert.That(names, Does.Contain("invoice.xml"));
+                    Assert.That(names, Does.Contain("invoice.html"));
+                }
             }
         }
 

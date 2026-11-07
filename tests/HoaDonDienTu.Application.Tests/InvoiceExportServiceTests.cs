@@ -108,6 +108,116 @@ namespace HoaDonDienTu.Application.Tests
             return ExportScope.ForQuery(new ArchiveQuery { Direction = direction, SortKey = ArchiveSortKey.InvoiceNumber, SortDescending = false });
         }
 
+        // ---- Dùng file zip của cổng đã lưu ----
+
+        private static byte[] PortalZip(params KeyValuePair<string, byte[]>[] entries)
+        {
+            using (var ms = new MemoryStream())
+            {
+                using (var zip = new System.IO.Compression.ZipArchive(ms, System.IO.Compression.ZipArchiveMode.Create, true))
+                {
+                    foreach (var e in entries)
+                    {
+                        var entry = zip.CreateEntry(e.Key);
+                        using (var s = entry.Open()) s.Write(e.Value, 0, e.Value.Length);
+                    }
+                }
+
+                return ms.ToArray();
+            }
+        }
+
+        private static KeyValuePair<string, byte[]> Entry(string name, string text)
+        {
+            return new KeyValuePair<string, byte[]>(name, Encoding.UTF8.GetBytes(text));
+        }
+
+        private static IDictionary<string, string> ReadZipTexts(string path)
+        {
+            var result = new Dictionary<string, string>();
+            using (var zip = System.IO.Compression.ZipFile.OpenRead(path))
+            {
+                foreach (var e in zip.Entries)
+                {
+                    using (var r = new StreamReader(e.Open(), Encoding.UTF8)) result[e.FullName] = r.ReadToEnd();
+                }
+            }
+
+            return result;
+        }
+
+        [Test]
+        public async Task StoredPortalPackage_IsExportedAsIs_SoThePortalHtmlIsKept()
+        {
+            var stored = await AddAsync("40", new DateTime(2026, 10, 1));
+            var xml = Encoding.UTF8.GetString(_files.Read(null, stored.Current.RelativePath, long.MaxValue));
+            _files.Put(InvoiceStorageService.PackagePathFor(stored.Current.RelativePath), PortalZip(Entry("invoice.xml", xml), Entry("invoice.html", "<html>CỔNG</html>"), Entry("details.js", "js")));
+
+            await _service.ExportZipAsync(Req(All(), "p.zip"), ZipFailurePolicy.SkipAndRecord, null, CancellationToken.None);
+
+            var texts = ReadZipTexts(Path.Combine(_dir, "p.zip"));
+            Assert.That(texts["invoice.html"], Is.EqualTo("<html>CỔNG</html>"), "Trang xem là của cổng, không dựng lại");
+            Assert.That(texts["invoice.xml"], Is.EqualTo(xml));
+            Assert.That(texts.ContainsKey("details.js"), Is.True);
+        }
+
+        [Test]
+        public async Task SeveralInvoices_EachGetTheirOwnFolderWithTheirPortalFiles()
+        {
+            var a = await AddAsync("41", new DateTime(2026, 10, 1));
+            var b = await AddAsync("42", new DateTime(2026, 10, 2));
+            foreach (var s in new[] { a, b })
+            {
+                var xml = Encoding.UTF8.GetString(_files.Read(null, s.Current.RelativePath, long.MaxValue));
+                _files.Put(InvoiceStorageService.PackagePathFor(s.Current.RelativePath), PortalZip(Entry("invoice.xml", xml), Entry("invoice.html", "<html>" + s.Invoice.InvoiceNumber + "</html>")));
+            }
+
+            await _service.ExportZipAsync(Req(All(), "n.zip"), ZipFailurePolicy.SkipAndRecord, null, CancellationToken.None);
+
+            var texts = ReadZipTexts(Path.Combine(_dir, "n.zip"));
+            Assert.That(texts.Count(t => t.Key.EndsWith("/invoice.html")), Is.EqualTo(2));
+            Assert.That(texts.Values, Does.Contain("<html>41</html>"));
+            Assert.That(texts.Values, Does.Contain("<html>42</html>"));
+            Assert.That(texts.ContainsKey(InvoiceExportService.ManifestName), Is.True);
+        }
+
+        [Test]
+        public async Task APackageWhoseXmlDiffersFromTheStoredXml_IsNotTrusted_AndTheViewerIsRebuilt()
+        {
+            var stored = await AddAsync("43", new DateTime(2026, 10, 1));
+            _files.Put(InvoiceStorageService.PackagePathFor(stored.Current.RelativePath), PortalZip(Entry("invoice.xml", "<HDon>khác</HDon>"), Entry("invoice.html", "<html>GIẢ</html>")));
+
+            await _service.ExportZipAsync(Req(All(), "d.zip"), ZipFailurePolicy.SkipAndRecord, null, CancellationToken.None);
+
+            var texts = ReadZipTexts(Path.Combine(_dir, "d.zip"));
+            Assert.That(texts.Values, Does.Not.Contain("<html>GIẢ</html>"));
+            Assert.That(texts["invoice.xml"], Does.Contain("43-v1"), "Vẫn xuất đúng XML đã lưu");
+        }
+
+        [Test]
+        public async Task ACorruptPackage_FallsBackToTheRebuiltViewer_InsteadOfFailingTheExport()
+        {
+            var stored = await AddAsync("44", new DateTime(2026, 10, 1));
+            _files.Put(InvoiceStorageService.PackagePathFor(stored.Current.RelativePath), new byte[] { 1, 2, 3, 4 });
+
+            var result = await _service.ExportZipAsync(Req(All(), "c.zip"), ZipFailurePolicy.SkipAndRecord, null, CancellationToken.None);
+
+            Assert.That(result.Exported, Is.EqualTo(1));
+            Assert.That(ReadZipTexts(Path.Combine(_dir, "c.zip")).ContainsKey("invoice.xml"), Is.True);
+        }
+
+        [Test]
+        public async Task EntryNamesInThePackage_CannotEscapeTheInvoiceFolder()
+        {
+            var stored = await AddAsync("45", new DateTime(2026, 10, 1));
+            var xml = Encoding.UTF8.GetString(_files.Read(null, stored.Current.RelativePath, long.MaxValue));
+            _files.Put(InvoiceStorageService.PackagePathFor(stored.Current.RelativePath), PortalZip(Entry("invoice.xml", xml), Entry("../../evil.html", "x")));
+
+            await _service.ExportZipAsync(Req(All(), "s.zip"), ZipFailurePolicy.SkipAndRecord, null, CancellationToken.None);
+
+            Assert.That(ReadZipTexts(Path.Combine(_dir, "s.zip")).Keys.Any(k => k.Contains("..")), Is.False);
+        }
+
         // ---- Đọc lại file xuất ----
 
         private sealed class Cell

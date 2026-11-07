@@ -169,7 +169,7 @@ namespace HoaDonDienTu.Application.Backup
 
         private const long MaxManifestBytes = 32L * 1024 * 1024;
 
-        private static readonly string[] AllowedExtensions = { ".xml", ".pdf" };
+        private static readonly string[] AllowedExtensions = { ".xml", ".pdf", ".zip" };
 
         private readonly ICompanyContextAccessor _context;
         private readonly IActiveJobService _jobs;

@@ -224,7 +224,8 @@ namespace HoaDonDienTu.Infrastructure.Tests.Invoices
         [Test]
         public async Task DiskFullMidWrite_LeavesNoPartialFileOrRow_PausesWithCheckpoint_AndResumesWithoutDuplicates()
         {
-            var disk = new FlakyDisk(6);
+            // Mỗi hóa đơn ghi 2 file (XML và zip của cổng): lần ghi thứ 11 là XML của hóa đơn thứ 6.
+            var disk = new FlakyDisk(11);
             using (var rig = new Rig(_root, disk.Store()))
             {
                 var expected = rig.Portal.Dataset.Query(InvoiceDirection.Sold, new DateTime(2026, 1, 1), new DateTime(2026, 1, 31)).Count;
@@ -255,6 +256,34 @@ namespace HoaDonDienTu.Infrastructure.Tests.Invoices
                 Assert.That(all.All(i => i.Versions.Count == 1), Is.True, "Tiếp tục không tạo phiên bản trùng");
                 Assert.That(Directory.GetFiles(_root, "*.xml", SearchOption.AllDirectories).Length, Is.EqualTo(expected));
                 Assert.That(all.All(i => File.Exists(Path.Combine(_root, i.Current.RelativePath))), Is.True);
+            }
+        }
+
+        [Test]
+        public async Task DiskFullWhileWritingThePortalPackage_PausesThere_AndResumeAddsTheMissingZip()
+        {
+            // Lần ghi thứ 10 là file zip của hóa đơn thứ 5: XML của nó đã lưu, zip thì chưa.
+            var disk = new FlakyDisk(10);
+            using (var rig = new Rig(_root, disk.Store()))
+            {
+                var expected = rig.Portal.Dataset.Query(InvoiceDirection.Sold, new DateTime(2026, 1, 1), new DateTime(2026, 1, 31)).Count;
+                var id = await rig.CreateAsync(InvoiceDirection.Sold, PeriodSpec.ForMonth(2026, 1));
+
+                await rig.Orchestrator.RunAsync(id, null, CancellationToken.None);
+
+                Assert.That((await rig.Downloads.GetSessionAsync(id, CancellationToken.None)).State, Is.EqualTo(DownloadSessionState.PausedByUser));
+                var segment = (await rig.Downloads.GetSegmentsAsync(id, CancellationToken.None)).Single();
+                Assert.That(segment.ItemOffset, Is.EqualTo(4), "Hóa đơn thứ 5 chưa tính là xong vì thiếu zip");
+                Assert.That(Directory.GetFiles(_root, "*.tmp", SearchOption.AllDirectories), Is.Empty);
+
+                disk.Full = false;
+                await rig.Orchestrator.RunAsync(id, null, CancellationToken.None);
+
+                Assert.That((await rig.Downloads.GetSessionAsync(id, CancellationToken.None)).State, Is.EqualTo(DownloadSessionState.Completed));
+                var xmls = Directory.GetFiles(_root, "*.xml", SearchOption.AllDirectories);
+                Assert.That(xmls.Length, Is.EqualTo(expected));
+                Assert.That(xmls.All(x => File.Exists(Path.ChangeExtension(x, ".zip"))), Is.True, "Mọi XML đều có zip của cổng sau khi tiếp tục");
+                Assert.That((await rig.Invoices.ListAsync(CancellationToken.None)).All(i => i.Versions.Count == 1), Is.True);
             }
         }
 
