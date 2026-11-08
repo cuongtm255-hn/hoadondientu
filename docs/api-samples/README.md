@@ -5,6 +5,7 @@
 > [`sample-api-web.md`](sample-api-web.md) là bản ghi traffic **đã thay mọi giá trị nhạy cảm bằng placeholder** (`<JWT>`, `<COOKIES…>`, `<PASSWORD>`, `<CAPTCHA>`, `<CAPTCHA_KEY>`). Bản ghi nguyên văn (có mật khẩu, token, cookie thật) phải đặt tên `*.raw.*` hoặc trong `raw/` — các đường dẫn này nằm trong `.gitignore`; sau khi làm sạch mới lưu thành tệp thường và chỉ commit khi không còn bí mật.
 >
 > **Đã xác nhận bằng mẫu thật:** đăng nhập, tra cứu bán ra và toàn bộ tham số lọc, chi tiết, xuất XML (zip), xuất Excel.
+> **08/11/2026:** người dùng báo UAT cổng thật đạt toàn bộ kịch bản (mua vào, nhiều trang, 401/429), nhưng chưa nộp mẫu đã làm sạch. Các mục ⚠ dưới đây vẫn giữ, vì chưa có traffic để đối chiếu; bỏ dấu ⚠ khi có mẫu.
 > **Chưa có mẫu thật (suy luận, đánh dấu ⚠):** hành vi bỏ `ttxly` của tra cứu **mua vào** (đã có mẫu URL mua vào), trang kế tiếp qua `state`, kích thước trang tối đa, giới hạn tốc độ. Xem mục 7.
 
 ## 1. Cách hoạt động
