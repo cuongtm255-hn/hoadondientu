@@ -25,8 +25,8 @@ namespace HoaDonDienTu.Infrastructure.Licensing
         /// <summary>Chuỗi đưa vào công thức băm mã máy. Tách khỏi <see cref="ProductCode"/> để mã máy không đổi khi đổi sản phẩm cấp mã.</summary>
         public const string FingerprintProduct = "HDDT";
 
-        /// <summary>Khóa công khai RSA 2048 khớp khóa ký của máy chủ cấp mã.</summary>
-        public const string PublicKeyXml = "<RSAKeyValue><Modulus>viv1nV2j5Vqa9PFc9anJaAtJ3fpVBmm9F68UEw8THGFtohpWg9wmw6XctbAupMgBR3WYUUcjttb4wTKhZRk2m1CItjIeTrelghXceoEpWosUbNK+JCW6HSGiYsRr6m3o81AuLnpBHqu9ByiRf+JC2LSxIQ+z0z8vFbEo1pOsX2IcU70DOo0Ybg8nLtiw0fGgrPsb09HvYUovl9GDy1yGL4BN5ip+CA/Gc5NAj8OjPHhw6Hl7XUCFuaOUcL6H+UDR4km4o06ppeVOC5A0n0bmHNHZOYe3jMzFT1Y3vHqNN5vFO+KKVhCGD5CL/7tsYpTJzE8A5635Nn2O6bUDHyP/2Q==</Modulus><Exponent>AQAB</Exponent></RSAKeyValue>";
+        /// <summary>Khóa công khai RSA 2048 (tạo 08/11/2026) khớp khóa bí mật <c>EZACC_LICENSE_PRIVATE_KEY</c> của máy chủ cấp mã.</summary>
+        public const string PublicKeyXml = "<RSAKeyValue><Modulus>1TQicbUI4Gs3vv1J4VH8Ye1xqrOOKCNIhBeHs8AN/cuGE9hP1Bh6cs7DvWBcioZKXmlliDR5HiKquF8lL5nGuCDGja3AdX8sPziubuGSJZDoNFsvesZFLv/8JwM/nVbUtxXFYfCLGYRWRuhw5J6WSDRQqnJkyO6lEfXBtLAxXfaG/VtebwV3xo/U6o5c8AdSZWfiz6/bbY1ZjPr1m+xFQ9UCz5gZ+3SYo52z0LT0rZG9HmLv96i4EN33zruQ46MqLVFpGgDd41Y+/DgBcPZbH4IkW0xXhMh4+/TLBTiJriy5TjL0we+HTpEZdD0KDgj4rcr0+I82hK7qzzE0l2HCzQ==</Modulus><Exponent>AQAB</Exponent></RSAKeyValue>";
     }
 
     /// <summary>
