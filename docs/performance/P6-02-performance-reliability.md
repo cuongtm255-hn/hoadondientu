@@ -56,7 +56,7 @@ Test `SwitchScaleTests` dùng chính bộ dữ liệu 100.000 hóa đơn làm m�
 | NFR-REL-003 transaction và integrity | **Đạt** | Mọi ghi đi qua transaction; `IsIntact` chạy khi mở và khi sao lưu/khôi phục |
 | NFR-REL-004 SHA-256 và trạng thái kiểm tra | **Đạt** | SHA-256 từng phiên bản, `file_problem` và `file_checked_utc` lưu theo hóa đơn, hiện ở Kho hóa đơn |
 | NFR-REL-005 không báo hoàn tất khi còn đoạn lỗi | **Đạt** | Export hỏng của cổng giả → phiên `CompletedWithErrors`, không lưu gì |
-| NFR-REL-006 chuyển kho an toàn | **Một phần** | Qua nhiều lần chuyển chỉ có một kho mở (kho thật); **chưa kiểm** đóng tiến trình giữa lúc chuyển và "lần mở sau chọn kho hợp lệ cuối cùng" |
+| NFR-REL-006 chuyển kho an toàn | **Đạt (đã kiểm bằng tiến trình thật)** | Qua nhiều lần chuyển chỉ có một kho mở (kho thật). `SwitchKilledProcessTests`: một tiến trình PowerShell thật giữ giao dịch ghi dở trên `company.db` của kho A (rồi kho B) bị giết bằng TerminateProcess; bài đối chứng xác nhận tiến trình con đang giữ khóa ghi. Mở lại: cả hai kho qua `integrity_check`, giao dịch dở bị bỏ, chuyển A→B→A mỗi lần chỉ một context. "Lần mở sau chọn kho hợp lệ cuối cùng": ứng dụng **không lưu** kho đang hoạt động nên không có trạng thái nào có thể dở dang; bản Dịch vụ luôn vào màn chọn doanh nghiệp, bản Standard mở doanh nghiệp duy nhất. Chưa kiểm giết giữa lúc ghi catalog `companies.json` (chuyển kho không ghi file này) |
 | NFR-REL-007 danh mục hỏng không tạo kho rỗng | **Đạt** | Danh mục hỏng không bị ghi đè; màn hình khôi phục quét thư mục và đăng ký lại kho, giữ bản hỏng (T02-07) |
 
 ### Gia cố tìm được khi đo PERF-001

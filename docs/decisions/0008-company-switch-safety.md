@@ -40,6 +40,7 @@ checkpoint ghi sau từng hóa đơn nên Tiếp tục chạy từ đúng chỗ,
 
 ## Chưa kiểm
 
+- **Cập nhật 08/11/2026:** `SwitchKilledProcessTests` giết một tiến trình thật đang giữ giao dịch ghi dở trên `company.db` rồi mở lại và chuyển qua lại: cả hai kho nguyên vẹn, giao dịch dở bị bỏ. Chuyển MST không ghi trạng thái "kho đang hoạt động" nào xuống đĩa nên không có điểm dở dang. Phần dưới là ghi chú cũ, còn đúng cho điểm tắt giữa các bước trong bộ nhớ.
 - Chưa có spike giết tiến trình thật **đúng lúc đang chuyển MST** (giữa bước 3-5) rồi mở lại; các test hiện dùng đối tượng giả cho kho/phiên. Rủi ro đã giảm vì mỗi bước
   hoặc là bộ nhớ (xóa phiên) hoặc là giao dịch SQLite độc lập, nên tắt ở bất kỳ điểm nào đều để lại hai kho nguyên vẹn; vẫn nên kiểm một lần khi có bản chạy thật (UAT).
 - Chưa kiểm chuyển MST khi WebView đăng nhập đang mở (phụ thuộc [ADR 0007](0007-webview-cefsharp.md): phải xóa cache/cookie của `RequestContext` ở bước 3).
