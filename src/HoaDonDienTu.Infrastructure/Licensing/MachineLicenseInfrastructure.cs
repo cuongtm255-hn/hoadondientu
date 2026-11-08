@@ -26,7 +26,7 @@ namespace HoaDonDienTu.Infrastructure.Licensing
         public const string FingerprintProduct = "HDDT";
 
         /// <summary>Khóa công khai RSA 2048 (tạo 08/11/2026) khớp khóa bí mật <c>EZACC_LICENSE_PRIVATE_KEY</c> của máy chủ cấp mã.</summary>
-        public const string PublicKeyXml = "<RSAKeyValue><Modulus>1TQicbUI4Gs3vv1J4VH8Ye1xqrOOKCNIhBeHs8AN/cuGE9hP1Bh6cs7DvWBcioZKXmlliDR5HiKquF8lL5nGuCDGja3AdX8sPziubuGSJZDoNFsvesZFLv/8JwM/nVbUtxXFYfCLGYRWRuhw5J6WSDRQqnJkyO6lEfXBtLAxXfaG/VtebwV3xo/U6o5c8AdSZWfiz6/bbY1ZjPr1m+xFQ9UCz5gZ+3SYo52z0LT0rZG9HmLv96i4EN33zruQ46MqLVFpGgDd41Y+/DgBcPZbH4IkW0xXhMh4+/TLBTiJriy5TjL0we+HTpEZdD0KDgj4rcr0+I82hK7qzzE0l2HCzQ==</Modulus><Exponent>AQAB</Exponent></RSAKeyValue>";
+        public const string PublicKeyXml = "<RSAKeyValue><Modulus>vAhi5r5La9FkffXl2dWRRWJOGOUI4VdvyGu8WWilUriBVghC2yYRG1aMbNdLm4fKjamI+GYm3ErV+Ac39/6LpVAvHjz8+9OnT0JJdKtNA4svw0S95o2lhSrjnRAKHRwSK2m+AeaePNIAI9sFaaSOu9kCEKQCfTacu6aaOsZ60Ymat12JATofsljyT7RKf6vlmelVJwoL1ePTw8ihH7s+GSgQ6eA3deVv4F2XbOX/VtlB5ivkb494thOPV/OBhw+eRhWrCYYVH4+1lUw5cqondUA7yU0HoOStVOUotlLU7gv8ZFmSRJIs59N58I4KqmCsU9n/bsacAiIyvL5S5PUwMQ==</Modulus><Exponent>AQAB</Exponent></RSAKeyValue>";
     }
 
     /// <summary>
