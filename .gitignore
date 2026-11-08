@@ -15,3 +15,8 @@ dist/
 
 # Khóa bí mật phát hành bản quyền: KHÔNG commit, KHÔNG gửi cho khách hàng
 .local-secrets/
+
+# Chứng chỉ ký mã: không bao giờ commit
+*.pfx
+*.p12
+*.snk

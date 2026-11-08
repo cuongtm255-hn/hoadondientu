@@ -18,7 +18,12 @@
 param(
     [string]$MSBuildPath,
     [string]$OutputDir = (Join-Path $PSScriptRoot '..\dist'),
-    [switch]$SkipBuild
+    [switch]$SkipBuild,
+    [switch]$Sign,
+    [string]$Thumbprint,
+    [string]$PfxPath,
+    [switch]$NoTimestamp,
+    [switch]$SkipVerifySignature
 )
 
 $ErrorActionPreference = 'Stop'
@@ -90,6 +95,20 @@ $required = @(
 $missing = $required | Where-Object { -not (Test-Path (Join-Path $stage $_)) }
 if ($missing) { throw ('Thiếu file bắt buộc trong gói: ' + ($missing -join ', ')) }
 
+# ---- 3b. Ký số (tùy chọn): phải trước SHA256SUMS để băm là của file đã ký ----
+if ($Sign) {
+    Step 'Ký số các assembly của ứng dụng'
+    $signArgs = @{ Path = @($stage) }
+    if ($Thumbprint) { $signArgs.Thumbprint = $Thumbprint }
+    if ($PfxPath) { $signArgs.PfxPath = $PfxPath }
+    if ($NoTimestamp) { $signArgs.NoTimestamp = $true }
+    if ($SkipVerifySignature) { $signArgs.SkipVerify = $true }
+    & (Join-Path $PSScriptRoot 'Sign-Files.ps1') @signArgs
+    $unsigned = Get-ChildItem $stage -File | Where-Object { $_.Name -like 'HoaDonDienTu*.exe' -or $_.Name -like 'HoaDonDienTu*.dll' } |
+        Where-Object { (Get-AuthenticodeSignature $_.FullName).SignerCertificate -eq $null }
+    if ($unsigned) { throw ('Còn file chưa có chữ ký: ' + (($unsigned | ForEach-Object Name) -join ', ')) }
+}
+
 # ---- 4. Thông tin phiên bản và SHA-256 ----
 Step 'Ghi release-info.json và SHA256SUMS.txt'
 $ps32 = Join-Path $env:WinDir 'SysWOW64\WindowsPowerShell\v1.0\powershell.exe'
@@ -109,6 +128,7 @@ $info = [ordered]@{
     builtUtc = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
     gitCommit = $commit
     workingTreeClean = (-not $dirty)
+    signed = [bool]$Sign
 }
 $info | ConvertTo-Json | Set-Content (Join-Path $stage 'release-info.json') -Encoding UTF8
 
@@ -148,5 +168,6 @@ $size = [math]::Round((Get-Item $zip).Length / 1MB, 1)
 Write-Host ''
 Write-Host ("XONG: {0}" -f $zip) -ForegroundColor Green
 Write-Host ("  Phiên bản {0}, schema {1}, CefSharp {2}, {3} MB, SHA-256 {4}" -f $version, $schema, $cef, $size, $zipHash)
+if (-not $Sign) { Write-Host '  Chưa ký số (thêm -Sign -Thumbprint <mã> hoặc -PfxPath <file> để ký).' -ForegroundColor Yellow }
 if ($dirty) { Write-Host '  CẢNH BÁO: thư mục làm việc git có thay đổi chưa commit; không nên phát hành bản này.' -ForegroundColor Yellow }
 exit 0
