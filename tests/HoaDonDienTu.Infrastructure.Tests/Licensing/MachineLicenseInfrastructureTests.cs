@@ -96,7 +96,7 @@ namespace HoaDonDienTu.Infrastructure.Tests.Licensing
         [Test]
         public void AKeySignedForThisMachine_Verifies()
         {
-            var key = MakeKey("product=HDDT;machine=" + Machine + ";license=PerMachine;issued=2026-11-01T08:00:00Z");
+            var key = MakeKey("product=CDSOFT_EZACC;machine=" + Machine + ";license=PerMachine;issued=2026-11-01T08:00:00Z");
 
             var check = Verifier().Verify(key, Machine);
 
@@ -107,7 +107,7 @@ namespace HoaDonDienTu.Infrastructure.Tests.Licensing
         [Test]
         public void TheMachineCodeInTheKeyAndTheUserInput_IgnoreDashesAndCase()
         {
-            var key = MakeKey("product=HDDT;machine=" + Machine.Replace("-", string.Empty).ToLowerInvariant() + ";license=PerMachine");
+            var key = MakeKey("product=CDSOFT_EZACC;machine=" + Machine.Replace("-", string.Empty).ToLowerInvariant() + ";license=PerMachine");
 
             Assert.That(Verifier().Verify(key, Machine).IsValid, Is.True);
         }
@@ -115,7 +115,7 @@ namespace HoaDonDienTu.Infrastructure.Tests.Licensing
         [Test]
         public void AKeyForAnotherMachine_IsRefusedAsBoundToOtherMachine()
         {
-            var key = MakeKey("product=HDDT;machine=FFFFFFFF-FFFFFFFF-FFFFFFFF-FFFFFFFF;license=PerMachine");
+            var key = MakeKey("product=CDSOFT_EZACC;machine=FFFFFFFF-FFFFFFFF-FFFFFFFF-FFFFFFFF;license=PerMachine");
 
             var check = Verifier().Verify(key, Machine);
 
@@ -128,7 +128,7 @@ namespace HoaDonDienTu.Infrastructure.Tests.Licensing
         {
             using (var other = new RSACryptoServiceProvider(2048) { PersistKeyInCsp = false })
             {
-                var key = MakeKey("product=HDDT;machine=" + Machine + ";license=PerMachine", other);
+                var key = MakeKey("product=CDSOFT_EZACC;machine=" + Machine + ";license=PerMachine", other);
 
                 var check = Verifier().Verify(key, Machine);
 
@@ -140,9 +140,9 @@ namespace HoaDonDienTu.Infrastructure.Tests.Licensing
         [Test]
         public void ChangingThePayloadAfterSigning_BreaksTheSignature()
         {
-            var key = MakeKey("product=HDDT;machine=" + Machine + ";license=PerMachine");
+            var key = MakeKey("product=CDSOFT_EZACC;machine=" + Machine + ";license=PerMachine");
             var parts = key.Split('|');
-            var forged = parts[0] + "|" + B64(Encoding.UTF8.GetBytes("product=HDDT;machine=FFFFFFFF-FFFFFFFF-FFFFFFFF-FFFFFFFF;license=PerMachine")) + "|" + parts[2];
+            var forged = parts[0] + "|" + B64(Encoding.UTF8.GetBytes("product=CDSOFT_EZACC;machine=FFFFFFFF-FFFFFFFF-FFFFFFFF-FFFFFFFF;license=PerMachine")) + "|" + parts[2];
 
             Assert.That(Verifier().Verify(forged, "FFFFFFFF-FFFFFFFF-FFFFFFFF-FFFFFFFF").IsValid, Is.False);
         }
@@ -158,7 +158,7 @@ namespace HoaDonDienTu.Infrastructure.Tests.Licensing
         [Test]
         public void AnUnsupportedLicenceType_IsRefused()
         {
-            var key = MakeKey("product=HDDT;machine=" + Machine + ";license=Enterprise");
+            var key = MakeKey("product=CDSOFT_EZACC;machine=" + Machine + ";license=Enterprise");
 
             Assert.That(Verifier().Verify(key, Machine).IsValid, Is.False);
         }
@@ -166,10 +166,10 @@ namespace HoaDonDienTu.Infrastructure.Tests.Licensing
         [TestCase(null)]
         [TestCase("")]
         [TestCase("abc")]
-        [TestCase("HDDT1|only-two")]
+        [TestCase("EZACC1|only-two")]
         [TestCase("WRONG|YQ|YQ")]
-        [TestCase("HDDT1|***|###")]
-        [TestCase("HDDT1|YQ|YQ")]
+        [TestCase("EZACC1|***|###")]
+        [TestCase("EZACC1|YQ|YQ")]
         public void MalformedKeys_AreRefusedWithoutThrowing(string key)
         {
             var check = Verifier().Verify(key, Machine);
@@ -181,7 +181,7 @@ namespace HoaDonDienTu.Infrastructure.Tests.Licensing
         [Test]
         public void ABrokenPublicKey_IsRefusedWithoutThrowing()
         {
-            var key = MakeKey("product=HDDT;machine=" + Machine + ";license=PerMachine");
+            var key = MakeKey("product=CDSOFT_EZACC;machine=" + Machine + ";license=PerMachine");
 
             Assert.That(new RsaActivationKeyVerifier("<not-xml>").Verify(key, Machine).IsValid, Is.False);
         }
@@ -189,7 +189,7 @@ namespace HoaDonDienTu.Infrastructure.Tests.Licensing
         [Test]
         public void TheEmbeddedPublicKey_IsAValidRsaKey_AndRefusesAKeyFromAnotherPair()
         {
-            var key = MakeKey("product=HDDT;machine=" + Machine + ";license=PerMachine");
+            var key = MakeKey("product=CDSOFT_EZACC;machine=" + Machine + ";license=PerMachine");
 
             var check = new RsaActivationKeyVerifier(LicenseConstants.PublicKeyXml).Verify(key, Machine);
 
@@ -231,15 +231,15 @@ namespace HoaDonDienTu.Infrastructure.Tests.Licensing
             var path = Path.Combine(_dir, "a.bin");
             var store = new FileRegistryLicenseStateStore(path, null);
 
-            store.Save(Record(1, 5, "HDDT1|x|y"));
+            store.Save(Record(1, 5, "EZACC1|x|y"));
 
             var loaded = store.Load();
             Assert.That(loaded.FirstRunUtc, Is.EqualTo(new DateTime(2026, 11, 1, 0, 0, 0, DateTimeKind.Utc)));
             Assert.That(loaded.LastSeenUtc, Is.EqualTo(new DateTime(2026, 11, 5, 0, 0, 0, DateTimeKind.Utc)));
-            Assert.That(loaded.ActivationKey, Is.EqualTo("HDDT1|x|y"));
+            Assert.That(loaded.ActivationKey, Is.EqualTo("EZACC1|x|y"));
             Assert.That(loaded.ActivatedAtUtc, Is.Not.Null);
             var raw = Encoding.UTF8.GetString(File.ReadAllBytes(path));
-            Assert.That(raw, Does.Not.Contain("HDDT1"), "Mã kích hoạt không được nằm dạng rõ trong file");
+            Assert.That(raw, Does.Not.Contain("EZACC1"), "Mã kích hoạt không được nằm dạng rõ trong file");
         }
 
         [Test]
@@ -254,11 +254,11 @@ namespace HoaDonDienTu.Infrastructure.Tests.Licensing
         [Test]
         public void Merge_TakesTheEarliestFirstRun_TheLatestSeen_AndAnyKey()
         {
-            var merged = FileRegistryLicenseStateStore.Merge(Record(5, 6), Record(2, 9, "HDDT1|k|s"));
+            var merged = FileRegistryLicenseStateStore.Merge(Record(5, 6), Record(2, 9, "EZACC1|k|s"));
 
             Assert.That(merged.FirstRunUtc.Day, Is.EqualTo(2), "Xóa một nơi không làm mới thời gian dùng thử");
             Assert.That(merged.LastSeenUtc.Day, Is.EqualTo(9));
-            Assert.That(merged.ActivationKey, Is.EqualTo("HDDT1|k|s"));
+            Assert.That(merged.ActivationKey, Is.EqualTo("EZACC1|k|s"));
         }
 
         [Test]

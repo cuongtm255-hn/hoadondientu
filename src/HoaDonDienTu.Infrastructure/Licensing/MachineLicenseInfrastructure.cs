@@ -10,19 +10,23 @@ using Microsoft.Win32;
 
 namespace HoaDonDienTu.Infrastructure.Licensing
 {
-    /// <summary>Sản phẩm và khóa công khai để kiểm mã kích hoạt. Khóa bí mật không nằm trong repo (xem docs/runbooks/license-keys.md).</summary>
+    /// <summary>
+    /// Sản phẩm và khóa công khai để kiểm mã kích hoạt. Mã do máy chủ cdsoft-sale-management cấp
+    /// (<c>POST platform/tenants/:id/machines</c>), ký bằng khóa bí mật của máy chủ; khóa bí mật không bao giờ nằm trong repo này.
+    /// </summary>
     public static class LicenseConstants
     {
-        public const string ProductCode = "HDDT";
+        /// <summary>Mã sản phẩm trong payload do máy chủ cấp (máy chủ cố định giá trị này).</summary>
+        public const string ProductCode = "CDSOFT_EZACC";
 
-        /// <summary>Định dạng mã kích hoạt: <c>HDDT1|&lt;payload base64url&gt;|&lt;chữ ký base64url&gt;</c>.</summary>
-        public const string KeyPrefix = "HDDT1";
+        /// <summary>Định dạng mã kích hoạt: <c>EZACC1|&lt;payload base64url&gt;|&lt;chữ ký base64url&gt;</c>.</summary>
+        public const string KeyPrefix = "EZACC1";
 
-        /// <summary>
-        /// Khóa công khai (RSA 2048) tương ứng khóa bí mật ở <c>.local-secrets/HDDT-License.private.xml</c> của người phát hành.
-        /// Thay bằng khóa phát hành chính thức trước khi bán: chạy <c>tools/New-LicenseKeyPair.ps1</c> rồi dán khóa công khai mới vào đây.
-        /// </summary>
-        public const string PublicKeyXml = "<RSAKeyValue><Modulus>vAhi5r5La9FkffXl2dWRRWJOGOUI4VdvyGu8WWilUriBVghC2yYRG1aMbNdLm4fKjamI+GYm3ErV+Ac39/6LpVAvHjz8+9OnT0JJdKtNA4svw0S95o2lhSrjnRAKHRwSK2m+AeaePNIAI9sFaaSOu9kCEKQCfTacu6aaOsZ60Ymat12JATofsljyT7RKf6vlmelVJwoL1ePTw8ihH7s+GSgQ6eA3deVv4F2XbOX/VtlB5ivkb494thOPV/OBhw+eRhWrCYYVH4+1lUw5cqondUA7yU0HoOStVOUotlLU7gv8ZFmSRJIs59N58I4KqmCsU9n/bsacAiIyvL5S5PUwMQ==</Modulus><Exponent>AQAB</Exponent></RSAKeyValue>";
+        /// <summary>Chuỗi đưa vào công thức băm mã máy. Tách khỏi <see cref="ProductCode"/> để mã máy không đổi khi đổi sản phẩm cấp mã.</summary>
+        public const string FingerprintProduct = "HDDT";
+
+        /// <summary>Khóa công khai RSA 2048 khớp khóa ký của máy chủ cấp mã.</summary>
+        public const string PublicKeyXml = "<RSAKeyValue><Modulus>viv1nV2j5Vqa9PFc9anJaAtJ3fpVBmm9F68UEw8THGFtohpWg9wmw6XctbAupMgBR3WYUUcjttb4wTKhZRk2m1CItjIeTrelghXceoEpWosUbNK+JCW6HSGiYsRr6m3o81AuLnpBHqu9ByiRf+JC2LSxIQ+z0z8vFbEo1pOsX2IcU70DOo0Ybg8nLtiw0fGgrPsb09HvYUovl9GDy1yGL4BN5ip+CA/Gc5NAj8OjPHhw6Hl7XUCFuaOUcL6H+UDR4km4o06ppeVOC5A0n0bmHNHZOYe3jMzFT1Y3vHqNN5vFO+KKVhCGD5CL/7tsYpTJzE8A5635Nn2O6bUDHyP/2Q==</Modulus><Exponent>AQAB</Exponent></RSAKeyValue>";
     }
 
     /// <summary>
@@ -50,7 +54,7 @@ namespace HoaDonDienTu.Infrastructure.Licensing
         /// <summary>Tách ra để thử nghiệm: cùng đầu vào luôn cho cùng mã, đổi một trong hai thì mã đổi.</summary>
         public static string Compute(string machineGuid, string systemDriveSerial)
         {
-            var raw = "product=" + LicenseConstants.ProductCode + "|machineGuid=" + machineGuid + "|systemDrive=" + systemDriveSerial;
+            var raw = "product=" + LicenseConstants.FingerprintProduct + "|machineGuid=" + machineGuid + "|systemDrive=" + systemDriveSerial;
             using (var sha = SHA256.Create())
             {
                 var hash = sha.ComputeHash(Encoding.UTF8.GetBytes(raw));

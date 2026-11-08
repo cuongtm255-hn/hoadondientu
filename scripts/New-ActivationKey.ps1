@@ -5,15 +5,15 @@
 .EXAMPLE
     .\scripts\New-ActivationKey.ps1 -MachineCode 0123ABCD-4567EF01-89ABCDEF-02468ACE
 .DESCRIPTION
-    Mã có dạng HDDT1|<payload base64url>|<chữ ký base64url>; payload là product=HDDT;machine=...;license=PerMachine;issued=...
+    Chỉ dùng khi không cấp mã qua máy chủ (xem docs/runbooks/license-keys.md mục 0). Mã có dạng EZACC1|<payload base64url>|<chữ ký base64url>; payload là product=CDSOFT_EZACC;machine=...;license=PerMachine;issued=...
     ký RSA-SHA256 bằng khóa bí mật trong .local-secrets (đã bị git bỏ qua). Mã chỉ đúng với đúng máy đó, không hết hạn.
 #>
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)][string]$MachineCode,
     [string]$PrivateKeyPath = (Join-Path (Split-Path -Parent $PSScriptRoot) '.local-secrets\HDDT-License.private.xml'),
-    [string]$Product = 'HDDT',
-    [string]$KeyPrefix = 'HDDT1'
+    [string]$Product = 'CDSOFT_EZACC',
+    [string]$KeyPrefix = 'EZACC1'
 )
 
 $ErrorActionPreference = 'Stop'

@@ -18,7 +18,7 @@
 
 1. **Lần chạy đầu** ghi mốc `FirstRunUtc`. Từ đó có **30 ngày dùng thử** đầy đủ chức năng (kể cả nhiều doanh nghiệp). Hết ngày thứ 30 (theo ngày lịch UTC) thì hết dùng thử.
 2. **Hết dùng thử mà chưa kích hoạt**: ngay lúc khởi động hiện hộp thoại **Kích hoạt bản quyền** (mã máy có nút Sao chép, ô dán mã kích hoạt). Kích hoạt không thành công hoặc đóng hộp thoại thì **thoát ứng dụng**, không vào được màn hình chính. Dữ liệu trong kho không bị xóa.
-3. **Kích hoạt**: người dùng gửi *mã máy* cho đơn vị phát hành, nhận lại *mã kích hoạt* `HDDT1|payload|chữ ký` rồi dán vào. Ứng dụng kiểm **offline**: chữ ký RSA-SHA256 bằng khóa công khai nhúng sẵn, sản phẩm `HDDT`, đúng mã máy, loại `PerMachine`. Không có máy chủ, không gửi dữ liệu nào đi.
+3. **Kích hoạt**: người dùng gửi *mã máy* cho đơn vị phát hành, nhận lại *mã kích hoạt* `EZACC1|payload|chữ ký` rồi dán vào. Mã do API `POST /platform/tenants/{id}/machines` của máy chủ cdsoft-sale-management cấp (quản trị ký bằng khóa bí mật của máy chủ). Ứng dụng kiểm **offline**: chữ ký RSA-SHA256 bằng khóa công khai nhúng sẵn, sản phẩm `CDSOFT_EZACC`, đúng mã máy, loại `PerMachine`. Ứng dụng không gọi máy chủ và không gửi dữ liệu nào đi.
 4. Đã kích hoạt thì không hết hạn. Mã đã lưu được **kiểm lại ở mỗi lần khởi động**; nếu không còn khớp máy (ví dụ cài lại Windows) thì tính lại theo đồng hồ dùng thử và hộp thoại báo rõ lý do.
 
 ## 3. Mã máy
@@ -82,6 +82,7 @@ Trạng thái: ⬜ Chưa bắt đầu · 🟡 Đang làm · ✅ Hoàn thành · 
 |---|---|
 | 01/11/2026 | Thiết kế v1.0 (kích hoạt trực tuyến, ngoại tuyến 30 ngày, ReadOnly khi hết hạn) |
 | 07/11/2026 | Thiết kế lại theo yêu cầu: mã kích hoạt offline, dùng thử 30 ngày, chặn vào ứng dụng khi hết (v2.0); xóa mã licence trực tuyến; ADR 0010 |
+| 08/11/2026 | Khớp máy chủ cấp mã cdsoft-sale-management: tiền tố `EZACC1`, `product=CDSOFT_EZACC`, khóa công khai của máy chủ; công thức mã máy giữ nguyên (chuỗi băm vẫn dùng `HDDT`, không đổi theo sản phẩm cấp mã). Chưa kiểm với khóa thật |
 
 ## 9. Lịch sử thay đổi tài liệu
 

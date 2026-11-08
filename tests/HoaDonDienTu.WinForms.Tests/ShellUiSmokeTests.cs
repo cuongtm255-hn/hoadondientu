@@ -734,7 +734,7 @@ namespace HoaDonDienTu.WinForms.Tests
             Assert.That(Control<KryptonLabel>("lblMachine").Values.Text, Does.Match("^[0-9A-F]{8}(-[0-9A-F]{8}){3}$"), "Mã máy dạng XXXXXXXX-XXXXXXXX-XXXXXXXX-XXXXXXXX");
             Assert.That(Control<KryptonButton>("btnActivate").Enabled, Is.False);
 
-            Control<KryptonTextBox>("txtLicenseKey").Text = "HDDT1|abc|def";
+            Control<KryptonTextBox>("txtLicenseKey").Text = "EZACC1|abc|def";
             Assert.That(Control<KryptonButton>("btnActivate").Enabled, Is.True);
         }
 

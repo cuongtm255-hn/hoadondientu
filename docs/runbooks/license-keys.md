@@ -2,7 +2,20 @@
 
 Cơ chế: [ADR 0010](../decisions/0010-simple-offline-license.md), [DD-03](../detail-design/DD-03-LICENSING.md). Chỉ người phát hành làm các bước này; ứng dụng chỉ chứa khóa công khai.
 
-## 1. Sinh cặp khóa (một lần cho sản phẩm)
+## 0. Cấp mã chính thức qua máy chủ (cdsoft-sale-management)
+
+Mã kích hoạt bán cho khách được **máy chủ cấp**, ứng dụng vẫn kiểm **offline** bằng khóa công khai nhúng sẵn:
+
+1. Khách gửi *mã máy* (hộp thoại kích hoạt, nút Sao chép).
+2. Quản trị (vai trò `SUPER_ADMIN`) gọi `POST /platform/tenants/{id}/machines` với `{ "machineName": "...", "machineCode": "<mã máy>" }`. Tenant phải là tenant sản phẩm ngoài (`isExternalProduct`). Máy chủ chuẩn hóa mã máy (bỏ dấu `-`, chữ hoa), ký payload `product=CDSOFT_EZACC;machine=...;license=PerMachine;issued=...` bằng khóa bí mật `EZACC_LICENSE_PRIVATE_KEY` và trả về bản ghi máy có `activeKey` dạng `EZACC1|payload|chữ ký`.
+3. `GET /platform/tenants/{id}/machines` liệt kê các máy đã cấp (`PLATFORM_OPERATOR` cũng xem được).
+4. Gửi nguyên một dòng `activeKey` cho khách để dán vào ô Mã kích hoạt.
+
+Điểm cần khớp giữa hai bên: tiền tố `EZACC1`, `product=CDSOFT_EZACC`, loại `PerMachine`, và `LicenseConstants.PublicKeyXml` phải là khóa công khai của khóa bí mật `EZACC_LICENSE_PRIVATE_KEY`. **Chưa kiểm** cặp khóa này với máy chủ thật (không có khóa bí mật trong repo); thử một mã cấp từ máy chủ trước khi phát hành.
+
+Hai mục dưới (sinh khóa riêng và `New-ActivationKey.ps1`) chỉ dùng khi không dùng máy chủ, ví dụ thử nội bộ; mã ký bằng khóa riêng chỉ được chấp nhận nếu khóa công khai tương ứng đã thay vào `LicenseConstants.PublicKeyXml`, và khi đó dùng `-Product CDSOFT_EZACC -KeyPrefix EZACC1` (mặc định của script).
+
+## 1. Sinh cặp khóa riêng (chỉ khi không dùng máy chủ)
 
 ```powershell
 .\scripts\New-LicenseKeyPair.ps1
@@ -22,7 +35,7 @@ Cơ chế: [ADR 0010](../decisions/0010-simple-offline-license.md), [DD-03](../d
 .\scripts\New-ActivationKey.ps1 -MachineCode 0123ABCD-4567EF01-89ABCDEF-02468ACE
 ```
 
-3. Gửi nguyên **một dòng** `HDDT1|...|...` cho khách; khách dán vào ô Mã kích hoạt và bấm Kích hoạt.
+3. Gửi nguyên **một dòng** `EZACC1|...|...` cho khách; khách dán vào ô Mã kích hoạt và bấm Kích hoạt.
 
 Mã chỉ đúng với đúng máy đó, không hết hạn, không cần Internet.
 
