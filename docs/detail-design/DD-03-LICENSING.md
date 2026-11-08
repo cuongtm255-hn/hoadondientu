@@ -8,7 +8,7 @@
 | Tên | Dùng thử 30 ngày, mã kích hoạt ký số theo máy (kiểm offline), cổng vào ứng dụng, SCR-12 |
 | Phiên bản | 2.0 (thay thế thiết kế kích hoạt trực tuyến v1.0, xem [ADR 0010](../decisions/0010-simple-offline-license.md)) |
 | Ngày | 07/11/2026 |
-| Trạng thái | Đã triển khai và có test; chưa thử bằng bản cài thật trên máy khách |
+| Trạng thái | Đã triển khai, có test và đã thử bản thật (người dùng báo 08/11/2026) |
 | Feature | [FT-04](../requirements/FEATURE-LIST.md#ft-04--licence-và-quyền-tính-năng) |
 | Màn hình | SCR-12 (Bản quyền); hộp thoại kích hoạt lúc khởi động; mục `Bản quyền` trong SCR-09 |
 | Tham khảo | Cơ chế của dự án `cdsoft-ezacc` (mã máy + mã kích hoạt RSA, trạng thái dùng thử lưu DPAPI) |
@@ -74,7 +74,7 @@ Trạng thái: ⬜ Chưa bắt đầu · 🟡 Đang làm · ✅ Hoàn thành · 
 | T03-07 | Unit + integration test | Tests | ✅ | xem mục 7 |
 | T03-08 | UI smoke SCR-12 | Tests | ✅ | |
 | T03-09 | Công cụ sinh khóa/cấp mã + runbook | Scripts, docs | ✅ | [license-keys.md](../runbooks/license-keys.md) |
-| T03-10 | Thử bản cài thật: hết dùng thử → hộp thoại → dán mã → vào | Thủ công | 🟡 | gói và kịch bản sẵn ([license-uat.md](../runbooks/license-uat.md)); chờ chạy trên máy sạch |
+| T03-10 | Thử bản cài thật: hết dùng thử → hộp thoại → dán mã → vào | Thủ công | ✅ | người dùng báo đã thử xong ngày 08/11/2026 theo [license-uat.md](../runbooks/license-uat.md); chưa có biên bản chi tiết từng bước |
 
 ### Nhật ký tiến độ
 

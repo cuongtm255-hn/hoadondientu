@@ -82,7 +82,7 @@ Mỗi phase kết thúc khi đạt đủ **tiêu chí thoát**; không bắt đ�
 |---|---|---|---|
 | T01-02…T01-15 | Domain/Application nền, composition root, shell, startup, context/switch, login form, session, logging, test | [DD-01](../detail-design/DD-01-APP-SHELL-LOGIN.md#21-theo-dõi-tiến-độ-implement) | ✅ (T01-14 một phần, chờ DD-02/03/06) |
 | T02-01…T02-10 | Catalog, first-run, SCR-10/11, relink, nâng cấp Standard → Service | [DD-02](../detail-design/DD-02-COMPANY-MANAGEMENT.md#9-theo-dõi-tiến-độ-implement) | 🟡 (T02-07 xong 06/11; T02-08 chờ DD-03; T02-03/09 một phần) |
-| T03-01…T03-10 | Dùng thử 30 ngày, mã kích hoạt offline, cổng vào ứng dụng, SCR-12, công cụ cấp mã | [DD-03](../detail-design/DD-03-LICENSING.md#8-theo-dõi-tiến-độ-implement) | 🟡 (T03-01..09 xong 07/11; T03-10 thử bản cài thật còn lại) |
+| T03-01…T03-10 | Dùng thử 30 ngày, mã kích hoạt offline, cổng vào ứng dụng, SCR-12, công cụ cấp mã | [DD-03](../detail-design/DD-03-LICENSING.md#8-theo-dõi-tiến-độ-implement) | ✅ (T03-01..09 xong 07/11; T03-10 người dùng báo thử xong 08/11) |
 | T06-02 (phần khởi tạo) | Khung `CompanyDatabaseInitializer` tối thiểu để DD-01/DD-02 mở kho | [DD-06](../detail-design/DD-06-INVOICE-STORAGE.md#91-công-việc) | ✅ (`CompanyDatabaseInitializer` + schema v1 + migration, 14 test) |
 | T00-08 | Spike an toàn chuyển MST / crash recovery | DD-00 | ⬜ |
 
