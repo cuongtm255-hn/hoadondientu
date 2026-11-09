@@ -327,7 +327,7 @@ namespace HoaDonDienTu.Application.Downloads
                             // Một hóa đơn lỗi không làm mất cả đoạn: ghi nhận lỗi và đi tiếp; đoạn sẽ ở trạng thái Failed để thử lại (BR-007).
                             segment.ErrorCount++;
                             segment.LastError = Describe(ex);
-                            await EventAsync(session, segment, DownloadEventLevel.Error, "INVOICE_FAILED", segment.LastError).ConfigureAwait(false);
+                            await EventAsync(session, segment, DownloadEventLevel.Error, "INVOICE_FAILED", segment.LastError + " · " + DescribeInvoice(invoice)).ConfigureAwait(false);
                         }
                         catch (HoaDonDienTu.Application.Invoices.InvoiceStorageException ex)
                         {
@@ -709,6 +709,12 @@ namespace HoaDonDienTu.Application.Downloads
         {
             return _repository.AddEventAsync(
                 new DownloadEvent(session.Id, segment == null ? (Guid?)null : segment.Id, _clock.UtcNow, level, code, message), CancellationToken.None);
+        }
+
+        /// <summary>Nhận diện hóa đơn lỗi trong sự kiện (ký hiệu, số, ngày lập); không có MST hay tên để khỏi lộ dữ liệu khi gửi nhật ký đi hỗ trợ.</summary>
+        private static string DescribeInvoice(PortalInvoiceDto invoice)
+        {
+            return "hóa đơn " + invoice.FormSymbol + invoice.InvoiceSymbol + " số " + invoice.InvoiceNumber + " ngày " + invoice.IssueDate.ToString("dd/MM/yyyy", System.Globalization.CultureInfo.InvariantCulture);
         }
 
         private static string Describe(PortalApiException ex)
