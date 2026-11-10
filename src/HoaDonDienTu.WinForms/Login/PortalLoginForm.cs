@@ -18,9 +18,13 @@ namespace HoaDonDienTu.WinForms.Login
         public event EventHandler ViewShown;
         public event EventHandler RetryRequested;
         public event EventHandler CancelRequested;
+        public event EventHandler<LoginSubmitEventArgs> SubmitRequested;
+        public event EventHandler RefreshCaptchaRequested;
+        public event EventHandler ManualLoginRequested;
 
         public void ShowRequest(string companyName, string expectedTaxCode)
         {
+            lblTaxCodeValue.Values.Text = expectedTaxCode;
             lblCompanyName.Values.Text = companyName;
             lblExpectedTaxCode.Values.Text = "MST cần đăng nhập: " + expectedTaxCode;
             lblFooter.Values.Text = "MST cần đăng nhập: " + expectedTaxCode;
@@ -32,6 +36,66 @@ namespace HoaDonDienTu.WinForms.Login
             lblStateMessage.ForeColor = state.IsError ? Color.FromArgb(170, 40, 30) : SystemColors.ControlText;
             progressLogin.Visible = state.IsBusy;
             btnRetry.Visible = state.CanRetry;
+
+            var wasEnabled = btnLogin.Enabled;
+            txtPassword.Enabled = state.CanSubmit;
+            txtCaptcha.Enabled = state.CanSubmit;
+            btnLogin.Enabled = state.CanSubmit;
+            btnRefreshCaptcha.Enabled = state.CanSubmit;
+            if (state.CanSubmit && !wasEnabled)
+            {
+                // Vừa sẵn sàng (hoặc vừa phải nhập lại): đặt con trỏ vào ô còn thiếu.
+                if (txtPassword.Text.Length == 0) txtPassword.Focus();
+                else txtCaptcha.Focus();
+            }
+        }
+
+        public void ShowCaptcha(string svg)
+        {
+            var old = picCaptcha.Image;
+            picCaptcha.Image = null;
+            if (old != null) old.Dispose();
+            txtCaptcha.Clear();
+            if (string.IsNullOrEmpty(svg)) return;
+
+            try
+            {
+                picCaptcha.Image = CaptchaSvgRenderer.Render(svg, 300, 60);
+            }
+            catch (FormatException)
+            {
+                // Ảnh lạ (cổng đổi định dạng) không được làm form sập: báo trên chính khung ảnh để người dùng bấm "Đổi mã khác".
+                var fallback = new Bitmap(300, 60);
+                using (var graphics = Graphics.FromImage(fallback))
+                {
+                    graphics.Clear(Color.White);
+                    graphics.DrawString("Không hiển thị được ảnh. Bấm \"Đổi mã khác\".", SystemFonts.DefaultFont, Brushes.DarkRed, new PointF(6, 20));
+                }
+
+                picCaptcha.Image = fallback;
+            }
+        }
+
+        public void ClearSecrets()
+        {
+            txtPassword.Clear();
+            txtCaptcha.Clear();
+        }
+
+        public void ShowSimulationNotice(string text)
+        {
+            lblSimulation.Text = text ?? string.Empty;
+            lblSimulation.Visible = !string.IsNullOrEmpty(text);
+        }
+
+        public void ShowManualMode()
+        {
+            ClearSecrets();
+            pnlCredentials.Visible = false;
+            pnlBrowserHost.Dock = DockStyle.Fill;
+            MinimumSize = new Size(820, 520);
+            ClientSize = new Size(1000, 640);
+            CenterToParent();
         }
 
         public void HostBrowser(Control browserView)
@@ -75,6 +139,22 @@ namespace HoaDonDienTu.WinForms.Login
         private void OnRetryClick(object sender, EventArgs e)
         {
             Raise(RetryRequested);
+        }
+
+        private void OnLoginClick(object sender, EventArgs e)
+        {
+            var handler = SubmitRequested;
+            if (handler != null) handler(this, new LoginSubmitEventArgs(txtPassword.Text, txtCaptcha.Text));
+        }
+
+        private void OnRefreshCaptchaClick(object sender, EventArgs e)
+        {
+            Raise(RefreshCaptchaRequested);
+        }
+
+        private void OnManualClick(object sender, EventArgs e)
+        {
+            Raise(ManualLoginRequested);
         }
 
         private void OnCancelClick(object sender, EventArgs e)

@@ -47,6 +47,25 @@ namespace HoaDonDienTu.WinForms.Login
             remove { }
         }
 
+        public string SimulationNotice
+        {
+            get { return null; }
+        }
+
+        public Task<LoginCaptcha> GetCaptchaAsync(CancellationToken cancellationToken)
+        {
+            throw new InvalidOperationException(Reason);
+        }
+
+        public Task<LoginSubmitOutcome> SubmitCredentialsAsync(string username, string password, LoginCaptcha captcha, string captchaText, CancellationToken cancellationToken)
+        {
+            throw new InvalidOperationException(Reason);
+        }
+
+        public void EnableManualLogin()
+        {
+        }
+
         public Task InitializeAsync(CancellationToken cancellationToken)
         {
             var handler = BrowserFailed;

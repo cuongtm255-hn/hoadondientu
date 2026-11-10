@@ -19,7 +19,7 @@ namespace HoaDonDienTu.WinForms.Login
 
         /// <param name="baseUrl">Gốc cổng Thuế, ví dụ <c>https://hoadondientu.gdt.gov.vn</c>.</param>
         /// <param name="authenticatePath">Đường dẫn API đăng nhập, ví dụ <c>/api/security-taxpayer/authenticate</c>.</param>
-        public PortalLoginTraffic(string baseUrl, string authenticatePath)
+        public PortalLoginTraffic(string baseUrl, string authenticatePath, string captchaPath = "/api/captcha")
         {
             Uri origin;
             if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out origin) || origin.Scheme != Uri.UriSchemeHttps)
@@ -32,9 +32,24 @@ namespace HoaDonDienTu.WinForms.Login
                 throw new ArgumentException("Đường dẫn đăng nhập phải bắt đầu bằng '/'.", "authenticatePath");
             }
 
+            if (string.IsNullOrEmpty(captchaPath) || !captchaPath.StartsWith("/", StringComparison.Ordinal))
+            {
+                throw new ArgumentException("Đường dẫn CAPTCHA phải bắt đầu bằng '/'.", "captchaPath");
+            }
+
             _origin = origin;
             _authenticatePath = authenticatePath;
+            CaptchaPath = captchaPath;
         }
+
+        /// <summary>Đường dẫn API đăng nhập (<c>POST</c>), gọi từ trang cổng.</summary>
+        public string AuthenticatePath
+        {
+            get { return _authenticatePath; }
+        }
+
+        /// <summary>Đường dẫn API lấy CAPTCHA (<c>GET</c>, api-samples mục 0).</summary>
+        public string CaptchaPath { get; private set; }
 
         public string LoginUrl
         {

@@ -21,6 +21,8 @@ namespace HoaDonDienTu.WinForms.Login
         private readonly IPortalSessionStore _sessionStore;
         private readonly IApplicationLogger _logger;
         private readonly CancellationTokenSource _cancellation = new CancellationTokenSource();
+        private LoginCaptcha _captcha;
+        private bool _manual;
         private bool _initialized;
         private bool _browserReady;
         private bool _finished;
@@ -64,12 +66,16 @@ namespace HoaDonDienTu.WinForms.Login
             _view.ViewShown += OnViewShown;
             _view.RetryRequested += OnRetryRequested;
             _view.CancelRequested += OnCancelRequested;
+            _view.SubmitRequested += OnSubmitRequested;
+            _view.RefreshCaptchaRequested += OnRefreshCaptchaRequested;
+            _view.ManualLoginRequested += OnManualLoginRequested;
             _browser.LoginCandidateDetected += OnLoginCandidateDetected;
             _browser.BrowserFailed += OnBrowserFailed;
             _browser.LoginDialogClosed += OnLoginDialogClosed;
 
             var company = _context.HasCurrent ? _context.Current.DisplayName : string.Empty;
             _view.ShowRequest(company, _request.ExpectedTaxCode.Value);
+            if (!string.IsNullOrEmpty(_browser.SimulationNotice)) _view.ShowSimulationNotice(_browser.SimulationNotice);
         }
 
         public void Dispose()
@@ -81,6 +87,9 @@ namespace HoaDonDienTu.WinForms.Login
                 _view.ViewShown -= OnViewShown;
                 _view.RetryRequested -= OnRetryRequested;
                 _view.CancelRequested -= OnCancelRequested;
+                _view.SubmitRequested -= OnSubmitRequested;
+                _view.RefreshCaptchaRequested -= OnRefreshCaptchaRequested;
+                _view.ManualLoginRequested -= OnManualLoginRequested;
                 _browser.LoginCandidateDetected -= OnLoginCandidateDetected;
                 _browser.BrowserFailed -= OnBrowserFailed;
                 _browser.LoginDialogClosed -= OnLoginDialogClosed;
@@ -109,7 +118,7 @@ namespace HoaDonDienTu.WinForms.Login
             {
                 if (initializeBrowser)
                 {
-                    SetState(PortalLoginState.InitializingBrowser, "Bước 1/4", "Đang chuẩn bị đăng nhập...", true, false, false);
+                    SetState(PortalLoginState.InitializingBrowser, "Bước 1/5", "Đang chuẩn bị đăng nhập...", true, false, false);
                     await _browser.InitializeAsync(token).ConfigureAwait(true);
                     _view.HostBrowser(_browser.View);
                     _browserReady = true;
@@ -128,14 +137,20 @@ namespace HoaDonDienTu.WinForms.Login
 
             try
             {
-                SetState(PortalLoginState.ClearingPreviousSession, "Bước 2/4", "Đang làm mới phiên đăng nhập...", true, false, false);
+                SetState(PortalLoginState.ClearingPreviousSession, "Bước 2/5", "Đang làm mới phiên đăng nhập...", true, false, false);
                 await _browser.ClearSessionAsync(token).ConfigureAwait(true);
                 _sessionStore.Clear();
 
-                SetState(PortalLoginState.LoadingPortalLogin, "Bước 3/4", "Đang mở trang đăng nhập cổng Thuế...", true, false, false);
+                SetState(PortalLoginState.LoadingPortalLogin, "Bước 3/5", "Đang mở trang đăng nhập cổng Thuế...", true, false, false);
                 await _browser.NavigateToLoginAsync(token).ConfigureAwait(true);
 
-                SetState(PortalLoginState.WaitingForUser, "Bước 4/4", "Đang chờ đăng nhập thành công", false, false, false);
+                if (_manual)
+                {
+                    SetState(PortalLoginState.WaitingForUser, "Bước 5/5", "Đang chờ đăng nhập thành công", false, false, false);
+                    return;
+                }
+
+                await LoadCaptchaAsync(null, false).ConfigureAwait(true);
             }
             catch (OperationCanceledException)
             {
@@ -175,7 +190,13 @@ namespace HoaDonDienTu.WinForms.Login
 
         private async void OnLoginCandidateDetected(object sender, LoginCandidateEventArgs e)
         {
-            if (State != PortalLoginState.WaitingForUser) return;
+            await VerifyCandidateAsync().ConfigureAwait(true);
+        }
+
+        /// <summary>Đọc phiên từ trình duyệt rồi xác minh token và MST. Chỉ chạy một lần: lần gọi thứ hai thấy đã sang trạng thái xác minh nên bỏ qua.</summary>
+        private async Task VerifyCandidateAsync()
+        {
+            if (State != PortalLoginState.WaitingForUser && State != PortalLoginState.Submitting) return;
 
             SetState(PortalLoginState.VerifyingPortalSession, "Xác minh", "Đang xác minh phiên và MST...", true, false, false);
             try
@@ -234,6 +255,107 @@ namespace HoaDonDienTu.WinForms.Login
                 default:
                     SetState(PortalLoginState.InvalidSession, "Lỗi", "Phiên đăng nhập không hợp lệ. Vui lòng đăng nhập lại.", false, true, true);
                     break;
+            }
+        }
+
+        /// <summary>Lấy CAPTCHA mới từ cổng và hiện lên form. <paramref name="message"/> (nếu có) là lý do phải nhập lại.</summary>
+        private async Task LoadCaptchaAsync(string message, bool isError)
+        {
+            var token = _cancellation.Token;
+            try
+            {
+                SetState(PortalLoginState.LoadingCaptcha, "Bước 4/5", "Đang lấy mã CAPTCHA...", true, false, false);
+                _captcha = await _browser.GetCaptchaAsync(token).ConfigureAwait(true);
+                if (_finished || _disposed) return;
+                _view.ShowCaptcha(_captcha == null ? null : _captcha.Svg);
+                SetState(
+                    PortalLoginState.WaitingForUser, "Bước 5/5",
+                    message ?? "Nhập mật khẩu và mã CAPTCHA rồi bấm Đăng nhập.",
+                    false, isError, false);
+            }
+            catch (OperationCanceledException)
+            {
+            }
+            catch (Exception ex)
+            {
+                _logger.Error("Không lấy được CAPTCHA của cổng Thuế", ex);
+                SetState(PortalLoginState.PortalUnavailable, "Lỗi", "Không lấy được mã CAPTCHA từ cổng Thuế. Kiểm tra kết nối rồi thử lại.", false, true, true);
+            }
+        }
+
+        private async void OnRefreshCaptchaRequested(object sender, EventArgs e)
+        {
+            if (_finished || _manual || State != PortalLoginState.WaitingForUser) return;
+            await LoadCaptchaAsync(null, false).ConfigureAwait(true);
+        }
+
+        private async void OnSubmitRequested(object sender, LoginSubmitEventArgs e)
+        {
+            if (_finished || _disposed || _manual || State != PortalLoginState.WaitingForUser || _captcha == null) return;
+
+            var password = e.Password;
+            var captchaText = e.CaptchaText == null ? string.Empty : e.CaptchaText.Trim();
+            if (string.IsNullOrEmpty(password) || captchaText.Length == 0)
+            {
+                SetState(PortalLoginState.WaitingForUser, "Bước 5/5", "Nhập mật khẩu và mã CAPTCHA.", false, true, false);
+                return;
+            }
+
+            // Mật khẩu và CAPTCHA chỉ đi một chiều: view xóa ô ngay, presenter không giữ lại, không ghi nhật ký.
+            _view.ClearSecrets();
+            SetState(PortalLoginState.Submitting, "Đăng nhập", "Đang đăng nhập cổng Thuế...", true, false, false);
+            try
+            {
+                if (!ContextMatchesRequest())
+                {
+                    Finish(PortalLoginResult.Failure(PortalLoginOutcome.NotAllowed, "Doanh nghiệp đang mở đã thay đổi."));
+                    return;
+                }
+
+                var outcome = await _browser.SubmitCredentialsAsync(
+                    _request.ExpectedTaxCode.Value, password, _captcha, captchaText, _cancellation.Token).ConfigureAwait(true);
+                password = null;
+                if (_finished || _disposed || _cancellation.IsCancellationRequested) return;
+
+                switch (outcome)
+                {
+                    case LoginSubmitOutcome.Accepted:
+                        // Sự kiện của trình duyệt có thể đã đến trước và đang xác minh; chỉ xác minh nếu chưa ai làm.
+                        if (State == PortalLoginState.Submitting) await VerifyCandidateAsync().ConfigureAwait(true);
+                        break;
+
+                    case LoginSubmitOutcome.Rejected:
+                        await LoadCaptchaAsync("Mật khẩu hoặc mã CAPTCHA không đúng. Nhập lại mật khẩu và mã CAPTCHA mới.", true).ConfigureAwait(true);
+                        break;
+
+                    default:
+                        await LoadCaptchaAsync("Cổng Thuế không phản hồi hoặc đang lỗi. Thử lại sau ít phút.", true).ConfigureAwait(true);
+                        break;
+                }
+            }
+            catch (OperationCanceledException)
+            {
+            }
+            catch (Exception ex)
+            {
+                _logger.Error("Không gửi được thông tin đăng nhập", ex);
+                SetState(PortalLoginState.InvalidSession, "Lỗi", "Không đăng nhập được. Vui lòng thử lại.", false, true, true);
+            }
+        }
+
+        private async void OnManualLoginRequested(object sender, EventArgs e)
+        {
+            if (_finished || _disposed || _manual || State == PortalLoginState.Submitting || State == PortalLoginState.VerifyingPortalSession) return;
+            _manual = true;
+            _browser.EnableManualLogin();
+            _view.ShowManualMode();
+            try
+            {
+                await PrepareAsync(false).ConfigureAwait(true);
+            }
+            catch (Exception ex)
+            {
+                _logger.Error("Không chuyển sang đăng nhập thủ công", ex);
             }
         }
 
@@ -339,7 +461,8 @@ namespace HoaDonDienTu.WinForms.Login
                 Message = message,
                 IsBusy = busy,
                 IsError = error,
-                CanRetry = canRetry
+                CanRetry = canRetry,
+                CanSubmit = state == PortalLoginState.WaitingForUser && !_manual
             });
         }
     }

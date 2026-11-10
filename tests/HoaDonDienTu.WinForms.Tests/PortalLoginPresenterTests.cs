@@ -86,6 +86,7 @@ namespace HoaDonDienTu.WinForms.Tests
                 PortalLoginState.InitializingBrowser,
                 PortalLoginState.ClearingPreviousSession,
                 PortalLoginState.LoadingPortalLogin,
+                PortalLoginState.LoadingCaptcha,
                 PortalLoginState.WaitingForUser
             }));
             Assert.That(_view.HostCalls, Is.EqualTo(1));
@@ -124,6 +125,197 @@ namespace HoaDonDienTu.WinForms.Tests
             Assert.That(_view.Last.Message, Does.Contain(Mst));
             Assert.That(_presenter.Result, Is.Null);
             Assert.That(_view.CloseCalls, Is.EqualTo(0));
+        }
+
+        private const string Password = "P@ss-w0rd-\"bí mật\"";
+
+        [Test]
+        public void Start_ShowsTheCaptchaAndEnablesTheForm()
+        {
+            _view.RaiseShown();
+
+            Assert.That(_browser.CaptchaCalls, Is.EqualTo(1));
+            Assert.That(_view.CaptchaSvg, Is.EqualTo("<svg>1</svg>"));
+            Assert.That(_view.LastState, Is.EqualTo(PortalLoginState.WaitingForUser));
+            Assert.That(_view.Last.CanSubmit, Is.True);
+        }
+
+        [Test]
+        public void CaptchaFails_ShowsPortalUnavailable_RetryFetchesAgain()
+        {
+            _browser.CaptchaException = new InvalidOperationException("offline");
+
+            _view.RaiseShown();
+
+            Assert.That(_view.LastState, Is.EqualTo(PortalLoginState.PortalUnavailable));
+            Assert.That(_view.Last.CanSubmit, Is.False);
+            Assert.That(_view.Last.CanRetry, Is.True);
+
+            _browser.CaptchaException = null;
+            _view.RaiseRetry();
+            Assert.That(_view.LastState, Is.EqualTo(PortalLoginState.WaitingForUser));
+            Assert.That(_view.Last.CanSubmit, Is.True);
+        }
+
+        [Test]
+        public void Submit_SendsTheSelectedTaxCodeAsUsername_AndSucceeds()
+        {
+            _view.RaiseShown();
+
+            _view.RaiseSubmit(Password, " AbC12 ");
+
+            Assert.That(_browser.LastUserSent, Is.EqualTo(Mst), "Tên đăng nhập là MST đang chọn, người dùng không gõ");
+            Assert.That(_browser.LastPasswordSent, Is.EqualTo(Password));
+            Assert.That(_browser.LastCaptchaTextSent, Is.EqualTo("AbC12"));
+            Assert.That(_browser.LastCaptchaKeySent, Is.EqualTo("key-1"));
+            Assert.That(_view.SecretsCleared, Is.EqualTo(1), "Ô mật khẩu xóa ngay khi gửi");
+            Assert.That(_presenter.Result.Succeeded, Is.True);
+            Assert.That(_store.GetSnapshot().TaxCode.Value, Is.EqualTo(Mst));
+            Assert.That(_view.CloseCalls, Is.EqualTo(1));
+            Assert.That(_auth.Calls, Is.EqualTo(1), "Sự kiện của trình duyệt và kết quả gửi chỉ xác minh một lần");
+        }
+
+        [Test]
+        public void Submit_AcceptedWithoutBrowserEvent_StillVerifies()
+        {
+            _browser.RaiseCandidateOnAccept = false;
+            _view.RaiseShown();
+
+            _view.RaiseSubmit(Password, "abc");
+
+            Assert.That(_presenter.Result.Succeeded, Is.True);
+            Assert.That(_auth.Calls, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void Submit_EmptyPasswordOrCaptcha_IsNotSent()
+        {
+            _view.RaiseShown();
+
+            _view.RaiseSubmit(string.Empty, "abc");
+            _view.RaiseSubmit(Password, "  ");
+
+            Assert.That(_browser.SubmitCalls, Is.EqualTo(0));
+            Assert.That(_view.LastState, Is.EqualTo(PortalLoginState.WaitingForUser));
+            Assert.That(_view.Last.IsError, Is.True);
+        }
+
+        [Test]
+        public void Submit_Rejected_FetchesANewCaptcha_AndAsksAgain()
+        {
+            _browser.NextOutcome = LoginSubmitOutcome.Rejected;
+            _view.RaiseShown();
+
+            _view.RaiseSubmit(Password, "abc");
+
+            Assert.That(_browser.CaptchaCalls, Is.EqualTo(2), "CAPTCHA chỉ dùng một lần");
+            Assert.That(_view.CaptchaSvg, Is.EqualTo("<svg>2</svg>"));
+            Assert.That(_view.LastState, Is.EqualTo(PortalLoginState.WaitingForUser));
+            Assert.That(_view.Last.IsError, Is.True);
+            Assert.That(_view.Last.CanSubmit, Is.True);
+            Assert.That(_presenter.Result, Is.Null);
+            Assert.That(_auth.Calls, Is.EqualTo(0));
+
+            _browser.NextOutcome = LoginSubmitOutcome.Accepted;
+            _view.RaiseSubmit(Password, "xyz");
+            Assert.That(_presenter.Result.Succeeded, Is.True);
+        }
+
+        [Test]
+        public void Submit_PortalUnavailable_FetchesANewCaptcha_WithAnotherMessage()
+        {
+            _browser.NextOutcome = LoginSubmitOutcome.Unavailable;
+            _view.RaiseShown();
+
+            _view.RaiseSubmit(Password, "abc");
+
+            Assert.That(_view.LastState, Is.EqualTo(PortalLoginState.WaitingForUser));
+            Assert.That(_view.Last.Message, Does.Contain("không phản hồi"));
+        }
+
+        [Test]
+        public void Submit_BrowserThrows_ShowsRetryableError_WithoutThePassword()
+        {
+            _browser.SubmitException = new InvalidOperationException("boom");
+            _view.RaiseShown();
+
+            _view.RaiseSubmit(Password, "abc");
+
+            Assert.That(_view.LastState, Is.EqualTo(PortalLoginState.InvalidSession));
+            Assert.That(_view.Last.CanRetry, Is.True);
+            var seen = string.Join("|", _view.States.Select(s => s.Message + s.StepText)) + "|" + string.Join("|", _logger.Lines);
+            Assert.That(seen, Does.Not.Contain("bí mật"), "Mật khẩu không được lọt vào thông báo hay nhật ký của presenter");
+        }
+
+        [Test]
+        public void Submit_WhileNotWaiting_IsIgnored()
+        {
+            _view.RaiseSubmit(Password, "abc");
+
+            Assert.That(_browser.SubmitCalls, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void Submit_AccountOfAnotherTaxCode_ShowsMismatch_AndRetryFetchesANewCaptcha()
+        {
+            var first = true;
+            _auth.Handler = (c, m) => first
+                ? PortalLoginResult.Failure(PortalLoginOutcome.TaxCodeMismatch, "0109999999")
+                : FakeAuth.SuccessFor(c, m);
+            _view.RaiseShown();
+
+            _view.RaiseSubmit(Password, "abc");
+
+            Assert.That(_view.LastState, Is.EqualTo(PortalLoginState.TaxCodeMismatch));
+            Assert.That(_store.HasActiveSession, Is.False);
+
+            first = false;
+            _view.RaiseRetry();
+            Assert.That(_browser.CaptchaCalls, Is.EqualTo(2));
+            Assert.That(_view.LastState, Is.EqualTo(PortalLoginState.WaitingForUser));
+        }
+
+        [Test]
+        public void RefreshCaptcha_FetchesANewOne()
+        {
+            _view.RaiseShown();
+
+            _view.RaiseRefreshCaptcha();
+
+            Assert.That(_browser.CaptchaCalls, Is.EqualTo(2));
+            Assert.That(_view.CaptchaSvg, Is.EqualTo("<svg>2</svg>"));
+        }
+
+        [Test]
+        public void ManualLogin_SwitchesToTheRealPage_AndStillAcceptsTheBrowserLogin()
+        {
+            _view.RaiseShown();
+
+            _view.RaiseManual();
+
+            Assert.That(_browser.ManualCalls, Is.EqualTo(1));
+            Assert.That(_view.ManualModeCalls, Is.EqualTo(1));
+            Assert.That(_view.LastState, Is.EqualTo(PortalLoginState.WaitingForUser));
+            Assert.That(_view.Last.CanSubmit, Is.False, "Chế độ thủ công không dùng form riêng");
+
+            _view.RaiseSubmit(Password, "abc");
+            Assert.That(_browser.SubmitCalls, Is.EqualTo(0));
+
+            _browser.RaiseCandidate();
+            Assert.That(_presenter.Result.Succeeded, Is.True);
+        }
+
+        [Test]
+        public void SimulationNotice_IsShownWhenTheBrowserIsASimulation()
+        {
+            _browser.SimulationNotice = "MÔ PHỎNG";
+            var request = new PortalLoginRequest(_company.CompanyId, HoaDonDienTu.Domain.Companies.TaxCode.Parse(Mst), LoginReason.Manual, ScreenId.Dashboard, null);
+            using (var presenter = new PortalLoginPresenter(_view, request, _context, _browser, _auth, _store, _logger))
+            {
+                presenter.Initialize();
+            }
+
+            Assert.That(_view.Simulation, Is.EqualTo("MÔ PHỎNG"));
         }
 
         [Test]

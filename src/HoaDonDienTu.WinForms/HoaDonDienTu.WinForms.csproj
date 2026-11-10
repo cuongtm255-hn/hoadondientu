@@ -50,6 +50,8 @@
   <ItemGroup>
     <Compile Include="Bootstrap\AppApplicationContext.cs" />
     <Compile Include="Login\PortalLoginTraffic.cs" />
+    <Compile Include="Login\CaptchaSvgRenderer.cs" />
+    <Compile Include="Login\PortalLoginScripts.cs" />
     <Compile Include="Login\PortalLoginPageScript.cs" />
     <Compile Include="Login\CefPortalLoginBrowser.cs" />
     <Compile Include="Bootstrap\CompositionRoot.cs" />

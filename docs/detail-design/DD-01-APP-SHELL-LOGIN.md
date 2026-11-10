@@ -646,6 +646,8 @@ PortalLoginForm
 
 Tên doanh nghiệp và MST dự kiến phải luôn hiển thị.
 
+> **Cập nhật 10/11/2026 ([ADR 0011](../decisions/0011-own-login-form-hidden-webview.md)):** form đăng nhập là form riêng (nhãn MST in đậm, ô mật khẩu, ảnh và ô CAPTCHA, nút Đổi mã khác/Đăng nhập). WebView chạy ngầm (khung 2 px). Sau `LoadingPortalLogin` có thêm `LoadingCaptcha` (gọi `GET /api/captcha`), rồi `WaitingForUser` (cho nhập), `Submitting` (gửi `POST authenticate` từ trong trang), sau đó `VerifyingPortalSession` như cũ. Cổng từ chối hoặc lỗi thì lấy CAPTCHA mới và quay về `WaitingForUser`. Nút "Đăng nhập trên trang cổng Thuế..." chuyển sang chế độ thủ công (WebView lớn, đoạn hỗ trợ `PortalLoginPageScript`, bắt `LoginCandidateDetected` như cũ). Phần mô tả bên dưới là luồng thủ công.
+
 ### 10.4 State machine
 
 ```text

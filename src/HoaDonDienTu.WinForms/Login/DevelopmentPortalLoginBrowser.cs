@@ -21,6 +21,7 @@ namespace HoaDonDienTu.WinForms.Login
         private readonly KryptonPanel _view = new KryptonPanel();
         private readonly KryptonLabel _status = new KryptonLabel();
         private string _simulatedTaxCode;
+        private int _captchaCount;
 
         public DevelopmentPortalLoginBrowser(Func<string> expectedTaxCode)
         {
@@ -37,6 +38,21 @@ namespace HoaDonDienTu.WinForms.Login
         public event EventHandler<BrowserNavigationEventArgs> NavigationChanged;
         public event EventHandler<BrowserFailureEventArgs> BrowserFailed;
         public event EventHandler LoginDialogClosed;
+
+        /// <summary>Mật khẩu giả đưa tới kết quả "bị từ chối".</summary>
+        public const string RejectedPassword = "sai";
+
+        /// <summary>Mật khẩu giả đăng nhập thành công nhưng bằng tài khoản của MST khác (thử chặn sai MST).</summary>
+        public const string OtherTaxCodePassword = "khac-mst";
+
+        public string SimulationNotice
+        {
+            get
+            {
+                return "MÔ PHỎNG (Debug): không gọi cổng Thuế. Mật khẩu \"" + RejectedPassword + "\" bị từ chối, \"" + OtherTaxCodePassword
+                    + "\" đăng nhập bằng MST khác, giá trị khác thành công. CAPTCHA là ảnh giả, gõ gì cũng được.";
+            }
+        }
 
         public Task InitializeAsync(CancellationToken cancellationToken)
         {
@@ -81,6 +97,31 @@ namespace HoaDonDienTu.WinForms.Login
             }
 
             return Task.FromResult(capture.ToMaterial());
+        }
+
+        public Task<LoginCaptcha> GetCaptchaAsync(CancellationToken cancellationToken)
+        {
+            _captchaCount++;
+            // Ảnh SVG giả cùng dạng với ảnh thật (path tô màu + đường nhiễu), vẽ hình khối thay vì chữ.
+            var svg = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"200\" height=\"40\" viewBox=\"0,0,200,40\">"
+                + "<path d=\"M10 30 C60 10,120 35,190 12\" stroke=\"#222\" fill=\"none\"/>"
+                + "<path fill=\"#222\" d=\"M20 8L40 8L40 32L20 32ZM26 14L26 26L34 26L34 14Z\"/>"
+                + "<path fill=\"#333\" d=\"M60 8L80 8Q90 20 80 32L60 32Z\"/>"
+                + "<path fill=\"#222\" d=\"M100 8L120 8L120 32L100 32Z\"/>"
+                + "<path fill=\"#333\" d=\"M140 8L170 8L155 32Z\"/>"
+                + "</svg>";
+            return Task.FromResult(new LoginCaptcha("mock-captcha-" + _captchaCount, svg));
+        }
+
+        public Task<LoginSubmitOutcome> SubmitCredentialsAsync(string username, string password, LoginCaptcha captcha, string captchaText, CancellationToken cancellationToken)
+        {
+            if (password == RejectedPassword) return Task.FromResult(LoginSubmitOutcome.Rejected);
+            Simulate(password == OtherTaxCodePassword ? "0109999999" : username);
+            return Task.FromResult(LoginSubmitOutcome.Accepted);
+        }
+
+        public void EnableManualLogin()
+        {
         }
 
         public void Dispose()

@@ -25,7 +25,7 @@ Tài liệu này đặc tả ứng dụng Windows hỗ trợ đăng nhập vào 
 - Chế độ chuẩn quản lý một doanh nghiệp/MST trên mỗi máy.
 - Chế độ dịch vụ được mở khóa bằng licence theo máy, không giới hạn số MST đã khai báo nhưng chỉ một MST hoạt động tại một thời điểm.
 - Mỗi MST trong chế độ dịch vụ có thư mục và SQLite riêng; không trộn dữ liệu giữa các doanh nghiệp.
-- Người dùng đăng nhập thủ công trong WebView và tự xử lý CAPTCHA.
+- Người dùng đăng nhập trên form riêng của ứng dụng (WebView chạy ngầm, [ADR 0011](../decisions/0011-own-login-form-hidden-webview.md)): tự gõ mật khẩu và đọc CAPTCHA; tên đăng nhập luôn là MST đang chọn. Có phương án dự phòng đăng nhập trực tiếp trên trang cổng.
 - Tra cứu hóa đơn điện tử mua vào và bán ra.
 - Chọn kỳ theo tháng, quý, năm hoặc ngày bắt đầu/ngày kết thúc.
 - Tự chia kỳ thành các đoạn không vượt quá một tháng.
@@ -41,7 +41,7 @@ Tài liệu này đặc tả ứng dụng Windows hỗ trợ đăng nhập vào 
 
 ### 3.2 Ngoài phạm vi phiên bản 1
 
-- Tự động nhập tài khoản, mật khẩu hoặc giải CAPTCHA.
+- Tự giải CAPTCHA, lưu hoặc nhớ mật khẩu (app chỉ chuyển mật khẩu người dùng vừa gõ tới cổng Thuế, theo ADR 0011).
 - Tải nền, đăng nhập hoặc xử lý đồng thời nhiều MST.
 - Báo cáo, tìm kiếm hoặc xuất dữ liệu tổng hợp xuyên nhiều MST.
 - Đồng bộ đám mây hoặc chia sẻ dữ liệu thời gian thực giữa nhiều máy.
@@ -179,9 +179,9 @@ Phiên bản 1 không có phân quyền nội bộ theo vai trò. Quyền truy c
 
 | Mã | Yêu cầu |
 |---|---|
-| FR-AUTH-001 | Ứng dụng phải mở trang đăng nhập cổng Thuế trong WebView nhúng. |
-| FR-AUTH-002 | Người dùng phải tự nhập tài khoản, mật khẩu, CAPTCHA và xác nhận đăng nhập. |
-| FR-AUTH-003 | Ứng dụng không được tự điền, lưu hoặc ghi log mật khẩu/CAPTCHA. |
+| FR-AUTH-001 | Ứng dụng phải dùng WebView nhúng (chạy ngầm) để lấy phiên của cổng Thuế và CAPTCHA; có phương án dự phòng mở trang đăng nhập cổng Thuế cho người dùng thao tác trực tiếp. |
+| FR-AUTH-002 | Người dùng phải tự nhập mật khẩu và mã CAPTCHA rồi xác nhận đăng nhập trên form của ứng dụng; tên đăng nhập là MST của doanh nghiệp đang chọn và không sửa được. |
+| FR-AUTH-003 | Ứng dụng không được tự giải CAPTCHA, không được lưu, nhớ hoặc ghi log mật khẩu/CAPTCHA; mật khẩu chỉ được chuyển tới cổng Thuế để đăng nhập và bị xóa khỏi ô nhập ngay khi gửi. |
 | FR-AUTH-004 | Sau đăng nhập thành công, ứng dụng phải thu token/cookie cần thiết từ request, storage hoặc cookie của WebView theo cơ chế đã xác minh. |
 | FR-AUTH-005 | API client phải tái sử dụng phiên xác thực cho các request tra cứu/tải. |
 | FR-AUTH-006 | Thanh trạng thái phải hiển thị `Chưa đăng nhập`, `Đã đăng nhập`, `Sắp hết hạn` nếu xác định được, hoặc `Cần đăng nhập lại`. |
@@ -481,7 +481,7 @@ Mẫu tên file:
 
 - Chỉ mở domain cổng Thuế và tài nguyên cần thiết cho quy trình đăng nhập.
 - Điều hướng ra domain ngoài phải bị chặn hoặc yêu cầu xác nhận.
-- Không chèn script để tự giải CAPTCHA hoặc tự gửi thông tin đăng nhập.
+- Không chèn script để tự giải CAPTCHA. Script chạy trong trang chỉ để lấy CAPTCHA và gửi đúng thông tin đăng nhập mà người dùng vừa nhập trên form của ứng dụng (ADR 0011).
 - Control được chọn phải tải được cổng thật, cho phép quan sát token/cookie hợp lệ và tương thích `net45`.
 
 ### 11.3 File và hệ điều hành
@@ -589,7 +589,7 @@ Mọi lỗi người dùng nhìn thấy phải có: đối tượng bị ảnh h
 
 1. Mở ứng dụng chưa có token.
 2. SCR-01 tải trang đăng nhập cổng Thuế.
-3. Người dùng tự nhập thông tin và CAPTCHA.
+3. Người dùng tự nhập mật khẩu và CAPTCHA trên form đăng nhập của ứng dụng (tên đăng nhập là MST đang chọn).
 4. Sau đăng nhập, SCR-02 hiển thị đúng MST cấu hình và trạng thái `Đã đăng nhập`.
 5. Không tìm thấy mật khẩu, CAPTCHA hoặc token trong database/log.
 

@@ -28,7 +28,7 @@ content-type: application/json
 → {"token":"<JWT>"}
 ```
 
-- **Ứng dụng không tự đăng nhập và không đụng tới `password`, `cvalue`, `ckey`.** WebView ghi lại cuộc gọi này; `PortalAuthCapture` chỉ đọc `username` từ request và `token` từ phản hồi.
+- **Ứng dụng không tự giải CAPTCHA và không lưu hay ghi log `password`, `cvalue`, `ckey`.** Ở form đăng nhập riêng (ADR 0011) người dùng gõ mật khẩu và CAPTCHA, app chuyển chúng một chiều vào lời gọi trên; ở chế độ thủ công người dùng thao tác trên trang cổng. `PortalAuthCapture` chỉ đọc `token` từ phản hồi (tên đăng nhập lấy từ claim `sub`).
 - **JWT** (HS512): claim `sub` = MST đăng nhập, `type` = 2, `exp`/`iat` là Unix time (sống khoảng 24 giờ). Ứng dụng chỉ **đọc** payload (`PortalToken`), không xác minh chữ ký; cổng kiểm tra lại ở mỗi lần gọi.
 - **Xác minh MST không cần gọi mạng:** `sub` phải trùng MST của kho đang mở (FR-AUTH-011) và `exp` còn hiệu lực. Không có API hồ sơ.
 - Giá trị lưu trong bộ nhớ cho các lần gọi sau (`PortalSessionMaterial`, không ghi đĩa, không log):
@@ -54,7 +54,7 @@ GET /api/captcha            (không cần Authorization; mang cookie WAF của p
 - `key` gắn với cookie/phiên của lần gọi: lấy CAPTCHA và đăng nhập phải cùng một WebView (cùng `RequestContext`).
 - Header gửi kèm giống các API khác (`action;` rỗng, `end-point: /`, `request-id` GUID, `referer` gốc), không có `authorization`.
 - ⚠ Chưa biết: thời gian sống của `key`, số lần sai tối đa trước khi cổng khóa hoặc đòi CAPTCHA mới, và cổng có đổi định dạng ảnh theo thời gian không.
-- Ứng dụng **hiện chưa gọi API này**: đăng nhập vẫn do người dùng thao tác trong WebView hiển thị. Phương án form đăng nhập riêng (ẩn WebView, tự lấy CAPTCHA và gửi) chưa được chốt, xem đề xuất trong lịch sử trao đổi; nếu làm phải sửa FR-AUTH-002/003 và ghi ADR mới.
+- Từ 10/11/2026 ứng dụng **gọi API này** từ WebView ngầm và hiển thị ảnh trên form đăng nhập riêng; người dùng gõ mật khẩu và đọc CAPTCHA, app gửi `POST authenticate` trong cùng trang ([ADR 0011](../decisions/0011-own-login-form-hidden-webview.md)). Bản Debug dùng trình duyệt giả, chưa thử trên cổng thật.
 
 ### Header mọi API truy vấn đều gửi (từ traffic thật)
 

@@ -119,6 +119,20 @@ namespace HoaDonDienTu.WinForms.Tests
         public Exception InitializeException;
         public Exception NavigateException;
         public Exception CaptureException;
+        public Exception CaptchaException;
+        public int CaptchaCalls;
+        public int SubmitCalls;
+        public int ManualCalls;
+        public string SimulationNotice { get; set; }
+        public string LastPasswordSent;
+        public string LastUserSent;
+        public string LastCaptchaTextSent;
+        public string LastCaptchaKeySent;
+
+        /// <summary>Kết quả lần gửi kế tiếp; mặc định Accepted và phát sự kiện ứng viên như trình duyệt thật.</summary>
+        public LoginSubmitOutcome NextOutcome = LoginSubmitOutcome.Accepted;
+        public bool RaiseCandidateOnAccept = true;
+        public Exception SubmitException;
 
         public event EventHandler<LoginCandidateEventArgs> LoginCandidateDetected
         {
@@ -164,6 +178,30 @@ namespace HoaDonDienTu.WinForms.Tests
             return Task.FromResult(new PortalSessionMaterial(null, null, Secrets.Token));
         }
 
+        public Task<LoginCaptcha> GetCaptchaAsync(CancellationToken cancellationToken)
+        {
+            CaptchaCalls++;
+            if (CaptchaException != null) throw CaptchaException;
+            return Task.FromResult(new LoginCaptcha("key-" + CaptchaCalls, "<svg>" + CaptchaCalls + "</svg>"));
+        }
+
+        public Task<LoginSubmitOutcome> SubmitCredentialsAsync(string username, string password, LoginCaptcha captcha, string captchaText, CancellationToken cancellationToken)
+        {
+            SubmitCalls++;
+            LastUserSent = username;
+            LastPasswordSent = password;
+            LastCaptchaTextSent = captchaText;
+            LastCaptchaKeySent = captcha.Key;
+            if (SubmitException != null) throw SubmitException;
+            if (NextOutcome == LoginSubmitOutcome.Accepted && RaiseCandidateOnAccept) RaiseCandidate();
+            return Task.FromResult(NextOutcome);
+        }
+
+        public void EnableManualLogin()
+        {
+            ManualCalls++;
+        }
+
         public void RaiseCandidate()
         {
             var handler = _candidate;
@@ -195,6 +233,11 @@ namespace HoaDonDienTu.WinForms.Tests
         public int HostCalls;
         public string Company;
         public string TaxCode;
+        public string CaptchaSvg;
+        public int CaptchaShown;
+        public int SecretsCleared;
+        public int ManualModeCalls;
+        public string Simulation;
 
         /// <summary>Mô phỏng người dùng thao tác trong lúc form đang mở.</summary>
         public Action<FakeLoginView> OnShowModal;
@@ -202,14 +245,32 @@ namespace HoaDonDienTu.WinForms.Tests
         public event EventHandler ViewShown;
         public event EventHandler RetryRequested;
         public event EventHandler CancelRequested;
+        public event EventHandler<LoginSubmitEventArgs> SubmitRequested;
+        public event EventHandler RefreshCaptchaRequested;
+        public event EventHandler ManualLoginRequested;
 
         public int Listeners
         {
             get
             {
-                return Count(ViewShown) + Count(RetryRequested) + Count(CancelRequested);
+                return Count(ViewShown) + Count(RetryRequested) + Count(CancelRequested) + Count(RefreshCaptchaRequested) + Count(ManualLoginRequested)
+                    + (SubmitRequested == null ? 0 : SubmitRequested.GetInvocationList().Length);
             }
         }
+
+        public void ShowCaptcha(string svg) { CaptchaSvg = svg; CaptchaShown++; }
+        public void ClearSecrets() { SecretsCleared++; }
+        public void ShowSimulationNotice(string text) { Simulation = text; }
+        public void ShowManualMode() { ManualModeCalls++; }
+
+        public void RaiseSubmit(string password, string captchaText)
+        {
+            var handler = SubmitRequested;
+            if (handler != null) handler(this, new LoginSubmitEventArgs(password, captchaText));
+        }
+
+        public void RaiseRefreshCaptcha() { Raise(RefreshCaptchaRequested); }
+        public void RaiseManual() { Raise(ManualLoginRequested); }
 
         public PortalLoginState LastState { get { return States[States.Count - 1].State; } }
         public PortalLoginViewState Last { get { return States[States.Count - 1]; } }

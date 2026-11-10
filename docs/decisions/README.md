@@ -14,5 +14,6 @@ Mỗi quyết định một file `NNNN-<tên-ngắn>.md` gồm bối cảnh, ph�
 | [0008](0008-company-switch-safety.md) | Thứ tự an toàn khi chuyển MST và phục hồi sau sự cố | Accepted một phần (chưa spike giết tiến trình) | G-07 |
 | [0009](0009-pdf-from-xml-pdfsharp.md) | PDF và in: tự dựng từ XML bằng PDFsharp-gdi 1.50 | Accepted (chưa đối chiếu hóa đơn thật nhiều dạng) | G-03, G-09 (PDF) |
 | [0010](0010-simple-offline-license.md) | Bản quyền đơn giản: dùng thử 30 ngày + mã kích hoạt RSA offline theo máy | Accepted | G-06 |
+| [0011](0011-own-login-form-hidden-webview.md) | Form đăng nhập riêng: WebView chạy ngầm, người dùng nhập mật khẩu/CAPTCHA trên form của ứng dụng | Accepted (chưa thử trên cổng thật) | G-01 |
 
 Gate **chưa có ADR**: G-05 (giới hạn tốc độ), cần đo trên cổng thật (UAT). G-06 (licence) đã đóng bằng ADR 0010.

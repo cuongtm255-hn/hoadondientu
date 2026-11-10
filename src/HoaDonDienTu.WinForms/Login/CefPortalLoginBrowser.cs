@@ -64,6 +64,11 @@ namespace HoaDonDienTu.WinForms.Login
         private readonly System.Windows.Forms.Timer _closeWatch = new System.Windows.Forms.Timer { Interval = 250 };
         private bool _disposed;
         private bool _watching;
+        private bool _manual;
+        private TaskCompletionSource<bool> _pageLoaded = new TaskCompletionSource<bool>();
+
+        /// <summary>Thời gian tối đa chờ trang cổng tải xong và chờ mỗi lời gọi API trong trang.</summary>
+        private static readonly TimeSpan PageTimeout = TimeSpan.FromSeconds(30);
 
         public CefPortalLoginBrowser(PortalLoginTraffic traffic)
         {
@@ -81,6 +86,11 @@ namespace HoaDonDienTu.WinForms.Login
         public event EventHandler<BrowserNavigationEventArgs> NavigationChanged;
         public event EventHandler<BrowserFailureEventArgs> BrowserFailed;
         public event EventHandler LoginDialogClosed;
+
+        public string SimulationNotice
+        {
+            get { return null; }
+        }
 
         public Task InitializeAsync(CancellationToken cancellationToken)
         {
@@ -114,8 +124,119 @@ namespace HoaDonDienTu.WinForms.Login
 
         public Task NavigateToLoginAsync(CancellationToken cancellationToken)
         {
+            // Trang tải xong mới gọi được API cùng gốc (cookie WAF được cấp ở lần tải này); GetCaptchaAsync chờ cờ này.
+            _pageLoaded = new TaskCompletionSource<bool>();
             if (_browser != null) _browser.LoadUrl(_traffic.LoginUrl);
             return Task.FromResult(0);
+        }
+
+        public void EnableManualLogin()
+        {
+            _manual = true;
+            if (!_disposed) _closeWatch.Start();
+        }
+
+        public async Task<LoginCaptcha> GetCaptchaAsync(CancellationToken cancellationToken)
+        {
+            await WaitForPageAsync(cancellationToken).ConfigureAwait(true);
+            await RunJobAsync(PortalLoginScripts.CaptchaRequest(_traffic.CaptchaPath, PortalLoginScripts.NewRequestId()), cancellationToken).ConfigureAwait(true);
+            try
+            {
+                if (await EvaluateBoolAsync(PortalLoginScripts.Failed).ConfigureAwait(true) || await EvaluateIntAsync(PortalLoginScripts.Status).ConfigureAwait(true) != 200)
+                {
+                    throw new InvalidOperationException("Cổng Thuế không cấp CAPTCHA.");
+                }
+
+                var key = await EvaluateStringAsync(PortalLoginScripts.CaptchaKey).ConfigureAwait(true);
+                var svg = await EvaluateStringAsync(PortalLoginScripts.CaptchaSvg).ConfigureAwait(true);
+                if (string.IsNullOrEmpty(key) || string.IsNullOrEmpty(svg)) throw new InvalidOperationException("Phản hồi CAPTCHA thiếu key hoặc ảnh.");
+                return new LoginCaptcha(key, svg);
+            }
+            finally
+            {
+                ClearJob();
+            }
+        }
+
+        public async Task<LoginSubmitOutcome> SubmitCredentialsAsync(string username, string password, LoginCaptcha captcha, string captchaText, CancellationToken cancellationToken)
+        {
+            if (captcha == null) throw new ArgumentNullException("captcha");
+            await WaitForPageAsync(cancellationToken).ConfigureAwait(true);
+            _response.Clear();
+            await RunJobAsync(
+                PortalLoginScripts.AuthenticateRequest(_traffic.AuthenticatePath, PortalLoginScripts.NewRequestId(), username, password, captchaText, captcha.Key),
+                cancellationToken).ConfigureAwait(true);
+            try
+            {
+                if (await EvaluateBoolAsync(PortalLoginScripts.Failed).ConfigureAwait(true)) return LoginSubmitOutcome.Unavailable;
+                var status = await EvaluateIntAsync(PortalLoginScripts.Status).ConfigureAwait(true);
+                if (status == 200) return LoginSubmitOutcome.Accepted;
+                if (status == 400 || status == 401 || status == 403 || status == 422) return LoginSubmitOutcome.Rejected;
+                return LoginSubmitOutcome.Unavailable;
+            }
+            finally
+            {
+                ClearJob();
+            }
+        }
+
+        private async Task WaitForPageAsync(CancellationToken cancellationToken)
+        {
+            if (_browser == null) throw new InvalidOperationException("Trình duyệt chưa sẵn sàng.");
+            var loaded = _pageLoaded.Task;
+            var finished = await Task.WhenAny(loaded, Task.Delay(PageTimeout, cancellationToken)).ConfigureAwait(true);
+            cancellationToken.ThrowIfCancellationRequested();
+            if (finished != loaded) throw new TimeoutException("Trang cổng Thuế tải quá lâu.");
+            await loaded.ConfigureAwait(true);
+        }
+
+        /// <summary>Chạy một đoạn script bất đồng bộ trong trang rồi hỏi đến khi nó báo xong (hoặc quá hạn).</summary>
+        private async Task RunJobAsync(string script, CancellationToken cancellationToken)
+        {
+            var browser = _browser;
+            if (browser == null || !browser.CanExecuteJavascriptInMainFrame) throw new InvalidOperationException("Trang cổng Thuế chưa sẵn sàng chạy lệnh.");
+            browser.ExecuteScriptAsync(script);
+            var deadline = DateTime.UtcNow + PageTimeout;
+            while (true)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (await EvaluateBoolAsync(PortalLoginScripts.IsDone).ConfigureAwait(true)) return;
+                if (DateTime.UtcNow > deadline) throw new TimeoutException("Cổng Thuế không phản hồi.");
+                await Task.Delay(120, cancellationToken).ConfigureAwait(true);
+            }
+        }
+
+        private void ClearJob()
+        {
+            var browser = _browser;
+            if (browser != null && browser.CanExecuteJavascriptInMainFrame) browser.ExecuteScriptAsync(PortalLoginScripts.Clear);
+        }
+
+        private async Task<JavascriptResponse> EvaluateAsync(string expression)
+        {
+            var browser = _browser;
+            if (browser == null) throw new InvalidOperationException("Trình duyệt đã đóng.");
+            var response = await browser.EvaluateScriptAsync(expression).ConfigureAwait(true);
+            if (!response.Success) throw new InvalidOperationException("Không đọc được kết quả từ trang cổng Thuế.");
+            return response;
+        }
+
+        private async Task<bool> EvaluateBoolAsync(string expression)
+        {
+            var response = await EvaluateAsync(expression).ConfigureAwait(true);
+            return response.Result is bool && (bool)response.Result;
+        }
+
+        private async Task<int> EvaluateIntAsync(string expression)
+        {
+            var response = await EvaluateAsync(expression).ConfigureAwait(true);
+            return response.Result == null ? 0 : Convert.ToInt32(response.Result, System.Globalization.CultureInfo.InvariantCulture);
+        }
+
+        private async Task<string> EvaluateStringAsync(string expression)
+        {
+            var response = await EvaluateAsync(expression).ConfigureAwait(true);
+            return response.Result as string;
         }
 
         public async Task<PortalSessionMaterial> CaptureSessionAsync(CancellationToken cancellationToken)
@@ -181,14 +302,16 @@ namespace HoaDonDienTu.WinForms.Login
                 // Trang cổng xong thì mở sẵn form đăng nhập (đóng thông báo, bấm "Đăng nhập", che trang chủ); chỉ ở khung chính của trang thuộc cổng.
                 if (e.Frame.IsMain && !e.Url.StartsWith("about:", StringComparison.Ordinal) && _traffic.IsNavigationAllowed(e.Url))
                 {
-                    e.Frame.ExecuteJavaScriptAsync(PortalLoginPageScript.Source);
+                    _pageLoaded.TrySetResult(true);
+                    // Form riêng (mặc định) không cần mở hộp thoại của trang; chỉ phương án dự phòng thủ công mới dùng đoạn hỗ trợ này.
+                    if (_manual) e.Frame.ExecuteJavaScriptAsync(PortalLoginPageScript.Source);
                 }
             };
-            _closeWatch.Start();
             _browser.LoadError += (sender, e) =>
             {
                 if (e.ErrorCode != CefErrorCode.Aborted && e.FailedUrl != null && _traffic.IsNavigationAllowed(e.FailedUrl) && !e.FailedUrl.StartsWith("about:", StringComparison.Ordinal))
                 {
+                    _pageLoaded.TrySetException(new InvalidOperationException("Không tải được trang cổng Thuế."));
                     Raise(BrowserFailed, new BrowserFailureEventArgs("Không tải được trang cổng Thuế (" + e.ErrorText + "). Kiểm tra kết nối mạng."));
                 }
             };

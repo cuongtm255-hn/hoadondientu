@@ -20,9 +20,9 @@ Behaviour must mirror the portal ("Tra cứu" menu), plus the extensions below:
 
 ## Authentication design (key architectural decision)
 
-The portal login has a CAPTCHA, so the app does **not** automate login:
+The portal login has a CAPTCHA, so the app never solves it ([ADR 0011](docs/decisions/0011-own-login-form-hidden-webview.md)):
 
-1. An embedded WebView (WinForms-hosted browser control) loads the portal's login page directly; the user logs in manually.
+1. An embedded WebView (CefSharp) runs hidden to hold the portal session and call `GET /api/captcha`. The app's own login form shows the selected company's MST (fixed, bold), a password box and the CAPTCHA image/box; the user types the password and reads the CAPTCHA. The app forwards them once to `POST /api/security-taxpayer/authenticate` from inside the page and never stores or logs them. A fallback button lets the user log in directly on the portal page instead.
 2. After login, the app captures the auth token (from the WebView's requests/storage/cookies) and reuses it for direct HTTP API calls to the portal. The WebView is only for login; data retrieval goes through the API client.
 3. Handle token expiry by prompting the user to re-login in the WebView.
 
