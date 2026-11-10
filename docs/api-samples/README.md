@@ -42,6 +42,20 @@ content-type: application/json
 
 - Hết hạn: 401/403 → `AuthExpired` → phiên tải dừng ở `WaitingForLogin`, người dùng đăng nhập lại trong WebView rồi tiếp tục.
 
+### Lấy CAPTCHA (trước khi đăng nhập)
+
+```
+GET /api/captcha            (không cần Authorization; mang cookie WAF của phiên WebView)
+→ {"key":"<ckey: 24 ký tự hex>","content":"<svg …200x40…>…</svg>"}
+```
+
+- Mẫu thật 10/11/2026 (đã làm sạch, xem [`sample-api-web.md`](sample-api-web.md) mục 0): `content` là **SVG thuần** (không base64, không ảnh nhị phân), 2 đường nhiễu và mỗi ký tự là một `<path>` đường viền.
+- `key` được gửi lại làm `ckey` trong `POST /api/security-taxpayer/authenticate`; `cvalue` là chữ người dùng đọc từ ảnh.
+- `key` gắn với cookie/phiên của lần gọi: lấy CAPTCHA và đăng nhập phải cùng một WebView (cùng `RequestContext`).
+- Header gửi kèm giống các API khác (`action;` rỗng, `end-point: /`, `request-id` GUID, `referer` gốc), không có `authorization`.
+- ⚠ Chưa biết: thời gian sống của `key`, số lần sai tối đa trước khi cổng khóa hoặc đòi CAPTCHA mới, và cổng có đổi định dạng ảnh theo thời gian không.
+- Ứng dụng **hiện chưa gọi API này**: đăng nhập vẫn do người dùng thao tác trong WebView hiển thị. Phương án form đăng nhập riêng (ẩn WebView, tự lấy CAPTCHA và gửi) chưa được chốt, xem đề xuất trong lịch sử trao đổi; nếu làm phải sửa FR-AUTH-002/003 và ghi ADR mới.
+
 ### Header mọi API truy vấn đều gửi (từ traffic thật)
 
 | Header | Giá trị |

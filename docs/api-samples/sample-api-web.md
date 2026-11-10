@@ -26,6 +26,35 @@ curl --url 'https://hoadondientu.gdt.gov.vn/api/security-taxpayer/authenticate' 
 }
 
 
+0. API lấy CAPTCHA (trang đăng nhập gọi trước khi người dùng đăng nhập; bản ghi 10/11/2026, đã làm sạch)
+https://hoadondientu.gdt.gov.vn/api/captcha
+curl --url 'https://hoadondientu.gdt.gov.vn/api/captcha' \
+  -H 'accept: application/json, text/plain, */*' \
+  -H 'accept-language: vi-VN,vi;q=0.9,fr-FR;q=0.8,fr;q=0.7,en-US;q=0.6,en;q=0.5' \
+  -H 'action;' \
+  -b '<COOKIES: cookie WAF/F5 …; chưa có jwt vì chưa đăng nhập>' \
+  -H 'end-point: /' \
+  -H 'priority: u=1, i' \
+  -H 'referer: https://hoadondientu.gdt.gov.vn/' \
+  -H 'request-id: <GUID>' \
+  -H 'sec-ch-ua: "Not:A-Brand";v="8", "Chromium";v="156", "Google Chrome";v="156"' \
+  -H 'sec-ch-ua-mobile: ?0' \
+  -H 'sec-ch-ua-platform: "Windows"' \
+  -H 'sec-fetch-dest: empty' \
+  -H 'sec-fetch-mode: cors' \
+  -H 'sec-fetch-site: same-origin' \
+  -H 'user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36'
+  (GET, không có body, không có header authorization)
+
+  response (200, JSON; `content` rút gọn, đây là ảnh SVG kích thước 200x40):
+  {
+    "key": "<CAPTCHA_KEY: chuỗi hex 24 ký tự>",
+    "content": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"200\" height=\"40\" viewBox=\"0,0,200,40\"><path d=\"…\" stroke=\"#222\" fill=\"none\"/> … (2 đường nhiễu `stroke`, không fill) … <path fill=\"#222\" d=\"…\"/> … (mỗi ký tự một thẻ <path fill=\"#222|#333\"> dạng đường viền; mẫu có 6 thẻ)</svg>"
+  }
+  - `key` là giá trị gửi lại ở trường `ckey` của API login; `content` là ảnh để hiển thị và người dùng đọc ra để gõ vào `cvalue`.
+  - Ảnh là SVG thuần (không ảnh nhị phân, không base64), ký tự vẽ bằng đường viền chứ không phải thẻ <text>, nên không đọc chữ bằng cách phân tích XML.
+  - Mỗi lần gọi trả một cặp mới; `key` gắn với phiên cookie (WAF) của lần gọi nên phải gọi và đăng nhập trong cùng một WebView/phiên.
+
 2. API tra cứu hóa đơn bán ra
 https://hoadondientu.gdt.gov.vn/api/query/invoices/sold?sort=tdlap:desc&size=15&search=tdlap=ge=02/10/2026T00:00:00;tdlap=le=01/11/2026T23:59:59
 https://hoadondientu.gdt.gov.vn/api/query/invoices/sold?sort=tdlap:desc&size=15&search=tdlap=ge=02/10/2026T00:00:00;tdlap=le=01/11/2026T23:59:59;tthai==1
