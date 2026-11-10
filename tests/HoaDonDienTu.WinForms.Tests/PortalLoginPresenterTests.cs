@@ -127,6 +127,19 @@ namespace HoaDonDienTu.WinForms.Tests
         }
 
         [Test]
+        public void WrongTaxCode_NamesTheAccountLoggedIn_AndReturnsTheBrowserToTheLoginPage()
+        {
+            _auth.Handler = (c, m) => PortalLoginResult.Failure(PortalLoginOutcome.TaxCodeMismatch, "0109999999");
+            _view.RaiseShown();
+            var navigateBefore = _browser.NavigateCalls;
+
+            _browser.RaiseCandidate();
+
+            Assert.That(_view.Last.Message, Does.Contain("0109999999"));
+            Assert.That(_browser.NavigateCalls, Is.EqualTo(navigateBefore + 1), "Không để trang hiện giao diện đã đăng nhập của tài khoản sai");
+        }
+
+        [Test]
         public void AuthSaysSuccess_ButSessionBelongsToOtherTaxCode_TreatedAsMismatch()
         {
             _auth.Handler = (c, m) => PortalLoginResult.Success(new PortalSession(
@@ -188,7 +201,7 @@ namespace HoaDonDienTu.WinForms.Tests
             _view.RaiseRetry();
 
             Assert.That(_browser.InitializeCalls, Is.EqualTo(1));
-            Assert.That(_browser.NavigateCalls, Is.EqualTo(2));
+            Assert.That(_browser.NavigateCalls, Is.EqualTo(3), "mở lần đầu, về trang đăng nhập sau khi sai MST, rồi tải lại khi thử lại");
             Assert.That(_view.LastState, Is.EqualTo(PortalLoginState.WaitingForUser));
         }
 

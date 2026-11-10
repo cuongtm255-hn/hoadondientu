@@ -207,7 +207,7 @@ namespace HoaDonDienTu.WinForms.Login
 
             if (result.Succeeded && !SessionMatchesRequest(result.Session))
             {
-                result = PortalLoginResult.Failure(PortalLoginOutcome.TaxCodeMismatch, null);
+                result = PortalLoginResult.Failure(PortalLoginOutcome.TaxCodeMismatch, result.Session.VerifiedTaxCode.Value);
             }
 
             switch (result.Outcome)
@@ -220,8 +220,10 @@ namespace HoaDonDienTu.WinForms.Login
                 case PortalLoginOutcome.TaxCodeMismatch:
                     await ClearBrowserSessionQuietlyAsync().ConfigureAwait(true);
                     _sessionStore.Clear();
+                    await ReturnToLoginPageQuietlyAsync().ConfigureAwait(true);
+                    var actualTaxCode = string.IsNullOrEmpty(result.Message) ? string.Empty : " (tài khoản vừa đăng nhập: " + result.Message + ")";
                     SetState(PortalLoginState.TaxCodeMismatch, "Sai MST",
-                        "Tài khoản vừa đăng nhập không thuộc MST " + _request.ExpectedTaxCode.Value + ". Vui lòng đăng nhập đúng MST.",
+                        "Tài khoản vừa đăng nhập không thuộc MST " + _request.ExpectedTaxCode.Value + actualTaxCode + ". Vui lòng đăng nhập đúng MST.",
                         false, true, true);
                     break;
 
@@ -276,6 +278,19 @@ namespace HoaDonDienTu.WinForms.Login
             if (_finished) return;
             _logger.Warning("Trình duyệt đăng nhập báo lỗi");
             SetState(PortalLoginState.BrowserUnavailable, "Lỗi", "Không mở được trang đăng nhập cổng Thuế. Kiểm tra kết nối mạng rồi thử lại.", false, true, true);
+        }
+
+        /// <summary>Đưa trình duyệt về trang đăng nhập để không còn hiện giao diện "đã đăng nhập" của tài khoản sai.</summary>
+        private async Task ReturnToLoginPageQuietlyAsync()
+        {
+            try
+            {
+                await _browser.NavigateToLoginAsync(CancellationToken.None).ConfigureAwait(true);
+            }
+            catch (Exception ex)
+            {
+                _logger.Warning("Không quay về trang đăng nhập: " + ex.GetType().Name);
+            }
         }
 
         private async Task ClearBrowserSessionQuietlyAsync()

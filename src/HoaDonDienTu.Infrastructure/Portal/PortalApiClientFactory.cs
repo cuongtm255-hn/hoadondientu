@@ -60,7 +60,8 @@ namespace HoaDonDienTu.Infrastructure.Portal
 
             TaxCode actual;
             if (!TaxCode.TryParse(token.Subject, out actual)) return PortalLoginResult.Failure(PortalLoginOutcome.InvalidSession, null);
-            if (!actual.Equals(company.TaxCode)) return PortalLoginResult.Failure(PortalLoginOutcome.TaxCodeMismatch, null);
+            if (!actual.Equals(company.TaxCode)) // Message mang MST của tài khoản vừa đăng nhập để hộp thoại nói rõ (chỉ hiển thị, không ghi nhật ký).
+            return PortalLoginResult.Failure(PortalLoginOutcome.TaxCodeMismatch, actual.Value);
 
             return PortalLoginResult.Success(new PortalSession(company.CompanyId, company.TaxCode, candidate, _clock.UtcNow));
         }

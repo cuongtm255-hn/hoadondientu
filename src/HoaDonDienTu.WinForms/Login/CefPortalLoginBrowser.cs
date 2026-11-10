@@ -104,6 +104,12 @@ namespace HoaDonDienTu.WinForms.Login
             if (_context == null) return;
             var cookies = _context.GetCookieManager(null);
             if (cookies != null) await cookies.DeleteCookiesAsync(string.Empty, string.Empty).ConfigureAwait(true);
+
+            // Trang web của cổng giữ trạng thái đăng nhập cả trong localStorage/sessionStorage; xóa cookie thôi thì giao diện vẫn hiện "đã đăng nhập".
+            if (_browser != null && _browser.IsBrowserInitialized)
+            {
+                _browser.ExecuteScriptAsync("try{localStorage.clear();sessionStorage.clear();}catch(e){}");
+            }
         }
 
         public Task NavigateToLoginAsync(CancellationToken cancellationToken)
