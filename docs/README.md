@@ -13,6 +13,11 @@ Index of where context lives. Keep files short; link rather than duplicate.
 
 SRS và wireframe mô tả cả `StandardMode` một MST và `ServiceMode` đa MST kích hoạt bằng licence theo máy. ServiceMode chỉ mở một MST tại một thời điểm và cách ly SQLite/thư mục theo từng doanh nghiệp.
 
+## Nhóm chức năng
+
+- **Tra cứu hóa đơn** — toàn bộ tài liệu ở các thư mục bên dưới (SRS, FT-00…FT-12, DD-xx).
+- **Tra cứu Dịch vụ công thuế** (nhóm mới, tách riêng) — [`dich-vu-cong/`](dich-vu-cong/README.md): feature list `FT-DVC-xx`, ADR `DVC-NNNN`, khảo sát cổng, ảnh mockup. Không trộn vào tài liệu hóa đơn.
+
 ## Thứ tự đọc khi tiếp tục công việc
 
 1. [`plans/PROJECT-PLAN.md`](plans/PROJECT-PLAN.md) — phase hiện tại, task đang làm/bị chặn.

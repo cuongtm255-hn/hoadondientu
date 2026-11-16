@@ -9,6 +9,8 @@ TestResults/
 # Bản ghi nguyên văn traffic cổng Thuế (mật khẩu, token, cookie thật): đặt tên *.raw.* hoặc trong thư mục raw/, không bao giờ commit.
 docs/api-samples/*.raw.*
 docs/api-samples/raw/
+# Ảnh chụp màn hình cổng DVC (nhóm Dịch vụ công) còn tên doanh nghiệp/MST thật: làm sạch rồi mới đổi tên bỏ ".raw".
+docs/dich-vu-cong/wireframes/*.raw.*
 
 # Gói phát hành do scripts/Package-Release.ps1 tạo
 dist/
