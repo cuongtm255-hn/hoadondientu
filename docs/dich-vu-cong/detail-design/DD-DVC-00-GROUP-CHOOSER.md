@@ -86,6 +86,6 @@ Kiểm thử chỉ dùng shell giả; không chạm cổng thật.
 |---|---|---|
 | TD00-01 | `AppGroup`, `IGroupPreferenceStore` (giao diện xong; cài đặt `LastGroup` vào DD-11 làm ở TD00-03) | Xong 16/11/2026 |
 | TD00-02 | `GroupNavigator` + `IGroupShell` + test T-DVC00-01,02,04..07 (9 test đạt; T-DVC00-03 do `ActivationGateTests` phủ) | Xong 16/11/2026 |
-| TD00-03 | `GroupChooserForm` + nối vào `AppApplicationContext` | Chưa làm |
+| TD00-03 | `GroupChooserForm`, `FileGroupPreferenceStore` (`last-group.txt`, có test), nối vào `Program.Main` sau `ActivationGate`; nhóm DVC hiện `PublicServiceStubForm` giữ chỗ. Lệch DD: chooser hiện **trước** khi chọn MST (MST hiện được chọn trong shell Hóa đơn), nên DD mục 3 cần xét lại khi làm shell DVC. Chưa nối `GroupNavigator` vào shell thật | Xong một phần 16/11/2026 |
 | TD00-04 | Lệnh "Đổi nhóm" trên ribbon shell Hóa đơn; stub shell DVC | Chưa làm |
 | TD00-05 | Cập nhật SRS/FT-01 nhóm Hóa đơn thêm bước chọn nhóm (cần duyệt) | Chưa làm |
