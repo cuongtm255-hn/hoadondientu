@@ -25,6 +25,7 @@ namespace HoaDonDienTu.WinForms.Bootstrap
         private readonly CancellationTokenSource _cancellation = new CancellationTokenSource();
         private readonly GroupNavigator _groups;
         private PublicServiceStubForm _publicServiceForm;
+        private DvcServices _dvcServices;
         private bool _closingFromPublicService;
 
         public AppApplicationContext(CompositionRoot compositionRoot)
@@ -86,7 +87,10 @@ namespace HoaDonDienTu.WinForms.Bootstrap
                     return new InvoiceGroupShell(_owner._mainShell, _owner._compositionRoot.ContextManager, _owner._compositionRoot.ActiveJobs);
                 }
 
-                var form = new PublicServiceStubForm();
+                var services = _owner._dvcServices ?? (_owner._dvcServices = DvcServices.Create(_owner._compositionRoot.Logger, System.IO.Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "HoaDonDienTu", "dvc-usernames.txt")));
+                var form = new PublicServiceStubForm(services, () =>
+                    _owner._compositionRoot.ContextManager.HasCurrent ? _owner._compositionRoot.ContextManager.Current.TaxCode.Value : string.Empty);
                 _owner._publicServiceForm = form;
                 form.SwitchRequested += (s, e) => _owner.SwitchGroup(AppGroup.Invoice);
                 // Đóng cửa sổ nhóm Dịch vụ công = thoát ứng dụng: đóng shell Hóa đơn qua luồng đóng thông thường.

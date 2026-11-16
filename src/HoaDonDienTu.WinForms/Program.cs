@@ -75,7 +75,10 @@ namespace HoaDonDienTu.WinForms
                     if (chosen == HoaDonDienTu.Application.Groups.AppGroup.Invoice) break;
 
                     // Shell nhóm Dịch vụ công chưa có (DD-DVC-01 trở đi): chỉ hiện chỗ giữ chỗ.
-                    using (var stub = new HoaDonDienTu.WinForms.Groups.PublicServiceStubForm())
+                    using (var stub = new HoaDonDienTu.WinForms.Groups.PublicServiceStubForm(
+                        HoaDonDienTu.WinForms.Groups.DvcServices.Create(compositionRoot.Logger, System.IO.Path.Combine(
+                            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "HoaDonDienTu", "dvc-usernames.txt")),
+                        () => string.Empty))
                     {
                         stub.SwitchRequested += (s, e) => stub.DialogResult = DialogResult.Retry;
                         if (stub.ShowDialog() != DialogResult.Retry) return;

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -187,6 +187,16 @@ namespace HoaDonDienTu.Application.Tests
             _browser.Image = new byte[] { 1, 2, 3 };
 
             CollectionAssert.AreEqual(new byte[] { 1, 2, 3 }, await _service.RefreshCaptchaAsync(CancellationToken.None));
+        }
+
+        [Test]
+        public void Messages_CoverEveryFailure_WithText()
+        {
+            foreach (DvcLoginFailure failure in Enum.GetValues(typeof(DvcLoginFailure)))
+            {
+                if (failure == DvcLoginFailure.None) continue;
+                Assert.IsNotEmpty(DvcLoginMessages.For(failure), failure.ToString());
+            }
         }
 
         private sealed class FakeBrowser : IDvcLoginBrowser
