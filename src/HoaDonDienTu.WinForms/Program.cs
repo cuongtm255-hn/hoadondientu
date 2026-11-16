@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Net;
 using System.Windows.Forms;
 using HoaDonDienTu.WinForms.Bootstrap;
@@ -56,28 +56,30 @@ namespace HoaDonDienTu.WinForms
                 // Chọn nhóm chức năng (DD-DVC-00): luôn hiện, chọn sẵn nhóm gần nhất; đóng/Esc thì thoát.
                 var groupStore = new HoaDonDienTu.Infrastructure.Settings.FileGroupPreferenceStore(System.IO.Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "HoaDonDienTu", "last-group.txt"));
-                HoaDonDienTu.Application.Groups.AppGroup chosen;
 #if DEBUG
                 const bool mockMode = true;
 #else
                 const bool mockMode = false;
 #endif
-                using (var chooser = new HoaDonDienTu.WinForms.Groups.GroupChooserForm(
-                    groupStore.GetLastGroup() ?? HoaDonDienTu.Application.Groups.AppGroup.Invoice, mockMode))
+                // Màn chọn lặp lại khi người dùng đổi nhóm từ cửa sổ Dịch vụ công lúc mới mở.
+                while (true)
                 {
-                    if (chooser.ShowDialog() != DialogResult.OK) return;
-                    chosen = chooser.Selected;
-                }
-                groupStore.SetLastGroup(chosen);
+                    HoaDonDienTu.Application.Groups.AppGroup chosen;
+                    using (var chooser = new HoaDonDienTu.WinForms.Groups.GroupChooserForm(
+                        groupStore.GetLastGroup() ?? HoaDonDienTu.Application.Groups.AppGroup.Invoice, mockMode))
+                    {
+                        if (chooser.ShowDialog() != DialogResult.OK) return;
+                        chosen = chooser.Selected;
+                    }
+                    groupStore.SetLastGroup(chosen);
+                    if (chosen == HoaDonDienTu.Application.Groups.AppGroup.Invoice) break;
 
-                if (chosen == HoaDonDienTu.Application.Groups.AppGroup.PublicService)
-                {
                     // Shell nhóm Dịch vụ công chưa có (DD-DVC-01 trở đi): chỉ hiện chỗ giữ chỗ.
                     using (var stub = new HoaDonDienTu.WinForms.Groups.PublicServiceStubForm())
                     {
-                        System.Windows.Forms.Application.Run(stub);
+                        stub.SwitchRequested += (s, e) => stub.DialogResult = DialogResult.Retry;
+                        if (stub.ShowDialog() != DialogResult.Retry) return;
                     }
-                    return;
                 }
 
                 using (var applicationContext = new AppApplicationContext(compositionRoot))

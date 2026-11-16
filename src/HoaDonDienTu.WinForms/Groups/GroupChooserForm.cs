@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Drawing;
 using System.Windows.Forms;
 using ComponentFactory.Krypton.Toolkit;
@@ -50,12 +50,35 @@ namespace HoaDonDienTu.WinForms.Groups
         {
             var button = new KryptonButton
             {
-                Text = title + Environment.NewLine + Environment.NewLine + description,
                 Location = location,
                 Size = new Size(250, 150),
                 Tag = group
             };
+            button.Values.Text = string.Empty;
             button.Click += (s, e) => Choose(group);
+
+            // Nhãn nằm trên nút để tiêu đề lớn và mô tả tự xuống dòng; bấm vào nhãn cũng là chọn thẻ.
+            var titleLabel = new Label
+            {
+                Text = title,
+                Font = new Font(Font.FontFamily, 12f, FontStyle.Bold),
+                BackColor = Color.Transparent,
+                Location = new Point(10, 24),
+                Size = new Size(230, 28),
+                TextAlign = ContentAlignment.MiddleCenter
+            };
+            var descriptionLabel = new Label
+            {
+                Text = description,
+                BackColor = Color.Transparent,
+                Location = new Point(14, 60),
+                Size = new Size(222, 70),
+                TextAlign = ContentAlignment.TopCenter
+            };
+            titleLabel.Click += (s, e) => Choose(group);
+            descriptionLabel.Click += (s, e) => Choose(group);
+            button.Controls.Add(titleLabel);
+            button.Controls.Add(descriptionLabel);
             return button;
         }
 

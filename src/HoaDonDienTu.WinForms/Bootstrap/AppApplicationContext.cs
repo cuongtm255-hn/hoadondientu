@@ -1,8 +1,10 @@
-using System;
+﻿using System;
 using System.Threading;
 using System.Windows.Forms;
 using HoaDonDienTu.Application.Authentication;
 using HoaDonDienTu.Application.Common;
+using HoaDonDienTu.Application.Groups;
+using HoaDonDienTu.WinForms.Groups;
 using HoaDonDienTu.Application.Navigation;
 using HoaDonDienTu.Application.Licensing;
 using HoaDonDienTu.Application.Startup;
@@ -21,6 +23,9 @@ namespace HoaDonDienTu.WinForms.Bootstrap
         private readonly NavigationService _navigation;
         private readonly MainShellPresenter _presenter;
         private readonly CancellationTokenSource _cancellation = new CancellationTokenSource();
+        private readonly GroupNavigator _groups;
+        private PublicServiceStubForm _publicServiceForm;
+        private bool _closingFromPublicService;
 
         public AppApplicationContext(CompositionRoot compositionRoot)
         {
@@ -47,13 +52,62 @@ namespace HoaDonDienTu.WinForms.Bootstrap
             compositionRoot.ShellActions = _presenter;
             compositionRoot.Entitlement.ModeChanged += OnModeChanged;
 
+            // Đổi nhóm chức năng (DD-DVC-00): shell Hóa đơn là MainShellForm, nhóm Dịch vụ công hiện là chỗ giữ chỗ.
+            _groups = new GroupNavigator(new ShellFactory(this), new HoaDonDienTu.Infrastructure.Settings.FileGroupPreferenceStore(
+                System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "HoaDonDienTu", "last-group.txt")));
+            _mainShell.GroupSwitchRequested += (s, e) => SwitchGroup(AppGroup.PublicService);
+
             _mainShell.Shown += OnMainShellShown;
             _mainShell.FormClosed += OnMainShellClosed;
             MainForm = _mainShell;
+
+        }
+
+        private void SwitchGroup(AppGroup target)
+        {
+            _groups.Switch(target, reason =>
+                MessageBox.Show(_mainShell, reason + Environment.NewLine + "Tiếp tục đổi nhóm?", "Đổi nhóm chức năng",
+                    MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes);
+        }
+
+        private sealed class ShellFactory : IGroupShellFactory
+        {
+            private readonly AppApplicationContext _owner;
+
+            public ShellFactory(AppApplicationContext owner)
+            {
+                _owner = owner;
+            }
+
+            public IGroupShell Create(AppGroup group)
+            {
+                if (group == AppGroup.Invoice)
+                {
+                    return new InvoiceGroupShell(_owner._mainShell, _owner._compositionRoot.ContextManager, _owner._compositionRoot.ActiveJobs);
+                }
+
+                var form = new PublicServiceStubForm();
+                _owner._publicServiceForm = form;
+                form.SwitchRequested += (s, e) => _owner.SwitchGroup(AppGroup.Invoice);
+                // Đóng cửa sổ nhóm Dịch vụ công = thoát ứng dụng: đóng shell Hóa đơn qua luồng đóng thông thường.
+                form.FormClosed += (s, e) => _owner.CloseApplicationFromPublicService();
+                return new PublicServiceGroupShell(form);
+            }
+        }
+
+        private void CloseApplicationFromPublicService()
+        {
+            if (_closingFromPublicService) return;
+            _closingFromPublicService = true;
+            _publicServiceForm = null;
+            _mainShell.Show();
+            _mainShell.Close();
         }
 
         private async void OnMainShellShown(object sender, EventArgs e)
         {
+            // Nhóm Hóa đơn là nhóm đang hiển thị khi mở shell.
+            _groups.Open(AppGroup.Invoice);
             try
             {
                 // Progress<T> báo qua SynchronizationContext nên có thể đến sau khi InitializeAsync xong.
@@ -147,6 +201,8 @@ namespace HoaDonDienTu.WinForms.Bootstrap
         {
             if (disposing)
             {
+                _closingFromPublicService = true;
+                _groups.Dispose();
                 _navigation.Dispose();
                 _cancellation.Dispose();
                 _mainShell.Dispose();

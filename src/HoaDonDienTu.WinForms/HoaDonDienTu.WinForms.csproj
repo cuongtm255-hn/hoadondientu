@@ -75,6 +75,7 @@
     <Compile Include="Licensing\ActivationForm.cs" />
     <Compile Include="Groups\GroupChooserForm.cs" />
     <Compile Include="Groups\PublicServiceStubForm.cs" />
+    <Compile Include="Groups\GroupShells.cs" />
     <Compile Include="Licensing\ILicenseView.cs" />
     <Compile Include="Licensing\LicensePresenter.cs" />
     <Compile Include="Licensing\LicenseScreen.cs" />

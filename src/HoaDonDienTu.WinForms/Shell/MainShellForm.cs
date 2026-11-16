@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Windows.Forms;
 using ComponentFactory.Krypton.Ribbon;
@@ -25,11 +25,32 @@ namespace HoaDonDienTu.WinForms.Shell
             };
             StyleNavigationButtons();
             DecorateRibbon();
+            AddSwitchGroupRibbon();
             lblApplicationVersion.Text = "Phiên bản " + typeof(MainShellForm).Assembly.GetName().Version.ToString(3);
 #if DEBUG
             ApplyTestMarker();
 #endif
         }
+
+        /// <summary>Lệnh "Đổi nhóm chức năng" (DD-DVC-00): thêm nhóm ribbon bằng mã để không đụng Designer.</summary>
+        private void AddSwitchGroupRibbon()
+        {
+            var button = new ComponentFactory.Krypton.Ribbon.KryptonRibbonGroupButton { TextLine1 = "Đổi nhóm" };
+            SetRibbonIcon(button, UiIcon.Switch);
+            button.Click += delegate
+            {
+                var handler = GroupSwitchRequested;
+                if (handler != null) handler(this, EventArgs.Empty);
+            };
+            var triple = new ComponentFactory.Krypton.Ribbon.KryptonRibbonGroupTriple();
+            triple.Items.Add(button);
+            var group = new ComponentFactory.Krypton.Ribbon.KryptonRibbonGroup { TextLine1 = "Nhóm chức năng", DialogBoxLauncher = false };
+            group.Items.Add(triple);
+            ribbonTabHome.Groups.Add(group);
+        }
+
+        /// <summary>Người dùng bấm "Đổi nhóm" trên ribbon.</summary>
+        public event EventHandler GroupSwitchRequested;
 
         /// <summary>Icon lớn (32) và nhỏ (16) cho các nút ribbon thay cho biểu tượng mặc định.</summary>
         private void DecorateRibbon()

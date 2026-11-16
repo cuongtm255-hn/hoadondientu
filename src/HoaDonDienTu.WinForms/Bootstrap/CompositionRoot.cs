@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -55,6 +55,9 @@ namespace HoaDonDienTu.WinForms.Bootstrap
         public IStartupCoordinator StartupCoordinator { get; private set; }
         public ICompanyContextManager ContextManager { get; private set; }
         public IPortalSessionStore SessionStore { get; private set; }
+
+        /// <summary>Tác vụ tải đang chạy của MST đang mở; shell dùng để hỏi trước khi đổi nhóm chức năng.</summary>
+        public IActiveJobService ActiveJobs { get; private set; }
         public IPortalLoginCoordinator PortalLoginCoordinator { get; private set; }
 
         /// <summary>Standard: tự mở form đăng nhập sau khi khởi động (DD-01 mục 7.4). Test UI tắt để không bị chặn bởi hộp thoại modal.</summary>
@@ -312,6 +315,7 @@ namespace HoaDonDienTu.WinForms.Bootstrap
                 starter = new UnavailableDownloadSessionStarter();
             }
 
+            ActiveJobs = jobs;
             ShutdownCoordinator = new ShutdownCoordinator(contextManager, jobs, SessionStore, new ShutdownPrompt(), Logger);
 
             var switchService = new CompanySwitchService(registry, contextManager, jobs, SessionStore, entitlement, Logger);
