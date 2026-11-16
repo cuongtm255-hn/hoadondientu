@@ -98,5 +98,5 @@ Có thể làm trước (không bị chặn): kiểu Domain/Application, `DvcLog
 | TD01-01 | Domain `DvcCredentials`/`DvcLoginResult`/`DvcLoginFailure`, `DvcSession` + test | Xong 16/11/2026 |
 | TD01-02 | `IDvcLoginBrowser`, `DvcLoginService` + T-DVC01-01..06 (trình duyệt giả trong test; `MockDvcLoginBrowser` Debug làm cùng `DvcLoginForm`) | Xong 16/11/2026 |
 | TD01-03 | `IDvcUserNameStore` + `FileDvcUserNameStore` + test | Xong 16/11/2026 |
-| TD01-04 | `DvcLoginForm` (code-only), `MockDvcLoginBrowser` (`#if DEBUG`, gắn nhãn MÔ PHỎNG), `DvcLoginMessages`; cửa sổ nhóm DVC có nút Đăng nhập + trạng thái phiên. Release build không chứa mock, nút Đăng nhập bị khóa | Xong 16/11/2026, cần thử tay |
+| TD01-04 | `DvcLoginForm` (code-only), `MockDvcLoginBrowser` (`#if DEBUG`, gắn nhãn MÔ PHỎNG), `DvcLoginMessages`; cửa sổ nhóm DVC có nút Đăng nhập + trạng thái phiên. Release build không chứa mock, nút Đăng nhập bị khóa | Xong 16/11/2026, đã thử tay (người dùng xác nhận đăng nhập mô phỏng OK) |
 | TD01-05 | `CefDvcLoginBrowser` (Release), sau G-DVC-02/06 | Chưa làm, bị chặn |
