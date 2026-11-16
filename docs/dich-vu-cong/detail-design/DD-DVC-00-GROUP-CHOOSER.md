@@ -42,9 +42,9 @@ Program.Main
 |---|---|---|
 | `AppGroup` (enum: `Invoice`, `PublicService`) | Domain | Định danh nhóm |
 | `IGroupPreferenceStore` | Application | `AppGroup? GetLastGroup()`, `void SetLastGroup(AppGroup)`; lưu trong cài đặt người dùng (cùng nơi `Settings`), không lưu bí mật |
-| `GroupNavigator` | WinForms | Giữ hai shell/host nhóm; `Show(AppGroup)`; `SwitchTo(AppGroup)`; tạo nhóm lười (lazy) lần đầu được chọn |
+| `GroupNavigator` | Application | Giữ hai shell/host nhóm; `Show(AppGroup)`; `SwitchTo(AppGroup)`; tạo nhóm lười (lazy) lần đầu được chọn |
 | `GroupChooserForm` | WinForms | Hai thẻ lớn (Krypton), thẻ gần nhất chọn sẵn, Enter = vào, Esc = thoát |
-| `IGroupShell` | WinForms | Hợp đồng chung của shell: `Show()`, `Hide()`, `bool CanLeave(out string reason)`, `Dispose()` |
+| `IGroupShell`, `IGroupShellFactory` | Application | Hợp đồng chung của shell (không phụ thuộc WinForms): `Show()`, `Hide()`, `CanLeave(out reason)`, `StopRunningTasks()`, `Dispose()` |
 
 ### 4.2 Quy tắc
 
@@ -84,8 +84,8 @@ Kiểm thử chỉ dùng shell giả; không chạm cổng thật.
 
 | Task | Nội dung | Trạng thái |
 |---|---|---|
-| TD00-01 | `AppGroup`, `IGroupPreferenceStore` + cài đặt `LastGroup` | Chưa làm |
-| TD00-02 | `GroupNavigator` + `IGroupShell` + test T-DVC00-01..07 | Chưa làm |
+| TD00-01 | `AppGroup`, `IGroupPreferenceStore` (giao diện xong; cài đặt `LastGroup` vào DD-11 làm ở TD00-03) | Xong 16/11/2026 |
+| TD00-02 | `GroupNavigator` + `IGroupShell` + test T-DVC00-01,02,04..07 (9 test đạt; T-DVC00-03 do `ActivationGateTests` phủ) | Xong 16/11/2026 |
 | TD00-03 | `GroupChooserForm` + nối vào `AppApplicationContext` | Chưa làm |
 | TD00-04 | Lệnh "Đổi nhóm" trên ribbon shell Hóa đơn; stub shell DVC | Chưa làm |
 | TD00-05 | Cập nhật SRS/FT-01 nhóm Hóa đơn thêm bước chọn nhóm (cần duyệt) | Chưa làm |
