@@ -120,8 +120,8 @@ Toàn bộ chạy bằng `MockTthcSource` và fixture; không chạm cổng th�
 | Mục | Cần | Ảnh hưởng |
 |---|---|---|
 | Mẫu HTML công khai | **Đã có** (TD02-06): fixture dựng lại từ DOM. Còn thiếu giá trị `hx-vals` của phân trang và token CSRF khi gửi form (G-DVC-03) | Bộ phân tích viết được; nguồn thật vẫn chờ G-DVC-03 |
-| G-DVC-03 | Cơ chế CSRF của htmx | Cách `PortalTthcSource` gửi form trong trang |
-| G-DVC-06 | WebView nhúng không bị coi là tab thứ hai | Cách giữ WebView DVC ngầm |
+| G-DVC-03 | **Đã xác nhận 18/11/2026** cho trang công khai: gửi `POST /tthc/homelogin/tthc` (trường `_csrf`, `maTTHC`, `maNghiepVu`, `maToKhai`, `mucDo`, `page` từ 1, `size` 10) kèm header `X-XSRF-TOKEN` (từ meta) và `accept: text/html-partial` ngay trong trang; xem [khảo sát](../api-samples/khao-sat-tthc.md) | Mở khóa `PortalTthcSource` |
+| G-DVC-06 | Trang công khai cũng ghi khóa một-tab ở localStorage/sessionStorage của **hồ sơ trình duyệt**; WebView của app có hồ sơ riêng nên không đụng Chrome của người dùng. Chỉ cần giữ một trang DVC trong app; xác nhận lại khi chạy WebView thật | Còn lại: thử với WebView thật ở bản Release |
 | Bản công khai | **Đã xác nhận 18/11/2026:** `/tthc/homelogin/tthc` tra cứu được khi chưa đăng nhập; chi tiết ở `/tthc/homelogin/chi-tiet-tthc?maTTHC=`. Nguồn thật không cần đăng nhập | Đóng FR-DVC-TTHC-007 |
 | Giá trị ô chọn | Danh sách tùy chọn thật của 4 ô lọc | Đã dự kiến đọc từ trang, nên chỉ cần fixture |
 
@@ -138,4 +138,4 @@ Làm trước được (không bị chặn): mô hình Domain, `ITthcSource`, `T
 | TD02-05 | `TthcForm` + `TthcDetailForm`, nút "Tra cứu thủ tục hành chính" ở cửa sổ nhóm DVC; Release không có mock nên nút bị khóa | Xong 18/11/2026, đã thử tay (người dùng xác nhận tra cứu mô phỏng OK) |
 | TD02-06 | Lấy mẫu HTML công khai (danh sách + chi tiết) vào `tests/.../Fixtures/` | Xong 18/11/2026 (mẫu dựng lại từ DOM, đã làm sạch) |
 | TD02-07 | `TthcHtmlParser` (HtmlAgilityPack 1.11.46, chỉ lấy văn bản; bỏ script/style/iframe/object) + T-DVC02-01..05 (6 test đạt, thêm fixture `tthc-filters.sample.html`). Bản công khai không có ô Loại người nộp thuế nên `TaxpayerTypes` rỗng | Xong 18/11/2026 |
-| TD02-08 | `PortalTthcSource` (Release) + T-DVC02-10 | Chưa làm, sau G-DVC-03/06 |
+| TD02-08 | `PortalTthcSource` (Release): dựng yêu cầu như trên và chạy trong trang WebView DVC, chuyển HTML cho `TthcHtmlParser`; chặn `page` ngoài [1, PageCount]; chỉ hai loại yêu cầu (tìm, chi tiết) + T-DVC02-10. Không cần đăng nhập | Chưa làm, đã hết điều kiện chặn khảo sát (còn cần WebView DVC ngầm, xem DD-DVC-01 TD01-05) |

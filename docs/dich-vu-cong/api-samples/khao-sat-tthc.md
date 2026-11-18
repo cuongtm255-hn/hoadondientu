@@ -102,3 +102,19 @@ Quan sát bằng Chrome, một tab, chỉ đọc, không đăng nhập.
 | Mẫu làm sạch | `tests/HoaDonDienTu.Infrastructure.Tests/Fixtures/tthc-list.sample.html`, `tthc-detail.sample.html` (dựng lại từ cấu trúc DOM, đã bỏ giá trị hx-*, href nhạy cảm, token, script; nội dung rút gọn) |
 
 Chưa biết: giá trị `hx-vals` của phân trang (tên tham số số trang), giá trị tên trường tìm kiếm khi gửi form (công cụ chặn đọc chuỗi giống query), tên và giá trị token CSRF. Cần ở G-DVC-03.
+
+## Bổ sung 18/11/2026 (2): cơ chế gửi form và CSRF (G-DVC-03), trang công khai
+
+Quan sát bằng Chrome (một tab, chưa đăng nhập) bằng cách ghi sự kiện htmx của chính trang (`htmx:configRequest`, `htmx:afterRequest`): chỉ ghi tên trường, đường dẫn, tên header; **không** ghi giá trị token.
+
+| Mục | Kết quả |
+|---|---|
+| Tìm | `POST /tthc/homelogin/tthc`, `Content-Type` form urlencoded (htmx). Trường: `_csrf` (ẩn), `maTTHC` (ô tên/mã), `maNghiepVu`, `maToKhai`, `mucDo`. Không gửi `_domain`. Phản hồi 200 `text/html`, là mảnh HTML (bắt đầu bằng `div` có `style` min-height) nạp vào `#bangKetQuaTTHC` |
+| Đổi trang | Cùng địa chỉ `POST /tthc/homelogin/tthc`, cùng các trường, thêm `page` (**bắt đầu từ 1**) và `size` (10). Liên kết phân trang khai báo: `hx-post` địa chỉ trên, `hx-target` `#bangKetQuaTTHC`, `hx-include` `#form_search`, `hx-vals` JSON gồm `page` và `size`. Nút `«` ở trang 1 mang `page` 0 (cần chặn, không gửi) |
+| Header | htmx tự thêm `HX-Request`, `HX-Trigger`, `HX-Trigger-Name`, `HX-Target`, `HX-Current-URL`; script `htmx-csrf.js` (nghe `htmx:configRequest`) đặt thêm cho mọi yêu cầu **khác GET**: `accept: text/html-partial` và header CSRF. Tên header CSRF lấy từ thẻ `meta` `csrf-header` (giá trị **`X-XSRF-TOKEN`**), giá trị token lấy từ thẻ `meta` `csrf-token` (96 ký tự, **không** ghi vào repo) |
+| Token khác | Form còn có trường ẩn `_csrf` (cùng cơ chế token) |
+| Chi tiết | Điều hướng GET thường tới `/tthc/homelogin/chi-tiet-tthc?maTTHC=<mã>`; không cần token |
+| Một tab | Ngay cả trang công khai cũng ghi `localStorage.APP_SINGLE_TAB_ACTIVE` và `sessionStorage.TAB_ID`. Hai thứ này thuộc hồ sơ trình duyệt: WebView của app có hồ sơ riêng (không dùng chung với Chrome của người dùng); trong app vẫn chỉ giữ **một** trang DVC |
+| Cookie | Trang đặt cookie phiên (đọc được qua JS 8 cookie; tên và giá trị không ghi nhận) |
+
+**Hệ quả thiết kế:** gửi trong trang bằng chính cơ chế của cổng là đủ, app không phải tự xử lý token: dựng `FormData` từ `#form_search` (đã có `_csrf`), thêm `page`/`size`, gọi `fetch` cùng gốc (same-origin) với header `accept: text/html-partial`, `X-XSRF-TOKEN` đọc từ meta ngay lúc gửi, `HX-Request: true`. Hoặc gọi `htmx.ajax` của trang. Không sao chép cookie/token ra ngoài WebView.

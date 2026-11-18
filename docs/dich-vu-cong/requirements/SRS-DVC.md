@@ -323,7 +323,7 @@ Nhóm DVC dùng chung cơ chế bản quyền (ADR 0010): một mã kích hoạt
 |---|---|---|
 | G-DVC-01 | Xác nhận gọi `loginLDAP` được từ trang trong WebView ngầm (giá trị `status`, thông báo lỗi, thời hạn phiên) | ADR/ghi chú, mẫu đã làm sạch |
 | G-DVC-02 | Giá trị `doiTuong` (Doanh nghiệp/Cá nhân), kiểu thân gửi (JSON/form) | cập nhật FR-DVC-AUTH-003 |
-| G-DVC-03 | Cơ chế CSRF và header/cookie bắt buộc của htmx | cập nhật mục 11.1 |
+| G-DVC-03 | Cơ chế CSRF và header/cookie bắt buộc của htmx | **Đã xác nhận 18/11/2026 cho trang công khai TTHC** (header `X-XSRF-TOKEN` từ meta, `accept: text/html-partial`, trường `_csrf`); xem khảo sát mục (2). Còn lại cho các mục sau đăng nhập |
 | G-DVC-04 | Mẫu HTML **có dữ liệu** cho hồ sơ đã nộp, lưu tạm, phản ánh, LPTB (hai chế độ), đất đai; cột bảng; phân trang | thiết kế bảng, bộ phân tích |
 | G-DVC-05 | Cổng có nút xuất Excel/PDF không; giới hạn khoảng ngày; giới hạn tần suất/CAPTCHA sai | cập nhật FR-DVC-EXP, BR-DVC-05 |
 | G-DVC-06 | Kiểm tra một tab và cách WebView nhúng tránh bị coi là tab thứ hai | cập nhật BR-DVC-06 |
