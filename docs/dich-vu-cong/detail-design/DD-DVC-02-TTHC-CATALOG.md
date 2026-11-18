@@ -119,10 +119,10 @@ Toàn bộ chạy bằng `MockTthcSource` và fixture; không chạm cổng th�
 
 | Mục | Cần | Ảnh hưởng |
 |---|---|---|
-| Mẫu HTML công khai | Lưu **một** mảnh HTML danh sách và một trang chi tiết (dữ liệu công khai, đã làm sạch) làm fixture để viết bộ phân tích đúng cấu trúc thật. Chưa có: khảo sát mới chỉ ghi lại cột/trường, chưa lưu HTML | Bộ phân tích và T-DVC02-01..05 |
+| Mẫu HTML công khai | **Đã có** (TD02-06): fixture dựng lại từ DOM. Còn thiếu giá trị `hx-vals` của phân trang và token CSRF khi gửi form (G-DVC-03) | Bộ phân tích viết được; nguồn thật vẫn chờ G-DVC-03 |
 | G-DVC-03 | Cơ chế CSRF của htmx | Cách `PortalTthcSource` gửi form trong trang |
 | G-DVC-06 | WebView nhúng không bị coi là tab thứ hai | Cách giữ WebView DVC ngầm |
-| Bản công khai | `/tthc/homelogin/tthc` có tra cứu được khi chưa đăng nhập không | FR-DVC-TTHC-007 |
+| Bản công khai | **Đã xác nhận 18/11/2026:** `/tthc/homelogin/tthc` tra cứu được khi chưa đăng nhập; chi tiết ở `/tthc/homelogin/chi-tiet-tthc?maTTHC=`. Nguồn thật không cần đăng nhập | Đóng FR-DVC-TTHC-007 |
 | Giá trị ô chọn | Danh sách tùy chọn thật của 4 ô lọc | Đã dự kiến đọc từ trang, nên chỉ cần fixture |
 
 Làm trước được (không bị chặn): mô hình Domain, `ITthcSource`, `TthcService`, `MockTthcSource`, presenter, giao diện. Bộ phân tích viết sau khi có fixture.
@@ -136,6 +136,6 @@ Làm trước được (không bị chặn): mô hình Domain, `ITthcSource`, `T
 | TD02-03 | `MockTthcSource` (Debug, 35 bản ghi "(mẫu)") | Xong 18/11/2026 |
 | TD02-04 | `TthcSearchSession` (bộ điều khiển UI-độc lập) + T-DVC02-07, 08 (22 test đạt) | Xong 18/11/2026 |
 | TD02-05 | `TthcForm` + `TthcDetailForm`, nút "Tra cứu thủ tục hành chính" ở cửa sổ nhóm DVC; Release không có mock nên nút bị khóa | Xong 18/11/2026, đã thử tay (người dùng xác nhận tra cứu mô phỏng OK) |
-| TD02-06 | Lấy fixture HTML công khai (cần trình duyệt, một lần) | Chưa làm, cần người dùng/khảo sát |
+| TD02-06 | Lấy mẫu HTML công khai (danh sách + chi tiết) vào `tests/.../Fixtures/` | Xong 18/11/2026 (mẫu dựng lại từ DOM, đã làm sạch) |
 | TD02-07 | `TthcHtmlParser` + T-DVC02-01..05 | Chưa làm, sau TD02-06 |
 | TD02-08 | `PortalTthcSource` (Release) + T-DVC02-10 | Chưa làm, sau G-DVC-03/06 |

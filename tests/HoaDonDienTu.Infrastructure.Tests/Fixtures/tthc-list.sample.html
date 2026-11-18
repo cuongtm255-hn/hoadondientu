@@ -1,0 +1,74 @@
+<!-- MẪU ĐÃ LÀM SẠCH: dựng lại từ cấu trúc DOM của https://dichvucong.gdt.gov.vn/tthc/homelogin/tthc (trang công khai) ngày 18/11/2026.
+     Đã bỏ: giá trị thuộc tính hx-*, href, onclick, token CSRF, mọi script. Chỉ giữ thẻ, class, id và văn bản công khai của danh mục TTHC.
+     Rút gọn còn 3 dòng của trang 1/15. Không phải dữ liệu đầy đủ. -->
+<div id="bangKetQuaTTHC">
+  <div style="">
+    <div class="d-flex flex-wrap align-items-center justify-content-between mt-3 gap-2 bangKetQuaTTHC menuSelectSSO">
+      <nav class="order-1 order-md-1" aria-label="">
+        <ul class="pagination pagination-sm mb-0">
+          <li class="page-item"><a class="page-link" href="#" hx-post="#" hx-target="#" hx-include="#" hx-vals="">⏮</a></li>
+          <li class="page-item"><a class="page-link" href="#" hx-post="#" hx-target="#" hx-include="#" hx-vals="">«</a></li>
+          <li class="page-item active"><a class="page-link" href="#" hx-post="#" hx-target="#" hx-include="#" hx-vals="">1</a></li>
+          <li class="page-item"><a class="page-link" href="#" hx-post="#" hx-target="#" hx-include="#" hx-vals="">2</a></li>
+          <li class="page-item"><a class="page-link" href="#" hx-post="#" hx-target="#" hx-include="#" hx-vals="">3</a></li>
+          <li class="page-item"><a class="page-link" href="#" hx-post="#" hx-target="#" hx-include="#" hx-vals="">4</a></li>
+          <li class="page-item"><a class="page-link" href="#" hx-post="#" hx-target="#" hx-include="#" hx-vals="">5</a></li>
+          <li class="page-item"><a class="page-link" href="#" hx-post="#" hx-target="#" hx-include="#" hx-vals="">»</a></li>
+          <li class="page-item"><a class="page-link" href="#" hx-post="#" hx-target="#" hx-include="#" hx-vals="">⏭</a></li>
+        </ul>
+      </nav>
+      <div class="input-group input-group-sm">
+        <input type="number" id="goToPage" />
+        <button class="btn btn-primary" type="button" onclick="">Đi</button>
+      </div>
+      <div class="order-3 order-md-2 d-none d-md-block flex-grow-1 text-center">
+        <span class="fw-bold small">Trang <span>1</span>/<span>15</span> — Tổng số bản ghi: <span>147</span></span>
+        <span class="fw-bold small">(137 TTHC)</span>
+      </div>
+      <div class="w-100 d-block d-md-none order-4 text-center">
+        <span class="fw-bold small">Trang <span>1</span>/<span>15</span> — Tổng số bản ghi: <span>147</span></span>
+        <span class="fw-bold small">(137 TTHC)</span>
+      </div>
+    </div>
+    <div class="table-responsive mt-4 bangKetQuaTTHC menuSelectSSO">
+      <table class="table table-bordered table-hover">
+        <thead class="table-primary text-center" style="">
+          <tr>
+            <th class="labelTitle">STT</th>
+            <th class="labelTitle">Mã</th>
+            <th class="labelTitle" style="">Tên thủ tục</th>
+            <th class="labelTitle">Mức độ</th>
+            <th class="labelTitle">Cơ quan thực hiện</th>
+            <th class="labelTitle">Nộp hồ sơ</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="text-center labelTableBody">2</td>
+            <td class="text-left labelTableBody">1.007607</td>
+            <td class="text-left labelTableBody"><a class="text-decoration-none" href="/tthc/homelogin/chi-tiet-tthc?maTTHC=1.007607"><span>Chấm dứt hiệu lực mã số thuế</span></a></td>
+            <td class="text-center labelTableBody">Toàn trình</td>
+            <td class="text-center labelTableBody">Cục Thuế/Thuế tỉnh, thành phố/Thuế cơ sở.</td>
+            <td class="text-center"><a href="#" data-toggle=""></a></td>
+          </tr>
+          <tr>
+            <td class="text-center labelTableBody">3</td>
+            <td class="text-left labelTableBody">1.008587</td>
+            <td class="text-left labelTableBody"><a class="text-decoration-none" href="/tthc/homelogin/chi-tiet-tthc?maTTHC=1.008587"><span>Xác nhận số thuế đã nộp tại Việt Nam đối với đối tượng cư trú của nước ngoài</span></a></td>
+            <td class="text-center labelTableBody">Toàn trình</td>
+            <td class="text-center labelTableBody">Chi cục Thuế doanh nghiệp lớn/Chi cục Thuế thương mại điện tử/Thuế tỉnh, thành phố/Thuế cơ sở.</td>
+            <td class="text-center"><a href="#" data-toggle=""></a></td>
+          </tr>
+          <tr>
+            <td class="text-center labelTableBody">10</td>
+            <td class="text-left labelTableBody">1.007016</td>
+            <td class="text-left labelTableBody"><a class="text-decoration-none" href="/tthc/homelogin/chi-tiet-tthc?maTTHC=1.007016"><span>Khai thuế giá trị gia tăng đối với phương pháp trực tiếp trên giá trị gia tăng</span></a></td>
+            <td class="text-center labelTableBody">Toàn trình</td>
+            <td class="text-center labelTableBody">Thuế tỉnh, thành phố</td>
+            <td class="text-center"><a href="#" data-toggle=""></a></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

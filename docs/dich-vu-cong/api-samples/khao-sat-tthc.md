@@ -87,3 +87,18 @@ Ghi chú giao diện: tab 1b có dòng đỏ "Chức năng chỉ hỗ trợ đ�
 2. Mục 1a/1b cần người dùng nhập CAPTCHA; mục 4 cần mã hồ sơ thật kèm MST/số giấy tờ.
 3. Tên/giá trị các trường CSRF và cách htmx đính kèm: công cụ khảo sát chặn đọc `htmx-csrf.js` (có dữ liệu cookie), cần mở thủ công.
 4. Cần ADR: tích hợp qua phiên WebView + scrape HTML, và xử lý giới hạn một tab.
+
+## Bổ sung 18/11/2026: bản công khai của danh mục TTHC (khảo sát đọc, chưa đăng nhập)
+
+Quan sát bằng Chrome, một tab, chỉ đọc, không đăng nhập.
+
+| Mục | Kết quả |
+|---|---|
+| Có dùng được khi chưa đăng nhập? | **Có.** `/tthc/thu-tuc-hanh-chinh` chuyển về `/tthc/homelogin`; trang công khai `/tthc/homelogin/tthc` có đủ bộ lọc, bảng, phân trang (147 bản ghi, 137 TTHC, 15 trang). Đóng [Giả định] FR-DVC-TTHC-007 |
+| Chi tiết công khai | `GET /tthc/homelogin/chi-tiet-tthc?maTTHC=<mã>` (mở bằng cách bấm tên thủ tục). Đường dẫn tự suy `/tthc/homelogin/tthc/chi-tiet-tthc` bị tường lửa trả "Request Rejected" (nên chỉ dùng đường dẫn lấy từ chính trang) |
+| Form tìm | `form_search` (POST), có trường ẩn CSRF (`_csrf`), các ô `maNghiepVu` (Loại TTHC, 23 lựa chọn), `maToKhai` (Tờ khai, nhiều lựa chọn có mã số), `mucDo` (`01` Toàn trình, `02` Cung cấp thông tin, `03` DVCTT một phần), `_domain` (danh sách miền, ngoài phạm vi), ô tên/mã `maTTHC`, `goToPage` |
+| Vùng kết quả | `#bangKetQuaTTHC`: thanh phân trang `ul.pagination` với các `a.page-link` mang thuộc tính htmx (`hx-post`, `hx-target`, `hx-include`, `hx-vals`; chưa đọc được giá trị), ô `#goToPage` + nút Đi, dòng "Trang x/N — Tổng số bản ghi: n (m TTHC)", bảng `table.table-bordered` cột STT, Mã, Tên thủ tục (liên kết), Mức độ, Cơ quan thực hiện, Nộp hồ sơ |
+| Trang chi tiết | `div.card-body` gồm `h4` tên và 11 khối `div.mb-3` có `label` và nội dung với `id`: `maTTHC`, `capThuchien`, `thuTuThucHien`, `cachThuchien`, `thanhPhanHoSo`, `doiTuongThucHien`, `cqThucHien`, `dchiTiepnhanHso`, `ketQuaThucHien`, `dieuKienThucHien`, `canCuPhapLy`; nội dung dài lồng `p > span > span > span`, có `strong`/`em` |
+| Mẫu làm sạch | `tests/HoaDonDienTu.Infrastructure.Tests/Fixtures/tthc-list.sample.html`, `tthc-detail.sample.html` (dựng lại từ cấu trúc DOM, đã bỏ giá trị hx-*, href nhạy cảm, token, script; nội dung rút gọn) |
+
+Chưa biết: giá trị `hx-vals` của phân trang (tên tham số số trang), giá trị tên trường tìm kiếm khi gửi form (công cụ chặn đọc chuỗi giống query), tên và giá trị token CSRF. Cần ở G-DVC-03.
