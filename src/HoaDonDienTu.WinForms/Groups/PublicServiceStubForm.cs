@@ -46,7 +46,7 @@ namespace HoaDonDienTu.WinForms.Groups
 #else
             // Release: tra cứu danh mục TTHC công khai chạy thật qua WebView ngầm (không cần đăng nhập); đăng nhập DVC chưa có
             // CefDvcLoginBrowser (chờ G-DVC-02/06) nên nút Đăng nhập bị khóa.
-            var runner = new CefDvcPageRunner();
+            var runner = new CefDvcPageRunner(m => logger.Info(m));
             return new DvcServices
             {
                 Session = session,
