@@ -137,5 +137,5 @@ Làm trước được (không bị chặn): mô hình Domain, `ITthcSource`, `T
 | TD02-04 | `TthcSearchSession` (bộ điều khiển UI-độc lập) + T-DVC02-07, 08 (22 test đạt) | Xong 18/11/2026 |
 | TD02-05 | `TthcForm` + `TthcDetailForm`, nút "Tra cứu thủ tục hành chính" ở cửa sổ nhóm DVC; Release không có mock nên nút bị khóa | Xong 18/11/2026, đã thử tay (người dùng xác nhận tra cứu mô phỏng OK) |
 | TD02-06 | Lấy mẫu HTML công khai (danh sách + chi tiết) vào `tests/.../Fixtures/` | Xong 18/11/2026 (mẫu dựng lại từ DOM, đã làm sạch) |
-| TD02-07 | `TthcHtmlParser` + T-DVC02-01..05 | Chưa làm, sau TD02-06 |
+| TD02-07 | `TthcHtmlParser` (HtmlAgilityPack 1.11.46, chỉ lấy văn bản; bỏ script/style/iframe/object) + T-DVC02-01..05 (6 test đạt, thêm fixture `tthc-filters.sample.html`). Bản công khai không có ô Loại người nộp thuế nên `TaxpayerTypes` rỗng | Xong 18/11/2026 |
 | TD02-08 | `PortalTthcSource` (Release) + T-DVC02-10 | Chưa làm, sau G-DVC-03/06 |

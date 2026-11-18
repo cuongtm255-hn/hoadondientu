@@ -1,0 +1,24 @@
+<!-- MẪU ĐÃ LÀM SẠCH: các ô chọn của form_search ở https://dichvucong.gdt.gov.vn/tthc/homelogin/tthc (trang công khai) ngày 18/11/2026.
+     Chỉ giữ name, giá trị và nhãn công khai; rút gọn số lựa chọn (Loại TTHC thật có 23, Tờ khai thật có nhiều hơn). Đã bỏ trường ẩn CSRF. -->
+<form id="form_search" method="post">
+  <select name="maNghiepVu">
+    <option value="">---Tất cả---</option>
+    <option value="001">Đại lý thuế</option>
+    <option value="002">Báo cáo/thông báo của NNT</option>
+    <option value="009">Hồ sơ khai thuế</option>
+    <option value="011">Hóa đơn, biên lai</option>
+    <option value="012">Hoàn thuế</option>
+  </select>
+  <select name="maToKhai">
+    <option value="">---Tất cả---</option>
+    <option value="33">Kết quả HĐSXKD</option>
+    <option value="1181">BC21/HĐG - Báo cáo mất, cháy, hỏng hóa đơn giấy</option>
+    <option value="386">01/CNKD - Tờ khai thuế đối với cá nhân kinh doanh TT92</option>
+  </select>
+  <select name="mucDo">
+    <option value="">---Tất cả---</option>
+    <option value="01">Toàn trình</option>
+    <option value="02">Cung cấp thông tin</option>
+    <option value="03">DVCTT một phần</option>
+  </select>
+</form>
