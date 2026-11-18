@@ -135,7 +135,7 @@ Làm trước được (không bị chặn): mô hình Domain, `ITthcSource`, `T
 | TD02-02 | `ITthcSource`, `TthcService` (danh sách trắng mã, chặn trang ngoài khoảng, chuẩn hóa lỗi) + T-DVC02-06, 09 | Xong 18/11/2026 |
 | TD02-03 | `MockTthcSource` (Debug, 35 bản ghi "(mẫu)") | Xong 18/11/2026 |
 | TD02-04 | `TthcSearchSession` (bộ điều khiển UI-độc lập) + T-DVC02-07, 08 (22 test đạt) | Xong 18/11/2026 |
-| TD02-05 | `TthcForm` + `TthcDetailForm`, nút "Tra cứu thủ tục hành chính" ở cửa sổ nhóm DVC; Release không có mock nên nút bị khóa | Xong 18/11/2026, cần thử tay |
+| TD02-05 | `TthcForm` + `TthcDetailForm`, nút "Tra cứu thủ tục hành chính" ở cửa sổ nhóm DVC; Release không có mock nên nút bị khóa | Xong 18/11/2026, đã thử tay (người dùng xác nhận tra cứu mô phỏng OK) |
 | TD02-06 | Lấy fixture HTML công khai (cần trình duyệt, một lần) | Chưa làm, cần người dùng/khảo sát |
 | TD02-07 | `TthcHtmlParser` + T-DVC02-01..05 | Chưa làm, sau TD02-06 |
 | TD02-08 | `PortalTthcSource` (Release) + T-DVC02-10 | Chưa làm, sau G-DVC-03/06 |
