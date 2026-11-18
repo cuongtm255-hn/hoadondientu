@@ -207,6 +207,7 @@ namespace HoaDonDienTu.WinForms.Bootstrap
             {
                 _closingFromPublicService = true;
                 _groups.Dispose();
+                if (_dvcServices != null) _dvcServices.Dispose();
                 _navigation.Dispose();
                 _cancellation.Dispose();
                 _mainShell.Dispose();

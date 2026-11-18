@@ -8,7 +8,7 @@ using HoaDonDienTu.Application.PublicService;
 namespace HoaDonDienTu.WinForms.Groups
 {
     /// <summary>Dịch vụ đăng nhập DVC dùng chung cho cửa sổ nhóm Dịch vụ công. Release chưa có trình duyệt thật nên Login = null.</summary>
-    public sealed class DvcServices
+    public sealed class DvcServices : IDisposable
     {
         public DvcLoginService Login { get; private set; }
 
@@ -18,6 +18,14 @@ namespace HoaDonDienTu.WinForms.Groups
         public TthcService Tthc { get; private set; }
 
         public string TthcNotice { get; private set; }
+
+        private IDisposable _disposable;
+
+        public void Dispose()
+        {
+            if (_disposable != null) _disposable.Dispose();
+            _disposable = null;
+        }
 
         /// <summary>Dòng chú thích hiển thị trên form đăng nhập (bản mô phỏng ghi rõ cách thử).</summary>
         public string Notice { get; private set; }
@@ -36,8 +44,15 @@ namespace HoaDonDienTu.WinForms.Groups
                 TthcNotice = MockTthcSource.Hint
             };
 #else
-            // Release: chưa có CefDvcLoginBrowser (chờ G-DVC-02/06), nên chưa đăng nhập được.
-            return new DvcServices { Session = session };
+            // Release: tra cứu danh mục TTHC công khai chạy thật qua WebView ngầm (không cần đăng nhập); đăng nhập DVC chưa có
+            // CefDvcLoginBrowser (chờ G-DVC-02/06) nên nút Đăng nhập bị khóa.
+            var runner = new CefDvcPageRunner();
+            return new DvcServices
+            {
+                Session = session,
+                Tthc = new TthcService(new HoaDonDienTu.Infrastructure.PublicService.PortalTthcSource(runner), session, logger),
+                _disposable = runner
+            };
 #endif
         }
     }

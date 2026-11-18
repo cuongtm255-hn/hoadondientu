@@ -78,6 +78,7 @@
     <Compile Include="Groups\GroupShells.cs" />
     <Compile Include="Groups\DvcLoginForm.cs" />
     <Compile Include="Groups\TthcForm.cs" />
+    <Compile Include="Groups\CefDvcPageRunner.cs" />
     <Compile Include="Groups\MockTthcSource.cs" />
     <Compile Include="Groups\MockDvcLoginBrowser.cs" />
     <Compile Include="Licensing\ILicenseView.cs" />
