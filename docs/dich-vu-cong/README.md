@@ -20,12 +20,12 @@ Sau khi qua kiểm tra bản quyền (và chọn doanh nghiệp), người dùng
 |---|---|
 | [requirements/SRS-DVC.md](requirements/SRS-DVC.md) | Đặc tả yêu cầu của nhóm (bản nháp 0.2, đã chốt 7 câu hỏi mở; còn các cổng kỹ thuật G-DVC) |
 | [requirements/FEATURE-LIST.md](requirements/FEATURE-LIST.md) | Danh sách tính năng `FT-DVC-xx` |
-| [detail-design/](detail-design/) | Thiết kế chi tiết `DD-DVC-xx` (nháp): [DD-DVC-00 chọn nhóm](detail-design/DD-DVC-00-GROUP-CHOOSER.md), [DD-DVC-01 đăng nhập](detail-design/DD-DVC-01-LOGIN.md) |
+| [detail-design/](detail-design/) | Thiết kế chi tiết `DD-DVC-xx` (nháp): [DD-DVC-00 chọn nhóm](detail-design/DD-DVC-00-GROUP-CHOOSER.md), [DD-DVC-01 đăng nhập](detail-design/DD-DVC-01-LOGIN.md), [DD-DVC-02 danh mục TTHC](detail-design/DD-DVC-02-TTHC-CATALOG.md) |
 | [decisions/](decisions/) | ADR của nhóm, đánh số riêng `DVC-NNNN` |
 | [api-samples/khao-sat-tthc.md](api-samples/khao-sat-tthc.md) | Khảo sát cổng ngày 16/11/2026: chức năng, request, luồng đăng nhập |
 | [wireframes/](wireframes/) | Ảnh chụp giao diện cổng làm mockup: `DVC-xx-*.jpg` là bản **đã che tên doanh nghiệp và MST** (commit được); `*.raw.jpg` là bản gốc, git bỏ qua. Mã `xx` khớp `FT-DVC-xx` |
 
-Chưa có: DD-DVC-02 trở đi, kế hoạch phase.
+Chưa có: DD-DVC-03 trở đi, kế hoạch phase.
 
 ## Quy tắc áp dụng chung (từ CLAUDE.md)
 
