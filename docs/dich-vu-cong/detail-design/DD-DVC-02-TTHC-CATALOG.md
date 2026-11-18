@@ -131,11 +131,11 @@ Làm trước được (không bị chặn): mô hình Domain, `ITthcSource`, `T
 
 | Task | Nội dung | Trạng thái |
 |---|---|---|
-| TD02-01 | Domain `TthcQuery`, `TthcSummary`, `TthcPage`, `TthcDetail`, `TthcFilterOptions` + test | Chưa làm |
-| TD02-02 | `ITthcSource`, `TthcService` + T-DVC02-06, 09 | Chưa làm |
-| TD02-03 | `MockTthcSource` (Debug) | Chưa làm |
-| TD02-04 | `TthcPresenter` + T-DVC02-07, 08 | Chưa làm |
-| TD02-05 | `TthcScreen` và nối vào cửa sổ nhóm DVC | Chưa làm |
+| TD02-01 | Domain `TthcQuery`, `TthcSummary`, `TthcPage`, `TthcDetail`, `TthcFilterOptions`, `TthcParseException` | Xong 18/11/2026 |
+| TD02-02 | `ITthcSource`, `TthcService` (danh sách trắng mã, chặn trang ngoài khoảng, chuẩn hóa lỗi) + T-DVC02-06, 09 | Xong 18/11/2026 |
+| TD02-03 | `MockTthcSource` (Debug, 35 bản ghi "(mẫu)") | Xong 18/11/2026 |
+| TD02-04 | `TthcSearchSession` (bộ điều khiển UI-độc lập) + T-DVC02-07, 08 (22 test đạt) | Xong 18/11/2026 |
+| TD02-05 | `TthcForm` + `TthcDetailForm`, nút "Tra cứu thủ tục hành chính" ở cửa sổ nhóm DVC; Release không có mock nên nút bị khóa | Xong 18/11/2026, cần thử tay |
 | TD02-06 | Lấy fixture HTML công khai (cần trình duyệt, một lần) | Chưa làm, cần người dùng/khảo sát |
 | TD02-07 | `TthcHtmlParser` + T-DVC02-01..05 | Chưa làm, sau TD02-06 |
 | TD02-08 | `PortalTthcSource` (Release) + T-DVC02-10 | Chưa làm, sau G-DVC-03/06 |

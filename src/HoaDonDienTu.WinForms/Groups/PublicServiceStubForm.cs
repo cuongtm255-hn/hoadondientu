@@ -14,6 +14,11 @@ namespace HoaDonDienTu.WinForms.Groups
 
         public DvcSession Session { get; private set; }
 
+        /// <summary>Dịch vụ tra cứu danh mục TTHC; null nếu bản này chưa có nguồn dữ liệu (Release chờ G-DVC-03/06).</summary>
+        public TthcService Tthc { get; private set; }
+
+        public string TthcNotice { get; private set; }
+
         /// <summary>Dòng chú thích hiển thị trên form đăng nhập (bản mô phỏng ghi rõ cách thử).</summary>
         public string Notice { get; private set; }
 
@@ -26,7 +31,9 @@ namespace HoaDonDienTu.WinForms.Groups
             {
                 Session = session,
                 Login = new DvcLoginService(new MockDvcLoginBrowser(), session, logger, names),
-                Notice = MockDvcLoginBrowser.Hint
+                Notice = MockDvcLoginBrowser.Hint,
+                Tthc = new TthcService(new MockTthcSource(), session, logger),
+                TthcNotice = MockTthcSource.Hint
             };
 #else
             // Release: chưa có CefDvcLoginBrowser (chờ G-DVC-02/06), nên chưa đăng nhập được.
@@ -45,6 +52,7 @@ namespace HoaDonDienTu.WinForms.Groups
         private readonly Func<string> _taxCode;
         private readonly Label _state = new Label();
         private readonly KryptonButton _loginButton = new KryptonButton();
+        private readonly KryptonButton _tthcButton = new KryptonButton();
 
         public PublicServiceStubForm(DvcServices services, Func<string> taxCode)
         {
@@ -71,6 +79,12 @@ namespace HoaDonDienTu.WinForms.Groups
             _loginButton.SetBounds(20, 100, 160, 36);
             _loginButton.Values.Text = "Đăng nhập cổng DVC";
             _loginButton.Click += (s, e) => ShowLogin();
+
+            _tthcButton.SetBounds(190, 100, 200, 36);
+            _tthcButton.Values.Text = "Tra cứu thủ tục hành chính";
+            _tthcButton.Enabled = _services.Tthc != null;
+            _tthcButton.Click += (s, e) => ShowTthc();
+            Controls.Add(_tthcButton);
 
             var note = new Label
             {
@@ -106,6 +120,14 @@ namespace HoaDonDienTu.WinForms.Groups
                 form.ShowDialog(this);
             }
             RefreshState();
+        }
+
+        private void ShowTthc()
+        {
+            using (var form = new TthcForm(new TthcSearchSession(_services.Tthc), _services.TthcNotice))
+            {
+                form.ShowDialog(this);
+            }
         }
 
         private void OnSessionChanged(object sender, EventArgs e)

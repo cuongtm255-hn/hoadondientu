@@ -77,6 +77,8 @@
     <Compile Include="Groups\PublicServiceStubForm.cs" />
     <Compile Include="Groups\GroupShells.cs" />
     <Compile Include="Groups\DvcLoginForm.cs" />
+    <Compile Include="Groups\TthcForm.cs" />
+    <Compile Include="Groups\MockTthcSource.cs" />
     <Compile Include="Groups\MockDvcLoginBrowser.cs" />
     <Compile Include="Licensing\ILicenseView.cs" />
     <Compile Include="Licensing\LicensePresenter.cs" />
