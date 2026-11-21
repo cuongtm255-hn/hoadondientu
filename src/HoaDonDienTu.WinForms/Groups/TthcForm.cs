@@ -106,12 +106,10 @@ namespace HoaDonDienTu.WinForms.Groups
             _exportPage.SetBounds(690, 6, 120, 32);
             _exportPage.Values.Text = "Xuất trang này";
             UiIcons.Apply(_exportPage, UiIcon.Excel);
-            _exportPage.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             _exportPage.Click += async (s, e) => await ExportAsync(false);
             _exportAll.SetBounds(818, 6, 130, 32);
             _exportAll.Values.Text = "Xuất tất cả";
             UiIcons.Apply(_exportAll, UiIcon.Excel);
-            _exportAll.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             _exportAll.Click += async (s, e) => await ExportAsync(true);
             pager.Controls.Add(_exportPage);
             pager.Controls.Add(_exportAll);
