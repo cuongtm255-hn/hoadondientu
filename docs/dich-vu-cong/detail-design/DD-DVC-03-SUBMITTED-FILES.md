@@ -152,3 +152,16 @@ Làm trước được (không bị chặn): mô hình Domain, `IHoSoSource`, `H
 | TD03-06 | Khảo sát hồ sơ đã nộp tab DVC (người dùng đăng nhập, tự gõ CAPTCHA): endpoint, tham số, 13 cột, phân trang, sai CAPTCHA = HTTP 400. Tab thuế điện tử chưa khảo sát | Xong một phần 21/11/2026 (xem khảo sát mục 3) |
 | TD03-07 | `HoSoHtmlParser` (bỏ cột STT/Thao tác, đọc tổng/số trang/trang hiện tại, thông điệp rỗng, chỉ lấy văn bản) + mẫu giả `hoso-list.sample.html` + T-DVC03-09 | Xong 21/11/2026 |
 | TD03-08 | `PortalHoSoSource` (tab DVC): chạy trong `/tthc/tchs`, CAPTCHA từ ảnh của form, `GET /tthc/ho-so/search` như `onChangePage`, **bảng do chính trình duyệt đọc (DOMParser)** vì HTML thật có 12 ô cho 13 cột (bù ô cuối rỗng), 400 = sai CAPTCHA, hết phiên, danh sách trắng; `HoSoFailure.NotSupported` cho tab thuế điện tử | Xong 21/11/2026, **đã thử Release với hồ sơ thật (người dùng xác nhận OK)**; chưa thử đổi trang nhiều trang và tab thuế điện tử |
+
+## 11. Xuất Excel hồ sơ đã nộp (FT-DVC-08)
+
+- **Hai nút ở thanh phân trang** (icon Excel): "Xuất trang này" và "Xuất tất cả"; bật khi có ít nhất một dòng. Hộp thoại chọn nơi lưu, tên gợi ý `HoSoDaNop-yyyyMMdd-HHmm.xlsx`.
+- **Nội dung tệp:** tiêu đề; các dòng thông tin: nguồn, phạm vi (trang x/N hoặc tất cả), khoảng ngày, bộ lọc khác (tên TTHC, tờ khai, mã hồ sơ, mã giao dịch, MST ủy quyền nếu có), số bản ghi, thời điểm tra cứu; rồi bảng với STT và **các cột đúng thứ tự trên màn hình** (cột lấy từ bảng của cổng nên theo cổng nếu cổng đổi cột). Độ rộng cột theo tên cột. **CAPTCHA không bao giờ vào tệp** (có test quét toàn bộ gói).
+- **Xuất tất cả:** kết quả **một trang** thì xuất ngay, không gọi cổng. **Nhiều trang:** tải tuần tự theo bộ lọc đã áp dụng, nghỉ 300 ms giữa các trang (BR-DVC-05), đổi trang dùng lại mã của lần tìm (quyết định 21/11/2026). Bất kỳ trang nào lỗi thì **không ghi tệp**; cổng từ chối mã thì quên mã, báo "Cổng cần mã xác nhận mới: nhập mã rồi bấm Xuất tất cả lại", và lần xuất lại dùng mã mới cho mọi trang. Không đổi trang đang hiển thị.
+- **Riêng tư:** dữ liệu hồ sơ chỉ ra đĩa khi người dùng chủ động xuất; không thông tin nào của tệp đi vào nhật ký.
+- **Cài đặt:** `HoSoExcelExport` (cột, mô tả bộ lọc, tên tệp) trên `TableExcelWriter` dùng chung với danh mục TTHC; `HoSoSearchSession.FetchAllPagesAsync` + `AppliedFilters`.
+- **Kiểm thử:** 11 test (bố cục, CAPTCHA không lọt vào tệp, rỗng, ký tự đặc biệt, một trang không gọi cổng, nhiều trang tuần tự và dùng lại mã, lỗi một trang, gõ mã mới, thiếu mã, hủy).
+
+| Task | Nội dung | Trạng thái |
+|---|---|---|
+| TD03-09 | `HoSoExcelExport`, `FetchAllPagesAsync`, hai nút xuất + test | Xong 21/11/2026, cần thử tay |

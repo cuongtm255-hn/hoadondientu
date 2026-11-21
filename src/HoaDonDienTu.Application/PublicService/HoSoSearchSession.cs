@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using HoaDonDienTu.Domain.PublicService;
@@ -18,10 +19,14 @@ namespace HoaDonDienTu.Application.PublicService
         private string _pagingCaptcha;
         private bool _busy;
 
-        public HoSoSearchSession(HoSoService service)
+        private readonly int _pageDelayMs;
+
+        /// <param name="pageDelayMs">Nghỉ giữa các trang khi xuất tất cả các trang (mặc định 300 ms) để không dồn dập yêu cầu lên cổng.</param>
+        public HoSoSearchSession(HoSoService service, int pageDelayMs = 300)
         {
             if (service == null) throw new ArgumentNullException("service");
             _service = service;
+            _pageDelayMs = Math.Max(0, pageDelayMs);
         }
 
         public HoSoSource Source { get; private set; }
@@ -94,6 +99,72 @@ namespace HoaDonDienTu.Application.PublicService
         public Task<bool> GoToPageAsync(int pageNumber, CancellationToken cancellationToken)
         {
             return GoToPageAsync(pageNumber, null, cancellationToken);
+        }
+
+        /// <summary>Bộ lọc đã áp dụng lúc bấm Tìm (bản sao, không có CAPTCHA và số trang); null nếu chưa tìm.</summary>
+        public HoSoQuery AppliedFilters
+        {
+            get
+            {
+                if (_applied == null) return null;
+                HoSoQuery copy = _applied.WithoutCaptcha();
+                copy.PageNumber = 0;
+                return copy;
+            }
+        }
+
+        /// <summary>
+        /// Tải TẤT CẢ các trang của bộ lọc đã áp dụng để xuất Excel, tuần tự và có nghỉ giữa các trang (BR-DVC-05), không đổi <see cref="Page"/> đang hiển thị.
+        /// Kết quả chỉ có một trang thì trả luôn các dòng đang có, không gọi cổng. Nhiều trang thì dùng mã của lần tìm (đổi trang không cần mã mới, quyết định
+        /// 21/11/2026), hoặc <paramref name="captchaText"/> nếu người dùng vừa gõ mã mới. Trả null nếu bận, chưa tìm, hoặc BẤT KỲ trang nào lỗi (không trả dữ liệu
+        /// dở dang; xem <see cref="LastFailure"/>; cổng từ chối mã thì quên mã và người dùng gõ mã mới rồi xuất lại).
+        /// </summary>
+        public async Task<IList<HoSoRow>> FetchAllPagesAsync(string captchaText, IProgress<int> progress, CancellationToken cancellationToken)
+        {
+            if (_busy || _applied == null || Page == null) return null;
+            if (Page.PageCount <= 1)
+            {
+                LastFailure = HoSoFailure.None;
+                return new List<HoSoRow>(Page.Rows);
+            }
+
+            string captcha = string.IsNullOrWhiteSpace(captchaText) ? _pagingCaptcha : captchaText;
+            if (string.IsNullOrWhiteSpace(captcha))
+            {
+                LastFailure = HoSoFailure.InvalidInput;
+                return null;
+            }
+
+            _busy = true;
+            try
+            {
+                int pageCount = Page.PageCount;
+                var all = new List<HoSoRow>();
+                for (int number = 1; number <= pageCount; number++)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (number > 1 && _pageDelayMs > 0) await Task.Delay(_pageDelayMs, cancellationToken).ConfigureAwait(false);
+                    HoSoQuery query = _applied.Clone();
+                    query.PageNumber = number;
+                    query.CaptchaText = captcha;
+                    HoSoPage page = await _service.SearchAsync(query, cancellationToken).ConfigureAwait(false);
+                    all.AddRange(page.Rows);
+                    if (progress != null) progress.Report(number);
+                }
+                _pagingCaptcha = captcha;
+                LastFailure = HoSoFailure.None;
+                return all;
+            }
+            catch (HoSoServiceException ex)
+            {
+                LastFailure = ex.Failure;
+                _pagingCaptcha = null; // lỗi (kể cả cổng từ chối mã): không giữ mã, người dùng gõ mã mới
+                return null;
+            }
+            finally
+            {
+                _busy = false;
+            }
         }
 
         /// <summary>Có thể đổi trang mà không cần gõ mã mới (còn mã của lần tìm hiện tại).</summary>
