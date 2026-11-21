@@ -81,9 +81,18 @@ namespace HoaDonDienTu.WinForms.Groups
             Controls.Add(_login);
             Controls.Add(cancel);
 
+            // Thứ tự Tab theo thứ tự nhập: tên đăng nhập, mật khẩu, mã xác nhận, Đổi mã, Đăng nhập, Hủy.
+            _userName.TabIndex = 0;
+            _password.TabIndex = 1;
+            _captcha.TabIndex = 2;
+            _refresh.TabIndex = 3;
+            _login.TabIndex = 4;
+            cancel.TabIndex = 5;
+
             Shown += async (s, e) =>
             {
-                (_password.Text.Length == 0 ? (Control)_password : _captcha).Focus();
+                // Con trỏ vào ô đầu tiên còn trống theo thứ tự nhập: tên đăng nhập, rồi mật khẩu (mật khẩu không bao giờ được điền sẵn).
+                (_userName.Text.Trim().Length == 0 ? (Control)_userName : _password).Focus();
                 await LoadCaptchaAsync();
             };
             FormClosed += (s, e) => _cancellation.Cancel();
