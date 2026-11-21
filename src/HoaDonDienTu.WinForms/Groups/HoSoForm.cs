@@ -42,6 +42,7 @@ namespace HoaDonDienTu.WinForms.Groups
         private readonly Label _summary = new Label();
         private readonly Label _status = new Label();
         private readonly Label _warning = new Label();
+        private readonly Label _empty = new Label();
         private readonly string _notice;
 
         public HoSoForm(HoSoSearchSession session, string notice)
@@ -106,6 +107,15 @@ namespace HoaDonDienTu.WinForms.Groups
             _grid.MultiSelect = false;
             _grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
             _grid.BackgroundColor = SystemColors.Window;
+
+            // Thông điệp "Không có dữ liệu" to, giữa vùng kết quả: bấm Tìm mà không có bản ghi phải thấy rõ phản hồi thay vì lưới trống.
+            _empty.Dock = DockStyle.Fill;
+            _empty.TextAlign = ContentAlignment.MiddleCenter;
+            _empty.Font = new Font(Font.FontFamily, 13f, FontStyle.Regular);
+            _empty.ForeColor = Color.DimGray;
+            _empty.BackColor = Color.Transparent;
+            _empty.Visible = false;
+            _grid.Controls.Add(_empty);
 
             var pager = new Panel { Dock = DockStyle.Bottom, Height = 44 };
             _summary.SetBounds(10, 12, 400, 22);
@@ -176,6 +186,7 @@ namespace HoaDonDienTu.WinForms.Groups
             _captchaBox.Clear();
             _grid.Rows.Clear();
             _grid.Columns.Clear();
+            _empty.Visible = false;
             _status.ForeColor = Color.DimGray;
             _status.Text = _notice;
             _warning.Visible = !dvc;
@@ -357,7 +368,13 @@ namespace HoaDonDienTu.WinForms.Groups
 
             _grid.Rows.Clear();
             _grid.Columns.Clear();
-            // Không có kết quả (cổng không trả bảng): để lưới trống, chỉ hiện thông điệp "Không có dữ liệu" ở dòng trạng thái.
+            // Không có bản ghi nào (cổng không trả bảng, hoặc bảng rỗng): hiện thông điệp lớn giữa vùng kết quả.
+            bool none = page.Rows.Count == 0;
+            _empty.Visible = none;
+            if (none)
+            {
+                _empty.Text = string.IsNullOrWhiteSpace(page.EmptyMessage) ? "Không có dữ liệu" : page.EmptyMessage;
+            }
             if (page.Columns.Count == 0)
             {
                 UpdatePager();

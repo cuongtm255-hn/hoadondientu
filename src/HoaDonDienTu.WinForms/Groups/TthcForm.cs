@@ -35,6 +35,7 @@ namespace HoaDonDienTu.WinForms.Groups
         private readonly KryptonButton _exportAll = new KryptonButton();
         private readonly Label _summary = new Label();
         private readonly Label _status = new Label();
+        private readonly Label _empty = new Label();
 
         public TthcForm(TthcSearchSession session, string notice)
         {
@@ -85,6 +86,14 @@ namespace HoaDonDienTu.WinForms.Groups
             _grid.Columns["level"].FillWeight = 14;
             _grid.Columns["agency"].FillWeight = 28;
             _grid.CellDoubleClick += async (s, e) => { if (e.RowIndex >= 0) await OpenDetailAsync(e.RowIndex); };
+
+            _empty.Dock = DockStyle.Fill;
+            _empty.TextAlign = ContentAlignment.MiddleCenter;
+            _empty.Font = new Font(Font.FontFamily, 13f, FontStyle.Regular);
+            _empty.ForeColor = Color.DimGray;
+            _empty.BackColor = Color.Transparent;
+            _empty.Visible = false;
+            _grid.Controls.Add(_empty);
 
             var pager = new Panel { Dock = DockStyle.Bottom, Height = 44 };
             _summary.SetBounds(10, 12, 360, 22);
@@ -205,7 +214,9 @@ namespace HoaDonDienTu.WinForms.Groups
         private void ShowPage()
         {
             _status.ForeColor = Color.DimGray;
-            _status.Text = _session.Page.Items.Count == 0 ? "Không tìm thấy thủ tục phù hợp." : string.Empty;
+            _status.Text = string.Empty;
+            _empty.Visible = _session.Page.Items.Count == 0;
+            _empty.Text = "Không tìm thấy thủ tục phù hợp.";
             _grid.Rows.Clear();
             int stt = (_session.Page.PageNumber - 1) * TthcPage.DefaultPageSize;
             _grid.Columns["stt"].AutoSizeMode = DataGridViewAutoSizeColumnMode.None;

@@ -284,6 +284,28 @@ namespace HoaDonDienTu.Infrastructure.Tests
         }
 
         [Test]
+        public async Task ETax_EmptyFragment_WithoutTableOrSummary_IsTheNormalNoDataAnswer()
+        {
+            // Mảnh rỗng thật của tab thuế điện tử (~0,9 KB): chỉ có khung phân trang, không dòng tổng, không bảng.
+            var runner = new FakeRunner { Reply = DomReply(null, null, "", "") };
+
+            HoSoPage page = await new PortalHoSoSource(runner).SearchAsync(ETaxQuery(), CancellationToken.None);
+
+            Assert.AreEqual(0, page.Rows.Count);
+            Assert.AreEqual("Không có dữ liệu", page.EmptyMessage);
+            Assert.AreEqual(0, page.TotalRecords);
+        }
+
+        [Test]
+        public void LongFragment_WithoutTableOrSummary_IsStillAParseError()
+        {
+            string longBody = "<div>" + new string('x', 4000) + "</div>";
+            var runner = new FakeRunner { Reply = JsonConvert.SerializeObject(new { http = 200, loginPage = false, sum = (string[])null, pageInput = "", table = (object)null, text = "x", body = longBody }) };
+
+            Assert.ThrowsAsync<HoSoParseException>(() => new PortalHoSoSource(runner).SearchAsync(Query(), CancellationToken.None));
+        }
+
+        [Test]
         public async Task Dom_PageInput_GivesTheCurrentPage()
         {
             var row = new[] { "11", "", "MA-MAU-11", "x", "y", "Q1/2026", "Chính thức", "", "1", "00000 - CQ", "03/01/2026 15:45", "Đã chấp nhận", "" };

@@ -77,8 +77,14 @@ namespace HoaDonDienTu.Infrastructure.PublicService
                 }
             }
 
-            // Không có bảng: cổng trả mảnh "không có dữ liệu" (có dòng tổng với 0 bản ghi) hoặc cấu trúc lạ.
-            if (summary != null && summary.Count >= 3 && summary[2].ToString() == "0")
+            // Không có bảng: cổng trả mảnh "không có dữ liệu". Tab DVC có dòng tổng với 0 bản ghi; tab thuế điện tử chỉ có khung phân trang rỗng
+            // (không dòng tổng). Mảnh ngắn không có bảng và không báo có bản ghi là kết quả rỗng bình thường; mảnh dài thì là cấu trúc lạ.
+            bool saysZero = summary != null && summary.Count >= 3 && summary[2].ToString() == "0";
+            // Khung rỗng của tab thuế điện tử không có chữ nào nhìn thấy được (chỉ chú thích HTML): trình duyệt báo text rỗng. Có chữ mà không có dòng tổng
+            // thì là cấu trúc lạ, đi tiếp sang bộ phân tích dự phòng (báo lỗi nếu không nhận ra).
+            string visibleText = result.Value<string>("text");
+            bool noSummaryAndNoText = summary == null && visibleText != null && visibleText.Trim().Length == 0;
+            if (saysZero || noSummaryAndNoText)
             {
                 return new HoSoPage(null, null, 0, 1, 0, "Không có dữ liệu");
             }
