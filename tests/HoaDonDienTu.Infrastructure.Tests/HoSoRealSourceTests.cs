@@ -468,6 +468,18 @@ namespace HoaDonDienTu.Infrastructure.Tests
         }
 
         [Test]
+        public async Task Captcha_Script_MatchesImageIdsLikeImageCaptTdt_AndFallsBackToTheOnlyImage()
+        {
+            var runner = new FakeRunner { Reply = JsonConvert.SerializeObject(new { png = "data:image/png;base64,AQID" }) };
+
+            await new PortalHoSoSource(runner).GetCaptchaAsync(HoSoSource.ThueDienTu, CancellationToken.None);
+
+            string script = runner.Scripts[0];
+            StringAssert.Contains("/capt/i", script, "id image-capt-tdt không chứa chữ captcha");
+            StringAssert.Contains("imgs.length===1", script);
+        }
+
+        [Test]
         public void Captcha_NoImage_IsError_AndMissingFormIsSessionExpired()
         {
             Assert.CatchAsync<InvalidOperationException>(() => new PortalHoSoSource(new FakeRunner { Reply = "{\"png\":\"\"}" }).GetCaptchaAsync(HoSoSource.Dvc, CancellationToken.None));

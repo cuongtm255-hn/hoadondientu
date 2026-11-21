@@ -143,7 +143,9 @@ namespace HoaDonDienTu.Infrastructure.PublicService
             return "(async function(){" +
                 "var f=document.getElementById(" + PortalTthcSource.Literal(formId) + ");if(!f)return JSON.stringify({noForm:true});" +
                 "var imgs=f.querySelectorAll('img'),img=null;" +
-                "for(var i=0;i<imgs.length;i++){if(/captcha/i.test((imgs[i].getAttribute('src')||'')+(imgs[i].id||'')+(imgs[i].className||''))){img=imgs[i];break;}}" +
+                "for(var i=0;i<imgs.length;i++){if(/capt/i.test((imgs[i].getAttribute('src')||'')+(imgs[i].id||'')+(imgs[i].className||''))){img=imgs[i];break;}}" +
+                // Mã ảnh của tab thuế điện tử đặt id là image-capt-tdt (không có chữ captcha): khớp theo capt, không thấy thì lấy ảnh duy nhất của form.
+                "if(!img&&imgs.length===1)img=imgs[0];" +
                 "if(!img)return JSON.stringify({png:''});" +
                 "var base=(img.getAttribute('src')||'').split('?')[0];" +
                 "await new Promise(function(res,rej){img.onload=res;img.onerror=rej;img.src=base+'?'+Date.now();});" +
