@@ -148,7 +148,10 @@ namespace HoaDonDienTu.Infrastructure.PublicService
                 "if(!img&&imgs.length===1)img=imgs[0];" +
                 "if(!img)return JSON.stringify({png:''});" +
                 "var base=(img.getAttribute('src')||'').split('?')[0];" +
-                "await new Promise(function(res,rej){img.onload=res;img.onerror=rej;img.src=base+'?'+Date.now();});" +
+                // Dùng chính hàm đổi mã của trang (refreshCaptcha) vì mỗi tab đặt địa chỉ ảnh riêng; chỉ khi trang không có hàm đó mới tự đặt lại src.
+                "var done=new Promise(function(res,rej){img.onload=res;img.onerror=function(){rej(new Error('captcha-img'));};setTimeout(function(){rej(new Error('captcha-timeout'));},10000);});" +
+                "if(typeof window.refreshCaptcha==='function'&&img.id){window.refreshCaptcha(img.id);}else{img.src=base+'?'+Date.now();}" +
+                "await done;" +
                 "var c=document.createElement('canvas');c.width=img.naturalWidth||140;c.height=img.naturalHeight||44;" +
                 "c.getContext('2d').drawImage(img,0,0);" +
                 "return JSON.stringify({png:c.toDataURL('image/png')});})()";
