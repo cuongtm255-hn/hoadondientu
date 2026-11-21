@@ -216,6 +216,86 @@ namespace HoaDonDienTu.Infrastructure.Tests
             StringAssert.Contains("\"captcha\":" + PortalTthcSource.Literal(q.CaptchaText), script);
         }
 
+        private static string DomReply(object table, string[] sum, string pageInput = "1", string text = null)
+        {
+            return JsonConvert.SerializeObject(new { http = 200, loginPage = false, sum, pageInput, table, text, body = "<html></html>" });
+        }
+
+        private static readonly string[] Heads13 =
+        {
+            "STT", "Thao tác", "Mã hồ sơ", "Tên TTHC", "Tờ khai", "Kỳ tính thuế", "Loại tờ khai", "Lần nộp bổ sung",
+            "Lần nộp (Tờ khai)/File số (DLVC)", "Cơ quan thuế tiếp nhận", "Ngày nộp", "Trạng thái", "Hồ sơ đính kèm"
+        };
+
+        [Test]
+        public async Task Dom_Table_IsUsedDirectly_ColumnsAndRows()
+        {
+            var row = new[] { "1", "", "MA-MAU-1", "1.000001 - TTHC mẫu", "01/MAU - Tờ khai mẫu", "Q4/2025", "Chính thức", "", "1", "00000 - CQ mẫu", "03/01/2026 15:45", "Đã chấp nhận", "" };
+            var runner = new FakeRunner { Reply = DomReply(new { heads = Heads13, rows = new[] { row } }, new[] { "", "1", "1" }, "1") };
+
+            HoSoPage page = await new PortalHoSoSource(runner).SearchAsync(Query(), CancellationToken.None);
+
+            Assert.AreEqual(11, page.Columns.Count);
+            Assert.AreEqual("Mã hồ sơ", page.Columns[0]);
+            Assert.AreEqual("MA-MAU-1", page.Rows[0].Cells[0]);
+            Assert.AreEqual("Đã chấp nhận", page.Rows[0].Cells[9]);
+            Assert.AreEqual(1, page.TotalRecords);
+            Assert.AreEqual(1, page.PageNumber);
+            Assert.AreEqual(1, page.PageCount);
+        }
+
+        [Test]
+        public async Task Dom_Row_MissingTrailingEmptyCell_IsPadded_NotRejected()
+        {
+            // Hình dạng thật đã gặp: dòng 12 ô, tiêu đề 13 cột (ô cuối rỗng bị cổng bỏ).
+            var row = new[] { "1", "", "MA-MAU-1", "1.000001 - TTHC mẫu", "01/MAU - Tờ khai mẫu", "Q4/2025", "Chính thức", "1", "1", "00000 - CQ mẫu", "03/01/2026 15:45", "Đã chấp nhận" };
+            var runner = new FakeRunner { Reply = DomReply(new { heads = Heads13, rows = new[] { row } }, new[] { "", "1", "1" }) };
+
+            HoSoPage page = await new PortalHoSoSource(runner).SearchAsync(Query(), CancellationToken.None);
+
+            Assert.AreEqual(page.Columns.Count, page.Rows[0].Cells.Count);
+            Assert.AreEqual(string.Empty, page.Rows[0].Cells[10], "Ô cuối được bù rỗng");
+            Assert.AreEqual("Đã chấp nhận", page.Rows[0].Cells[9]);
+        }
+
+        [Test]
+        public void Dom_Row_WithTooFewOrTooManyCells_IsRejected_WithCountsInTheDiagnostic()
+        {
+            var tooFew = new[] { "1", "", "MA" };
+            var runner = new FakeRunner { Reply = DomReply(new { heads = Heads13, rows = new[] { tooFew } }, new[] { "", "1", "1" }) };
+
+            var ex = Assert.ThrowsAsync<HoSoParseException>(() => new PortalHoSoSource(runner).SearchAsync(Query(), CancellationToken.None));
+
+            StringAssert.Contains("3 ô", ex.Diagnostic);
+            StringAssert.Contains("13 cột", ex.Diagnostic);
+        }
+
+        [Test]
+        public async Task NoTable_WithZeroTotal_IsTheEmptyResult_WithFriendlyMessage()
+        {
+            var runner = new FakeRunner { Reply = DomReply(null, new[] { "", "0", "0" }, "", "Trang /0 - Tổng số bản ghi: 0") };
+
+            HoSoPage page = await new PortalHoSoSource(runner).SearchAsync(Query(), CancellationToken.None);
+
+            Assert.AreEqual(0, page.Rows.Count);
+            Assert.AreEqual(0, page.Columns.Count);
+            Assert.AreEqual("Không có dữ liệu", page.EmptyMessage);
+            Assert.AreEqual(0, page.TotalRecords);
+        }
+
+        [Test]
+        public async Task Dom_PageInput_GivesTheCurrentPage()
+        {
+            var row = new[] { "11", "", "MA-MAU-11", "x", "y", "Q1/2026", "Chính thức", "", "1", "00000 - CQ", "03/01/2026 15:45", "Đã chấp nhận", "" };
+            var runner = new FakeRunner { Reply = DomReply(new { heads = Heads13, rows = new[] { row } }, new[] { "", "3", "23" }, "2") };
+
+            HoSoPage page = await new PortalHoSoSource(runner).SearchAsync(Query(2), CancellationToken.None);
+
+            Assert.AreEqual(2, page.PageNumber);
+            Assert.AreEqual(3, page.PageCount);
+            Assert.AreEqual(23, page.TotalRecords);
+        }
+
         [Test]
         public void Search_Http400_IsWrongCaptcha()
         {

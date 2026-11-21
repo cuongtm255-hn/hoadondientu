@@ -59,6 +59,27 @@ namespace HoaDonDienTu.Infrastructure.PublicService
             if (result.Value<bool?>("loginPage") == true) throw new DvcSessionExpiredException();
 
             string body = result.Value<string>("body");
+            JObject table = result["table"] as JObject;
+            JArray summary = result["sum"] as JArray;
+            if (table != null)
+            {
+                try
+                {
+                    return HoSoDomTable.ToPage(table, summary, result.Value<string>("pageInput"));
+                }
+                catch (HoSoParseException ex)
+                {
+                    string diag = (ex.Diagnostic ?? "(không rõ lý do)") + " | cấu trúc: " + HoSoHtmlParser.DescribeStructure(body);
+                    throw new HoSoParseException(ex.Message, diag);
+                }
+            }
+
+            // Không có bảng: cổng trả mảnh "không có dữ liệu" (có dòng tổng với 0 bản ghi) hoặc cấu trúc lạ.
+            if (summary != null && summary.Count >= 3 && summary[2].ToString() == "0")
+            {
+                return new HoSoPage(null, null, 0, 1, 0, "Không có dữ liệu");
+            }
+
             try
             {
                 return HoSoHtmlParser.ParseList(body);
@@ -145,8 +166,21 @@ namespace HoaDonDienTu.Infrastructure.PublicService
                 "Object.keys(v).forEach(function(k){p.set(k,v[k]);});" +
                 "var r=await fetch(" + PortalTthcSource.Literal(SearchPath) + "+'?'+p.toString(),{method:'GET',credentials:'same-origin'," +
                 "headers:{'HX-Request':'true','HX-Target':'table-container','accept':'text/html-partial'}});" +
-                "var t=await r.text();" +
-                "return JSON.stringify({http:r.status,loginPage:/modalLdap|loginLDAP/.test(t),body:r.status===200?t:''});})()";
+                "var t=await r.text();var out={http:r.status,loginPage:/modalLdap|loginLDAP/.test(t)};" +
+                // Trình duyệt tự đọc bảng (DOMParser) để tránh lỗi khi tự phân tích HTML của cổng; body chỉ giữ làm phương án dự phòng.
+                "if(r.status===200&&!out.loginPage){try{" +
+                "var d=new DOMParser().parseFromString(t,'text/html');" +
+                "var tx=function(n){return(n.textContent||'').replace(/\\s+/g,' ').trim();};" +
+                "var tb=d.querySelector('table');" +
+                "var m=/Trang\\s*(\\d*)\\s*\\/\\s*(\\d+).*?b\\u1ea3n\\s*ghi\\s*:?\\s*(\\d+)/i.exec(tx(d.body));" +
+                "out.sum=m?[m[1],m[2],m[3]]:null;" +
+                "var pin=d.querySelector('section input')||d.querySelector('input[type=number]');out.pageInput=pin?pin.value:'';" +
+                "if(tb){var hr=tb.querySelector('thead tr')||tb.querySelector('tr');" +
+                "var rows=[];[].forEach.call(tb.querySelectorAll('tr'),function(tr){if(tr!==hr)rows.push([].map.call(tr.children,tx));});" +
+                "out.table={heads:[].map.call(hr.children,tx),rows:rows};}" +
+                "else{out.text=tx(d.body).slice(0,300);}" +
+                "}catch(e){}out.body=t;}" +
+                "return JSON.stringify(out);})()";
         }
 
         /// <summary>Cổng nhận "Tên TTHC" dạng mã trong ô chọn; chỉ gửi khi người dùng nhập đúng dạng mã (chữ số và dấu chấm), còn lại bỏ qua.</summary>

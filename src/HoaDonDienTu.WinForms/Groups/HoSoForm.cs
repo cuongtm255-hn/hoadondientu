@@ -260,6 +260,12 @@ namespace HoaDonDienTu.WinForms.Groups
 
             _grid.Rows.Clear();
             _grid.Columns.Clear();
+            // Không có kết quả (cổng không trả bảng): để lưới trống, chỉ hiện thông điệp "Không có dữ liệu" ở dòng trạng thái.
+            if (page.Columns.Count == 0)
+            {
+                UpdatePager();
+                return;
+            }
             _grid.Columns.Add("stt", "STT");
             _grid.Columns["stt"].FillWeight = 6;
             foreach (string column in page.Columns) _grid.Columns.Add(column, column);
@@ -285,7 +291,9 @@ namespace HoaDonDienTu.WinForms.Groups
                 _prev.Enabled = _next.Enabled = _go.Enabled = _pageBox.Enabled = false;
                 return;
             }
-            _summary.Text = "Trang " + page.PageNumber + "/" + Math.Max(1, page.PageCount) + " — Tổng số bản ghi: " + page.TotalRecords;
+            _summary.Text = page.TotalRecords == 0
+                ? "Không có bản ghi nào."
+                : "Trang " + page.PageNumber + "/" + Math.Max(1, page.PageCount) + " — Tổng số bản ghi: " + page.TotalRecords;
             _prev.Enabled = page.PageNumber > 1;
             _next.Enabled = page.PageNumber < page.PageCount;
             _go.Enabled = _pageBox.Enabled = page.PageCount > 1;
