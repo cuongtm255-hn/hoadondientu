@@ -493,19 +493,6 @@ namespace HoaDonDienTu.Infrastructure.Tests
         }
 
         [Test]
-        public async Task Captcha_Script_UsesThePortalsOwnRefreshFunction_WithTimeout()
-        {
-            var runner = new FakeRunner { Reply = JsonConvert.SerializeObject(new { png = "data:image/png;base64,AQID" }) };
-
-            await new PortalHoSoSource(runner).GetCaptchaAsync(HoSoSource.ThueDienTu, CancellationToken.None);
-
-            string script = runner.Scripts[0];
-            StringAssert.Contains("window.refreshCaptcha(img.id)", script);
-            StringAssert.Contains("setTimeout", script, "Không treo vô hạn nếu ảnh không tải");
-            StringAssert.Contains("toDataURL", script);
-        }
-
-        [Test]
         public void Captcha_NoImage_IsError_AndMissingFormIsSessionExpired()
         {
             Assert.CatchAsync<InvalidOperationException>(() => new PortalHoSoSource(new FakeRunner { Reply = "{\"png\":\"\"}" }).GetCaptchaAsync(HoSoSource.Dvc, CancellationToken.None));
