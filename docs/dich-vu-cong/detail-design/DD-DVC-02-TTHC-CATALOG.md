@@ -138,7 +138,7 @@ Làm trước được (không bị chặn): mô hình Domain, `ITthcSource`, `T
 | TD02-05 | `TthcForm` + `TthcDetailForm`, nút "Tra cứu thủ tục hành chính" ở cửa sổ nhóm DVC; Release không có mock nên nút bị khóa | Xong 18/11/2026, đã thử tay (người dùng xác nhận tra cứu mô phỏng OK) |
 | TD02-06 | Lấy mẫu HTML công khai (danh sách + chi tiết) vào `tests/.../Fixtures/` | Xong 18/11/2026 (mẫu dựng lại từ DOM, đã làm sạch) |
 | TD02-07 | `TthcHtmlParser` (HtmlAgilityPack 1.11.46, chỉ lấy văn bản; bỏ script/style/iframe/object) + T-DVC02-01..05 (6 test đạt, thêm fixture `tthc-filters.sample.html`). Bản công khai không có ô Loại người nộp thuế nên `TaxpayerTypes` rỗng | Xong 18/11/2026 |
-| TD02-08 | `IDvcPageRunner` + `PortalTthcSource` (script dựng sẵn, giá trị đi vào dạng literal JSON, danh sách trắng 2 địa chỉ, tuần tự) + T-DVC02-10 (19 test đạt với runner giả); `CefDvcPageRunner` (WebView ngầm CefSharp trên luồng giao diện riêng, hồ sơ riêng trong bộ nhớ) nối vào `DvcServices` ở **Release** (Debug vẫn dùng nguồn giả) | Xong 18/11/2026; **đã thử Release với cổng thật**: danh sách 147 bản ghi/15 trang, đổi trang, chi tiết đều chạy (xem mục 11) |
+| TD02-08 | `IDvcPageRunner` + `PortalTthcSource` (script dựng sẵn, giá trị đi vào dạng literal JSON, danh sách trắng 2 địa chỉ, tuần tự) + T-DVC02-10 (19 test đạt với runner giả); `CefDvcPageRunner` (WebView ngầm CefSharp trên luồng giao diện riêng, hồ sơ riêng trong bộ nhớ) nối vào `DvcServices` ở **Release** (Debug vẫn dùng nguồn giả) | Xong 18/11/2026; **đã thử Release với cổng thật** (người dùng xác nhận chạy OK 21/11/2026): danh sách 147 bản ghi/15 trang, đổi trang, chi tiết đều chạy (xem mục 11) |
 
 ## 11. Ghi chú kỹ thuật CefSharp (bài học 18/11/2026)
 
