@@ -1,4 +1,4 @@
-namespace HoaDonDienTu.Domain.PublicService
+﻿namespace HoaDonDienTu.Domain.PublicService
 {
     /// <summary>Thông tin đăng nhập cổng Dịch vụ công do người dùng gõ. Chỉ sống trong bộ nhớ, không bao giờ ghi ra nhật ký hay đĩa.</summary>
     public sealed class DvcCredentials
@@ -34,12 +34,19 @@ namespace HoaDonDienTu.Domain.PublicService
 
     public sealed class DvcLoginResult
     {
-        private DvcLoginResult(bool success, DvcLoginFailure failure, string organizationName)
+        private DvcLoginResult(bool success, DvcLoginFailure failure, string organizationName, string portalMessage)
         {
             Success = success;
             Failure = failure;
             OrganizationName = organizationName;
+            PortalMessage = portalMessage;
         }
+
+        /// <summary>
+        /// Thông báo lỗi nguyên văn của cổng (trường <c>desc</c>), đã cắt ngắn và bỏ ký tự điều khiển; chỉ có khi thất bại và dùng để hiển thị khi chưa
+        /// phân loại được lỗi. Không chứa dữ liệu người dùng nhập.
+        /// </summary>
+        public string PortalMessage { get; private set; }
 
         public bool Success { get; private set; }
 
@@ -50,12 +57,17 @@ namespace HoaDonDienTu.Domain.PublicService
 
         public static DvcLoginResult Ok(string organizationName)
         {
-            return new DvcLoginResult(true, DvcLoginFailure.None, organizationName);
+            return new DvcLoginResult(true, DvcLoginFailure.None, organizationName, null);
         }
 
         public static DvcLoginResult Fail(DvcLoginFailure failure)
         {
-            return new DvcLoginResult(false, failure, null);
+            return new DvcLoginResult(false, failure, null, null);
+        }
+
+        public static DvcLoginResult Fail(DvcLoginFailure failure, string portalMessage)
+        {
+            return new DvcLoginResult(false, failure, null, portalMessage);
         }
     }
 }

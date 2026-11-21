@@ -52,12 +52,14 @@ namespace HoaDonDienTu.WinForms.Groups
                 HoSoNotice = MockHoSoSource.Hint
             };
 #else
-            // Release: tra cứu danh mục TTHC công khai chạy thật qua WebView ngầm (không cần đăng nhập); đăng nhập DVC chưa có
-            // CefDvcLoginBrowser (chờ G-DVC-02/06) nên nút Đăng nhập bị khóa.
+            // Release: một WebView ngầm dùng chung cho tra cứu TTHC công khai và đăng nhập DVC (BR-DVC-06: chỉ một trang DVC).
+            // Hồ sơ đã nộp chưa có nguồn thật (chờ mẫu HTML có dữ liệu) nên nút đó vẫn bị khóa.
             var runner = new CefDvcPageRunner(m => logger.Info(m));
+            var names = new HoaDonDienTu.Infrastructure.Settings.FileDvcUserNameStore(userNameFile);
             return new DvcServices
             {
                 Session = session,
+                Login = new DvcLoginService(new HoaDonDienTu.Infrastructure.PublicService.PortalDvcLoginBrowser(runner), session, logger, names),
                 Tthc = new TthcService(new HoaDonDienTu.Infrastructure.PublicService.PortalTthcSource(runner), session, logger),
                 _disposable = runner
             };

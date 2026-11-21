@@ -155,7 +155,7 @@ namespace HoaDonDienTu.WinForms.Groups
                 }
 
                 _status.ForeColor = Color.Firebrick;
-                _status.Text = DvcLoginMessages.For(result.Failure);
+                _status.Text = DvcLoginMessages.For(result);
                 _password.Clear();
             }
             catch (OperationCanceledException)

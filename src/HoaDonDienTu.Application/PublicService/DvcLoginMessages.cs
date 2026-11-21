@@ -1,10 +1,21 @@
-using HoaDonDienTu.Domain.PublicService;
+﻿using HoaDonDienTu.Domain.PublicService;
 
 namespace HoaDonDienTu.Application.PublicService
 {
     /// <summary>Thông báo tiếng Việt cho từng loại lỗi đăng nhập DVC (FR-DVC-AUTH-005). Không chứa dữ liệu người dùng nhập.</summary>
     public static class DvcLoginMessages
     {
+        /// <summary>Thông báo cho kết quả đăng nhập: lỗi chưa phân loại được thì kèm nguyên văn thông báo của cổng.</summary>
+        public static string For(DvcLoginResult result)
+        {
+            if (result == null) return For(DvcLoginFailure.Unknown);
+            if (result.Failure == DvcLoginFailure.Unknown && !string.IsNullOrWhiteSpace(result.PortalMessage))
+            {
+                return "Đăng nhập không thành công. Cổng báo: " + result.PortalMessage;
+            }
+            return For(result.Failure);
+        }
+
         public static string For(DvcLoginFailure failure)
         {
             switch (failure)

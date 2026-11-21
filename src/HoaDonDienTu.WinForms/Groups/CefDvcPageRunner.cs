@@ -22,6 +22,7 @@ namespace HoaDonDienTu.WinForms.Groups
 
         private readonly Action<string> _log;
         private readonly object _gate = new object();
+        private readonly SemaphoreSlim _runGate = new SemaphoreSlim(1, 1);
         private Thread _thread;
         private Task _started;
         private Form _host;
@@ -40,6 +41,20 @@ namespace HoaDonDienTu.WinForms.Groups
         public async Task<string> RunOnPageAsync(string pagePath, string script, CancellationToken cancellationToken)
         {
             if (_disposed) throw new ObjectDisposedException("CefDvcPageRunner");
+            // Mọi lệnh (tra cứu, đăng nhập, đăng xuất) đi qua MỘT trang trong WebView nên phải tuần tự: tránh hai lệnh đổi trang chồng nhau.
+            await _runGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                return await RunCoreAsync(pagePath, script, cancellationToken).ConfigureAwait(false);
+            }
+            finally
+            {
+                _runGate.Release();
+            }
+        }
+
+        private async Task<string> RunCoreAsync(string pagePath, string script, CancellationToken cancellationToken)
+        {
             _log("DVC WebView: bắt đầu chạy lệnh trên " + pagePath);
             await EnsureBrowserAsync(pagePath, cancellationToken).ConfigureAwait(false);
             await EnsurePageAsync(pagePath, cancellationToken).ConfigureAwait(false);
