@@ -142,11 +142,11 @@ Làm trước được (không bị chặn): mô hình Domain, `IHoSoSource`, `H
 
 | Task | Nội dung | Trạng thái |
 |---|---|---|
-| TD03-01 | Domain `HoSoSource`, `HoSoQuery`, `HoSoRow`, `HoSoPage`, `HoSoParseException` | Chưa làm |
-| TD03-02 | `IHoSoSource`, `HoSoService` + T-DVC03-01, 02, 08 | Chưa làm |
-| TD03-03 | `HoSoSearchSession` (vòng đời CAPTCHA, tuần tự) + T-DVC03-03..07 | Chưa làm |
-| TD03-04 | `MockHoSoSource` (Debug, CAPTCHA giả) | Chưa làm |
-| TD03-05 | `HoSoForm` + nút "Hồ sơ đã nộp" ở cửa sổ nhóm DVC (chỉ khi đã đăng nhập) | Chưa làm |
+| TD03-01 | Domain `HoSoSource`, `HoSoQuery` (có `WithoutCaptcha`), `HoSoRow`, `HoSoPage`, `HoSoParseException` | Xong 21/11/2026 |
+| TD03-02 | `IHoSoSource`, `HoSoService` (phải đăng nhập, chặn CAPTCHA rỗng/ngày đảo/trang sai, chuẩn hóa lỗi, nhật ký sạch) + T-DVC03-01, 02, 08 | Xong 21/11/2026 |
+| TD03-03 | `HoSoSearchSession` (vòng đời CAPTCHA: bỏ mã sau mỗi lần gửi, tải ảnh mới, không tự gửi lại; tuần tự; giữ bộ lọc đã áp dụng) + T-DVC03-03..07 (13 test đạt) | Xong 21/11/2026 |
+| TD03-04 | `MockHoSoSource` (Debug; CAPTCHA tự vẽ, **dùng một lần**, hai nguồn, 23 bản ghi "(mẫu)", thông điệp rỗng đúng như cổng) | Xong 21/11/2026 |
+| TD03-05 | `HoSoForm` + nút "Hồ sơ đã nộp" ở cửa sổ nhóm DVC (chỉ bật khi đã đăng nhập; Release chưa có nguồn nên khóa) | Xong 21/11/2026, cần thử tay |
 | TD03-06 | Lấy mẫu HTML có dữ liệu + đo giới hạn (người dùng tự đăng nhập; G-DVC-02, 04, 05) | Chưa làm, cần người dùng |
 | TD03-07 | `HoSoHtmlParser` + T-DVC03-09 | Chưa làm, sau TD03-06 |
 | TD03-08 | `PortalHoSoSource` (Release) + T-DVC03-10 | Chưa làm, sau TD03-06 và TD01-05 |

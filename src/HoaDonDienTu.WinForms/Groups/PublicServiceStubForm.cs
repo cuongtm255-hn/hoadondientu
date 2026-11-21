@@ -19,6 +19,11 @@ namespace HoaDonDienTu.WinForms.Groups
 
         public string TthcNotice { get; private set; }
 
+        /// <summary>Dịch vụ tra cứu hồ sơ đã nộp (cần đăng nhập); null nếu bản này chưa có nguồn (Release chờ đăng nhập thật và mẫu HTML).</summary>
+        public HoSoService HoSo { get; private set; }
+
+        public string HoSoNotice { get; private set; }
+
         private IDisposable _disposable;
 
         public void Dispose()
@@ -41,7 +46,9 @@ namespace HoaDonDienTu.WinForms.Groups
                 Login = new DvcLoginService(new MockDvcLoginBrowser(), session, logger, names),
                 Notice = MockDvcLoginBrowser.Hint,
                 Tthc = new TthcService(new MockTthcSource(), session, logger),
-                TthcNotice = MockTthcSource.Hint
+                TthcNotice = MockTthcSource.Hint,
+                HoSo = new HoSoService(new MockHoSoSource(), session, logger),
+                HoSoNotice = MockHoSoSource.Hint
             };
 #else
             // Release: tra cứu danh mục TTHC công khai chạy thật qua WebView ngầm (không cần đăng nhập); đăng nhập DVC chưa có
@@ -68,6 +75,7 @@ namespace HoaDonDienTu.WinForms.Groups
         private readonly Label _state = new Label();
         private readonly KryptonButton _loginButton = new KryptonButton();
         private readonly KryptonButton _tthcButton = new KryptonButton();
+        private readonly KryptonButton _hoSoButton = new KryptonButton();
 
         public PublicServiceStubForm(DvcServices services, Func<string> taxCode)
         {
@@ -100,6 +108,12 @@ namespace HoaDonDienTu.WinForms.Groups
             _tthcButton.Enabled = _services.Tthc != null;
             _tthcButton.Click += (s, e) => ShowTthc();
             Controls.Add(_tthcButton);
+
+            _hoSoButton.SetBounds(400, 100, 150, 36);
+            _hoSoButton.Values.Text = "Hồ sơ đã nộp";
+            _hoSoButton.Enabled = false;
+            _hoSoButton.Click += (s, e) => ShowHoSo();
+            Controls.Add(_hoSoButton);
 
             var note = new Label
             {
@@ -145,6 +159,13 @@ namespace HoaDonDienTu.WinForms.Groups
             }
         }
 
+        private void ShowHoSo()
+        {
+            var form = new HoSoForm(new HoSoSearchSession(_services.HoSo), _services.HoSoNotice);
+            form.FormClosed += (s, e) => form.Dispose();
+            form.Show(this);
+        }
+
         private void OnSessionChanged(object sender, EventArgs e)
         {
             // Sự kiện có thể phát từ luồng nền (dịch vụ dùng ConfigureAwait(false)).
@@ -154,6 +175,8 @@ namespace HoaDonDienTu.WinForms.Groups
         private void RefreshState()
         {
             var session = _services.Session;
+            // Hồ sơ đã nộp là dữ liệu riêng tư: chỉ mở được khi đã đăng nhập và bản này có nguồn dữ liệu.
+            _hoSoButton.Enabled = session.IsLoggedIn && _services.HoSo != null;
             switch (session.State)
             {
                 case DvcSessionState.LoggedIn:
