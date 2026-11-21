@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
 using HoaDonDienTu.Application.Abstractions;
@@ -15,6 +15,17 @@ namespace HoaDonDienTu.Application.PublicService
         Task<DvcLoginResult> SubmitAsync(DvcCredentials credentials, string captcha, CancellationToken cancellationToken);
 
         Task LogoutAsync(CancellationToken cancellationToken);
+    }
+
+    /// <summary>Cổng trả mã HTTP không phải 200. Chỉ mang mã trạng thái (không có dữ liệu người dùng) nên ghi nhật ký được.</summary>
+    public sealed class DvcPortalHttpException : InvalidOperationException
+    {
+        public DvcPortalHttpException(int httpStatus) : base("Cổng trả mã " + httpStatus + ".")
+        {
+            HttpStatus = httpStatus;
+        }
+
+        public int HttpStatus { get; private set; }
     }
 
     /// <summary>Nhớ tên đăng nhập DVC theo MST. Không bao giờ có mật khẩu.</summary>
@@ -77,8 +88,9 @@ namespace HoaDonDienTu.Application.PublicService
             }
             catch (Exception ex)
             {
-                // Chỉ ghi loại lỗi: thông điệp ngoại lệ có thể chứa dữ liệu nhập.
-                _logger.Warning("Đăng nhập DVC lỗi: " + ex.GetType().Name);
+                // Chỉ ghi loại lỗi (và mã HTTP nếu có): thông điệp ngoại lệ khác có thể chứa dữ liệu nhập.
+                var http = ex as DvcPortalHttpException;
+                _logger.Warning("Đăng nhập DVC lỗi: " + ex.GetType().Name + (http == null ? string.Empty : " (HTTP " + http.HttpStatus + ")"));
                 return DvcLoginResult.Fail(DvcLoginFailure.Network);
             }
 

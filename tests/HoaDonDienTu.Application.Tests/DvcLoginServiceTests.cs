@@ -104,6 +104,22 @@ namespace HoaDonDienTu.Application.Tests
         }
 
         [Test]
+        public async Task HttpError_IsLoggedWithStatusCode_ButNeverWithInput()
+        {
+            _browser.Throw = new DvcPortalHttpException(403);
+
+            var result = await _service.LoginAsync("0100000000", "u1", Password, Captcha, CancellationToken.None);
+
+            Assert.AreEqual(DvcLoginFailure.Network, result.Failure);
+            Assert.IsTrue(_logger.Lines.Exists(l => l.Contains("HTTP 403")));
+            foreach (string line in _logger.Lines)
+            {
+                StringAssert.DoesNotContain(Password, line);
+                StringAssert.DoesNotContain(Captcha, line);
+            }
+        }
+
+        [Test]
         public async Task BrowserException_BecomesNetworkFailure_NotThrown()
         {
             _browser.Throw = new InvalidOperationException("boom");

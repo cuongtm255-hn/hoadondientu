@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -105,10 +105,10 @@ namespace HoaDonDienTu.Infrastructure.Tests
         public void Submit_HttpError_Throws_AndGarbageReply_Throws()
         {
             _runner.Reply = Json(new { http = 500, status = (string)null, desc = (string)null, org = "" });
-            Assert.ThrowsAsync<InvalidOperationException>(() => _browser.SubmitAsync(new DvcCredentials(User, Password), Captcha, CancellationToken.None));
+            Assert.CatchAsync<InvalidOperationException>(() => _browser.SubmitAsync(new DvcCredentials(User, Password), Captcha, CancellationToken.None));
 
             _runner.Reply = "không phải JSON";
-            Assert.ThrowsAsync<InvalidOperationException>(() => _browser.SubmitAsync(new DvcCredentials(User, Password), Captcha, CancellationToken.None));
+            Assert.CatchAsync<InvalidOperationException>(() => _browser.SubmitAsync(new DvcCredentials(User, Password), Captcha, CancellationToken.None));
         }
 
         [Test]
@@ -155,6 +155,29 @@ namespace HoaDonDienTu.Infrastructure.Tests
                 StringAssert.DoesNotContain("localStorage", script);
                 StringAssert.DoesNotContain("eval(", script);
             }
+        }
+
+        [Test]
+        public void Submit_HttpError_CarriesTheStatusCode()
+        {
+            _runner.Reply = Json(new { http = 403, status = (string)null, desc = (string)null, org = "" });
+
+            var ex = Assert.ThrowsAsync<DvcPortalHttpException>(() => _browser.SubmitAsync(new DvcCredentials(User, Password), Captcha, CancellationToken.None));
+
+            Assert.AreEqual(403, ex.HttpStatus);
+            StringAssert.DoesNotContain(Password, ex.Message);
+            StringAssert.DoesNotContain(Captcha, ex.Message);
+        }
+
+        [Test]
+        public async Task Submit_Script_SendsCsrfHeaderFromPageMeta_LikeTheRestOfThePortal()
+        {
+            _runner.Reply = Json(new { http = 200, status = "200", desc = (string)null, org = "x" });
+
+            await _browser.SubmitAsync(new DvcCredentials(User, Password), Captcha, CancellationToken.None);
+
+            StringAssert.Contains("csrf-header", _runner.Scripts[0]);
+            StringAssert.Contains("csrf-token", _runner.Scripts[0]);
         }
 
         [Test]

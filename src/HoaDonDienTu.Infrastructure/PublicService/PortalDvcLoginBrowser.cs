@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -52,7 +52,7 @@ namespace HoaDonDienTu.Infrastructure.PublicService
             JObject result = await RunAsync(LoginPath, BuildSubmitScript(credentials.UserName, credentials.Password, captcha), cancellationToken).ConfigureAwait(false);
 
             int http = result.Value<int?>("http") ?? -1;
-            if (http != 200) throw new InvalidOperationException("Cổng trả mã " + http + ".");
+            if (http != 200) throw new DvcPortalHttpException(http);
 
             string status = StatusText(result["status"]);
             if (status == "200" || status == "201")
@@ -142,9 +142,10 @@ namespace HoaDonDienTu.Infrastructure.PublicService
                 "b.set('matKhau',btoa(unescape(encodeURIComponent(" + PortalTthcSource.Literal(password) + "))));" +
                 "b.set('doiTuong'," + PortalTthcSource.Literal(EnterpriseCode) + ");" +
                 "b.set('captcha'," + PortalTthcSource.Literal(captcha) + ");" +
-                "var r=await fetch(" + PortalTthcSource.Literal(SubmitPath) + ",{method:'POST',credentials:'same-origin'," +
-                "headers:{'Content-Type':'application/x-www-form-urlencoded; charset=UTF-8','X-Requested-With':'XMLHttpRequest','Accept':'application/json, text/javascript, */*; q=0.01'}," +
-                "body:b.toString()});" +
+                "var m=function(n){var e=document.querySelector('meta[name=\"'+n+'\"]');return e?e.getAttribute('content'):null;};" +
+                "var h={'Content-Type':'application/x-www-form-urlencoded; charset=UTF-8','X-Requested-With':'XMLHttpRequest','Accept':'application/json, text/javascript, */*; q=0.01'};" +
+                "var hn=m('csrf-header'),tk=m('csrf-token');if(hn&&tk)h[hn]=tk;" +
+                "var r=await fetch(" + PortalTthcSource.Literal(SubmitPath) + ",{method:'POST',credentials:'same-origin',headers:h,body:b.toString()});" +
                 "var t=await r.text();var j=null;try{j=JSON.parse(t);}catch(e){}" +
                 "var org='';" +
                 "if(r.status===200&&j&&(String(j.status)==='200'||String(j.status)==='201')){" +
