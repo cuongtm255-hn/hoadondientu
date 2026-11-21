@@ -159,4 +159,4 @@ Lần thử Release đầu tiên bị treo giao diện ~15 giây rồi sập `li
 
 | Task | Nội dung | Trạng thái |
 |---|---|---|
-| TD02-09 | `TableExcelWriter`, `TthcExcelExport`, `FetchAllPagesAsync`, hai nút xuất + test | Xong 21/11/2026, cần thử tay |
+| TD02-09 | `TableExcelWriter`, `TthcExcelExport`, `FetchAllPagesAsync`, hai nút xuất + test | Xong 21/11/2026, đã thử tay (người dùng xác nhận xuất Excel OK) |
