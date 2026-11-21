@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Drawing;
 using System.IO;
 using System.Threading;
@@ -6,6 +6,7 @@ using System.Windows.Forms;
 using ComponentFactory.Krypton.Toolkit;
 using HoaDonDienTu.Application.PublicService;
 using HoaDonDienTu.Domain.PublicService;
+using HoaDonDienTu.WinForms.Common;
 
 namespace HoaDonDienTu.WinForms.Groups
 {
@@ -38,6 +39,7 @@ namespace HoaDonDienTu.WinForms.Groups
         private readonly KryptonButton _go = new KryptonButton();
         private readonly Label _summary = new Label();
         private readonly Label _status = new Label();
+        private readonly Label _warning = new Label();
         private readonly string _notice;
 
         public HoSoForm(HoSoSearchSession session, string notice)
@@ -56,7 +58,7 @@ namespace HoaDonDienTu.WinForms.Groups
             _source.Items.Add("Hồ sơ đã nộp trên Dịch vụ công");
             _source.Items.Add("Hồ sơ đã nộp trên thuế điện tử");
 
-            var filters = new Panel { Dock = DockStyle.Top, Height = 190 };
+            var filters = new Panel { Dock = DockStyle.Top, Height = 228 };
             AddLabelled(filters, new Label { AutoSize = true, Text = "Nguồn" }, _source, 10, 6, 300);
             AddLabelled(filters, _nameLabel, _name, 330, 6, 220);
             AddLabelled(filters, _declLabel, _declaration, 560, 6, 200);
@@ -65,22 +67,33 @@ namespace HoaDonDienTu.WinForms.Groups
             AddLabelled(filters, new Label { AutoSize = true, Text = "Đến ngày" }, _to, 150, 58, 130);
             AddLabelled(filters, new Label { AutoSize = true, Text = "MST ủy quyền (nếu có)" }, _authorized, 330, 58, 220);
 
-            AddLabelled(filters, new Label { AutoSize = true, Text = "Mã xác nhận (nhập lại cho mỗi lần tìm)" }, _captchaBox, 330, 110, 160);
+            // Hàng CAPTCHA: ảnh, Đổi mã, ô nhập mã và nút Tìm cùng căn giữa theo chiều dọc.
+            AddLabelled(filters, new Label { AutoSize = true, Text = "Mã xác nhận (nhập lại cho mỗi lần tìm)" }, _captchaBox, 330, 110, 170);
             _captchaImage.SetBounds(10, 124, 140, 44);
-            _refresh.SetBounds(160, 124, 80, 44);
+            _refresh.SetBounds(158, 124, 100, 44);
             _refresh.Values.Text = "Đổi mã";
+            UiIcons.Apply(_refresh, UiIcon.Refresh);
             _refresh.Click += async (s, e) => { await RunBusyAsync(async () => { await _session.RefreshCaptchaAsync(_cancellation.Token); ShowCaptcha(); }); };
-            _search.SetBounds(510, 126, 100, 36);
+            _search.SetBounds(512, 129, 110, 38);
             _search.Values.Text = "Tìm";
+            UiIcons.Apply(_search, UiIcon.Search);
             _search.Click += async (s, e) => await SearchAsync();
             AcceptButton = _search;
             filters.Controls.Add(_captchaImage);
             filters.Controls.Add(_refresh);
             filters.Controls.Add(_search);
 
-            _status.SetBounds(10, 170, 980, 20);
+            // Thông báo trạng thái (lỗi, không có dữ liệu) và cảnh báo cố định của tab thuế điện tử nằm ở hai dòng riêng, không đè lên nhau.
+            _status.SetBounds(10, 176, 980, 20);
             _status.ForeColor = Color.DimGray;
+            _warning.SetBounds(10, 198, 980, 24);
+            _warning.TextAlign = ContentAlignment.MiddleLeft;
+            _warning.BackColor = Color.FromArgb(255, 243, 205);
+            _warning.ForeColor = Color.FromArgb(102, 77, 3);
+            _warning.Padding = new Padding(8, 0, 0, 0);
+            _warning.Visible = false;
             filters.Controls.Add(_status);
+            filters.Controls.Add(_warning);
 
             _grid.Dock = DockStyle.Fill;
             _grid.ReadOnly = true;
@@ -151,7 +164,9 @@ namespace HoaDonDienTu.WinForms.Groups
             _grid.Rows.Clear();
             _grid.Columns.Clear();
             _status.ForeColor = Color.DimGray;
-            _status.Text = (dvc ? string.Empty : "Cổng chỉ hỗ trợ tờ khai nộp trước 01/07/2025. ") + _notice;
+            _status.Text = _notice;
+            _warning.Visible = !dvc;
+            _warning.Text = dvc ? string.Empty : "Lưu ý của cổng: chỉ hỗ trợ tờ khai nộp trước ngày 01/07/2025.";
             UpdatePager();
             await RunBusyAsync(async () =>
             {
@@ -247,6 +262,8 @@ namespace HoaDonDienTu.WinForms.Groups
             _grid.Columns.Add("stt", "STT");
             _grid.Columns["stt"].FillWeight = 6;
             foreach (string column in page.Columns) _grid.Columns.Add(column, column);
+            _grid.Columns["stt"].AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
+            _grid.Columns["stt"].Width = 52;
             int stt = (page.PageNumber - 1) * HoSoPage.DefaultPageSize;
             foreach (var row in page.Rows)
             {

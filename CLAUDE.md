@@ -71,3 +71,4 @@ UI: Krypton Toolkit/Ribbon **5.500.2008** (last line with a net45 build; 60+ nee
 ## Working rules
 
 - At the end of every work session/turn, propose the next task to do (from `docs/plans/PROJECT-PLAN.md`), with a one-line reason, so the user can answer "Làm tiếp".
+- **Mọi button mới trong giao diện phải có icon đúng ý nghĩa của nút** (Tìm = kính lúp, Đổi mã/Làm mới = mũi tên vòng, Đăng nhập, Quay lại, Đóng/Hủy, Đổi nhóm...). Dùng bộ icon sẵn có `UiIcons.Apply(button, UiIcon.X)` (`src/HoaDonDienTu.WinForms/Common/UiIcons.cs`); chưa có icon phù hợp thì thêm vào `UiIcon`. Ngoại lệ: các nút đơn giản dùng ký tự thay icon (`<`, `>`, `◀`, `▶`, `+`, `-`...) thì để text. Nút phải đủ rộng để chứa icon cộng chữ.

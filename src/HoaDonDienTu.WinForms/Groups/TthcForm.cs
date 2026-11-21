@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Drawing;
 using System.Text;
 using System.Threading;
@@ -6,6 +6,7 @@ using System.Windows.Forms;
 using ComponentFactory.Krypton.Toolkit;
 using HoaDonDienTu.Application.PublicService;
 using HoaDonDienTu.Domain.PublicService;
+using HoaDonDienTu.WinForms.Common;
 
 namespace HoaDonDienTu.WinForms.Groups
 {
@@ -49,12 +50,13 @@ namespace HoaDonDienTu.WinForms.Groups
             AddField(filters, "Tờ khai", _declaration, 440, 8, 150);
             AddField(filters, "Mức độ", _level, 600, 8, 120);
             AddField(filters, "Loại người nộp thuế", _taxpayer, 730, 8, 160);
-            _search.SetBounds(10, 54, 100, 30);
+            _search.SetBounds(10, 54, 110, 32);
             _search.Values.Text = "Tìm";
+            UiIcons.Apply(_search, UiIcon.Search);
             _search.Click += async (s, e) => await SearchAsync();
             filters.Controls.Add(_search);
             AcceptButton = _search;
-            _status.SetBounds(120, 58, 820, 24);
+            _status.SetBounds(132, 60, 808, 24);
             _status.Text = notice ?? string.Empty;
             _status.ForeColor = Color.DimGray;
             filters.Controls.Add(_status);
@@ -191,6 +193,8 @@ namespace HoaDonDienTu.WinForms.Groups
             _status.Text = _session.Page.Items.Count == 0 ? "Không tìm thấy thủ tục phù hợp." : string.Empty;
             _grid.Rows.Clear();
             int stt = (_session.Page.PageNumber - 1) * TthcPage.DefaultPageSize;
+            _grid.Columns["stt"].AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
+            _grid.Columns["stt"].Width = 52;
             foreach (var item in _session.Page.Items)
             {
                 _grid.Rows.Add(++stt, item.Code, item.Name, item.Level, item.Agency);
@@ -269,6 +273,7 @@ namespace HoaDonDienTu.WinForms.Groups
                 BackColor = SystemColors.Window
             };
             var back = new KryptonButton { Text = "Quay lại", Dock = DockStyle.Bottom, Height = 36 };
+            UiIcons.Apply(back, UiIcon.Back);
             back.Click += (s, e) => Close();
             Controls.Add(box);
             Controls.Add(back);

@@ -1,10 +1,11 @@
-using System;
+﻿using System;
 using System.Drawing;
 using System.IO;
 using System.Threading;
 using System.Windows.Forms;
 using ComponentFactory.Krypton.Toolkit;
 using HoaDonDienTu.Application.PublicService;
+using HoaDonDienTu.WinForms.Common;
 
 namespace HoaDonDienTu.WinForms.Groups
 {
@@ -51,21 +52,24 @@ namespace HoaDonDienTu.WinForms.Groups
             _captchaImage.SetBounds(20, 150, 140, 44);
             _captchaImage.SizeMode = PictureBoxSizeMode.Zoom;
             _captchaImage.BorderStyle = BorderStyle.FixedSingle;
-            _refresh.SetBounds(166, 150, 80, 44);
+            _refresh.SetBounds(166, 150, 100, 44);
             _refresh.Values.Text = "Đổi mã";
+            UiIcons.Apply(_refresh, UiIcon.Refresh);
             _refresh.Click += async (s, e) => await LoadCaptchaAsync();
-            _captcha.SetBounds(256, 158, 184, 27);
+            _captcha.SetBounds(276, 158, 164, 27);
 
             _status.SetBounds(20, 204, 420, 56);
             _status.Text = notice ?? string.Empty;
             _status.ForeColor = Color.DimGray;
 
-            _login.SetBounds(240, 276, 100, 36);
+            _login.SetBounds(222, 276, 130, 36);
             _login.Values.Text = "Đăng nhập";
+            UiIcons.Apply(_login, UiIcon.Login);
             _login.Click += async (s, e) => await LoginAsync();
             var cancel = new KryptonButton();
-            cancel.SetBounds(350, 276, 90, 36);
+            cancel.SetBounds(360, 276, 80, 36);
             cancel.Values.Text = "Hủy";
+            UiIcons.Apply(cancel, UiIcon.Close);
             cancel.Click += (s, e) => { DialogResult = DialogResult.Cancel; Close(); };
 
             Controls.Add(_userName);

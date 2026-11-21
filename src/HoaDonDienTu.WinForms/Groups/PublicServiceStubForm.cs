@@ -4,6 +4,7 @@ using System.Windows.Forms;
 using ComponentFactory.Krypton.Toolkit;
 using HoaDonDienTu.Application.Abstractions;
 using HoaDonDienTu.Application.PublicService;
+using HoaDonDienTu.WinForms.Common;
 
 namespace HoaDonDienTu.WinForms.Groups
 {
@@ -88,36 +89,40 @@ namespace HoaDonDienTu.WinForms.Groups
 #endif
                 ;
             StartPosition = FormStartPosition.CenterScreen;
-            ClientSize = new Size(560, 240);
+            ClientSize = new Size(680, 240);
 
             var switchButton = new KryptonButton { Text = "Đổi nhóm chức năng", Dock = DockStyle.Bottom, Height = 40 };
+            UiIcons.Apply(switchButton, UiIcon.Switch);
             switchButton.Click += (s, e) =>
             {
                 var handler = SwitchRequested;
                 if (handler != null) handler(this, EventArgs.Empty);
             };
 
-            _state.SetBounds(20, 20, 520, 70);
+            _state.SetBounds(20, 20, 640, 70);
             _state.TextAlign = ContentAlignment.MiddleLeft;
-            _loginButton.SetBounds(20, 100, 160, 36);
+            _loginButton.SetBounds(20, 100, 200, 38);
             _loginButton.Values.Text = "Đăng nhập cổng DVC";
+            UiIcons.Apply(_loginButton, UiIcon.Login);
             _loginButton.Click += (s, e) => ShowLogin();
 
-            _tthcButton.SetBounds(190, 100, 200, 36);
+            _tthcButton.SetBounds(230, 100, 240, 38);
             _tthcButton.Values.Text = "Tra cứu thủ tục hành chính";
+            UiIcons.Apply(_tthcButton, UiIcon.Search);
             _tthcButton.Enabled = _services.Tthc != null;
             _tthcButton.Click += (s, e) => ShowTthc();
             Controls.Add(_tthcButton);
 
-            _hoSoButton.SetBounds(400, 100, 150, 36);
+            _hoSoButton.SetBounds(480, 100, 180, 38);
             _hoSoButton.Values.Text = "Hồ sơ đã nộp";
+            UiIcons.Apply(_hoSoButton, UiIcon.Archive);
             _hoSoButton.Enabled = false;
             _hoSoButton.Click += (s, e) => ShowHoSo();
             Controls.Add(_hoSoButton);
 
             var note = new Label
             {
-                Text = "Các chức năng tra cứu của nhóm này đang được phát triển.",
+                Text = "Hồ sơ đã nộp cần đăng nhập cổng Dịch vụ công; danh mục thủ tục hành chính tra cứu được không cần đăng nhập.",
                 ForeColor = Color.DimGray,
                 AutoSize = true,
                 Location = new Point(20, 160)
