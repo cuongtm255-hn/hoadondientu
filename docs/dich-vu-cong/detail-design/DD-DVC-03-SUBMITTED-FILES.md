@@ -164,4 +164,4 @@ Làm trước được (không bị chặn): mô hình Domain, `IHoSoSource`, `H
 
 | Task | Nội dung | Trạng thái |
 |---|---|---|
-| TD03-09 | `HoSoExcelExport`, `FetchAllPagesAsync`, hai nút xuất + test | Xong 21/11/2026, cần thử tay |
+| TD03-09 | `HoSoExcelExport`, `FetchAllPagesAsync`, hai nút xuất + test | Xong 21/11/2026, đã thử tay (người dùng xác nhận xuất OK) |
