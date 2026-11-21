@@ -79,6 +79,7 @@ namespace HoaDonDienTu.WinForms.Groups
         private readonly KryptonButton _loginButton = new KryptonButton();
         private readonly KryptonButton _tthcButton = new KryptonButton();
         private readonly KryptonButton _hoSoButton = new KryptonButton();
+        private readonly Label _note = new Label();
 
         public PublicServiceStubForm(DvcServices services, Func<string> taxCode)
         {
@@ -122,14 +123,11 @@ namespace HoaDonDienTu.WinForms.Groups
             _hoSoButton.Click += (s, e) => ShowHoSo();
             Controls.Add(_hoSoButton);
 
-            var note = new Label
-            {
-                Text = "Hồ sơ đã nộp cần đăng nhập cổng Dịch vụ công; danh mục thủ tục hành chính tra cứu được không cần đăng nhập.",
-                ForeColor = Color.DimGray,
-                AutoSize = true,
-                Location = new Point(20, 160)
-            };
-            Controls.Add(note);
+            _note.Text = DefaultNote;
+            _note.ForeColor = Color.DimGray;
+            _note.AutoSize = false;
+            _note.SetBounds(20, 150, 640, 40);
+            Controls.Add(_note);
             Controls.Add(_state);
             Controls.Add(_loginButton);
             Controls.Add(switchButton);
@@ -147,6 +145,9 @@ namespace HoaDonDienTu.WinForms.Groups
         }
 
         /// <summary>Người dùng bấm "Đổi nhóm chức năng".</summary>
+        private const string DefaultNote = "Hồ sơ đã nộp cần đăng nhập cổng Dịch vụ công; danh mục thủ tục hành chính tra cứu được không cần đăng nhập.";
+        private const string NoHoSoNote = "Hồ sơ đã nộp chưa dùng được ở bản này: đang chờ mẫu dữ liệu thật của cổng để đọc kết quả.";
+
         public event EventHandler SwitchRequested;
 
         private void ShowLogin()
@@ -184,6 +185,8 @@ namespace HoaDonDienTu.WinForms.Groups
             var session = _services.Session;
             // Hồ sơ đã nộp là dữ liệu riêng tư: chỉ mở được khi đã đăng nhập và bản này có nguồn dữ liệu.
             _hoSoButton.Enabled = session.IsLoggedIn && _services.HoSo != null;
+            // Nút bị khóa vì bản này chưa có nguồn dữ liệu (không phải vì chưa đăng nhập) thì nói rõ để không gây hiểu nhầm.
+            _note.Text = session.IsLoggedIn && _services.HoSo == null ? NoHoSoNote : DefaultNote;
             switch (session.State)
             {
                 case DvcSessionState.LoggedIn:
