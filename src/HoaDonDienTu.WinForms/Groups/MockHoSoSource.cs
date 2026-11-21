@@ -1,4 +1,4 @@
-#if DEBUG
+﻿#if DEBUG
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -21,6 +21,7 @@ namespace HoaDonDienTu.WinForms.Groups
 
         private static readonly Random Rng = new Random();
         private string _captcha;
+        private string _lastGood; // mã của lần tìm thành công gần nhất: đổi trang dùng lại được (giả định đã chốt, giống trang cổng)
 
         public Task<byte[]> GetCaptchaAsync(HoSoSource source, CancellationToken cancellationToken)
         {
@@ -45,13 +46,17 @@ namespace HoaDonDienTu.WinForms.Groups
 
         public Task<HoSoPage> SearchAsync(HoSoQuery query, CancellationToken cancellationToken)
         {
-            // Mã chỉ dùng một lần: đúng hay sai đều hết hiệu lực.
+            // Tìm mới: mã chỉ dùng một lần, đúng hay sai đều hết hiệu lực. Đổi trang (trang > 1): chấp nhận lại mã của lần tìm thành công trước.
             string expected = _captcha;
             _captcha = null;
-            if (expected == null || !string.Equals(query.CaptchaText, expected, StringComparison.OrdinalIgnoreCase))
+            bool paging = query.PageNumber > 1 && _lastGood != null && string.Equals(query.CaptchaText, _lastGood, StringComparison.OrdinalIgnoreCase);
+            bool fresh = expected != null && string.Equals(query.CaptchaText, expected, StringComparison.OrdinalIgnoreCase);
+            if (!paging && !fresh)
             {
+                _lastGood = null;
                 throw new HoSoServiceException(HoSoFailure.WrongCaptcha);
             }
+            _lastGood = query.CaptchaText;
 
             bool dvc = query.Source == HoSoSource.Dvc;
             IList<string> columns = dvc

@@ -153,3 +153,19 @@ Người dùng tự nhập tên đăng nhập, mật khẩu đúng và **CAPTCHA
 
 Hệ quả: `status` khác `"200"`/`"201"` là lỗi, riêng sai CAPTCHA là `"999"` kèm `desc` tiếng Việt. Chưa biết `status` của sai mật khẩu và khóa tài khoản (có thể cũng `"999"`, khác nhau ở `desc`); vì vậy **phân loại lỗi theo `desc`** (chứa "captcha" ⇒ sai CAPTCHA) và các trường hợp còn lại gộp "đăng nhập không thành công" kèm nguyên văn `desc` của cổng (cắt ngắn, không chứa dữ liệu người dùng).
 
+## Bổ sung 21/11/2026 (3): tra cứu hồ sơ đã nộp, tab Dịch vụ công (đã đăng nhập, người dùng tự gõ CAPTCHA)
+
+Quan sát bằng Chrome, một tab, ghi sự kiện htmx của trang (tên tham số, đường dẫn, mã trạng thái; không ghi giá trị CAPTCHA, token, mã hồ sơ, tên). Tài khoản thử có 2 hồ sơ trong 01/2026 và không có hồ sơ trong 11/2026, nên **chưa quan sát được phân trang nhiều trang**.
+
+| Mục | Kết quả |
+|---|---|
+| Trang | `/tthc/tchs` (menu "Tra cứu hồ sơ" → "Tra cứu hồ sơ đã nộp"). Hai tab trong trang: "trên DVC" (form `form-search-advanced`) và "trên thuế điện tử" (form `form_search_tdt`, POST). Các mục khác trong menu: `/tthc/tchs/draft` (lưu tạm), `/tthc/tchs/pa` (phản ánh), `/tthc/tchs/ho-so-nha-dat` (đất đai), `/tthc/tchs/thong-bao-lptb` (LPTB), `/tthc/tra-cuu-thongbao-cqt` (thông báo của CQT) |
+| Tìm (tab DVC) | **`GET /tthc/ho-so/search`** (htmx, `hx-target=#table-container`). Tham số: `maNghiepVu` (Loại TTHC), `maTTHC` (Tên TTHC), `maToKhai`, `maHoSo`, `tuNgay`, `denNgay` (**`dd/MM/yyyy`**), `scope_tdt1` (`SELF` tự kê khai, `PROXY` khai thay theo hợp đồng DLT), `mstUyQuyen_tdt1`, `captcha`. Header: các `HX-*` của htmx và `accept`. Mặc định "Từ ngày" là đầu tháng, "Đến ngày" là hôm nay |
+| Phản hồi thành công | HTTP 200, `text/html` mảnh HTML. Không có kết quả: mảnh ngắn (~1,8 KB) không có bảng ("Không có dữ liệu"). Có kết quả: `#table-container > section.main-section` chứa dòng "Trang x/N - Tổng số bản ghi: n", `ul.pagination`, và bảng `table.table.table-bordered.table-hover` |
+| **Sai CAPTCHA** | **HTTP 400**, thân văn bản ngắn (45 ký tự, chưa đọc được nội dung chính xác), không có bảng. Khác với đăng nhập (HTTP 200 + `status` 999). Phía trang htmx coi là `responseError` |
+| Cột bảng (13) | STT; Thao tác (hai biểu tượng: xem, thư mục; gọi bằng `onclick`); Mã hồ sơ (dạng `999.999.99.A99-999999-99999999999999`); Tên TTHC (`mã - tên`); Tờ khai (`mã tờ khai - tên (kỳ)`); Kỳ tính thuế (vd `Q4/2025`); Loại tờ khai (vd "Chính thức"); Lần nộp bổ sung (có thể rỗng); Lần nộp (Tờ khai)/File số (DLVC); Cơ quan thuế tiếp nhận (`mã - tên cơ quan`); Ngày nộp (`dd/MM/yyyy HH:mm`); Trạng thái (vd "Đã chấp nhận"); Hồ sơ đính kèm (có thể rỗng) |
+| Phân trang | `ul.pagination > li.page-item` (trang hiện tại thêm `active`) với `a.page-link` mang **`onclick="onChangePage(<trang>,10)"`**: **10 dòng mỗi trang**. Hàm của trang: lấy `FormData` của `#form-search-advanced` (gồm **cả ô CAPTCHA hiện có**), đặt `page` và `size`, rồi `htmx.ajax('GET', '/tthc/ho-so/search?<toàn bộ tham số>&page=N&size=10', {target:'#table-container', swap:'outerHTML'})` |
+| Chưa biết | Nội dung thông báo lỗi 400; kết quả đổi trang có cần CAPTCHA mới không (trang cổng gửi lại giá trị trong ô CAPTCHA); giới hạn khoảng ngày; tab thuế điện tử (POST) chưa quan sát; cấu trúc dòng khi nhiều trang |
+
+**Quyết định của chủ sản phẩm (21/11/2026): chốt đổi trang KHÔNG cần CAPTCHA mới**, tức dùng lại mã của lần tìm đã ra kết quả, giống hành vi của chính trang cổng. Đây là giả định chưa kiểm chứng (tài khoản thử không đủ dữ liệu để phân trang); xem BR-DVC-03 và DD-DVC-03 mục 4.3 về cách phòng ngừa nếu cổng từ chối.
+

@@ -70,8 +70,10 @@ HoSoForm (WinForms) → HoSoSearchSession → HoSoService → IHoSoSource ─►
 
 ### 4.3 Phân trang
 
-- Nếu cổng yêu cầu CAPTCHA cho **mỗi trang** (chưa biết, G-DVC-05) thì mỗi lần đổi trang hỏi mã mới giống 4.2 và **không có** "tải tất cả các trang" (FR-DVC-EXP-002).
-- Nếu cổng cho đổi trang không CAPTCHA thì đổi trang dùng bộ lọc đã áp dụng (như `TthcSearchSession`), không tự tải trước trang chưa xem.
+- **Quyết định đã chốt (21/11/2026): đổi trang KHÔNG cần CAPTCHA mới.** Trang cổng gọi `onChangePage(trang, 10)` gửi lại toàn bộ giá trị form kể cả ô CAPTCHA; app làm giống: đổi trang dùng lại đúng mã của lần tìm đã ra kết quả này. Mã chỉ ở bộ nhớ của `HoSoSearchSession`, bị xóa khi: bấm Tìm mới (giữ lại chỉ nếu lần tìm mới thành công), đổi tab nguồn, lỗi (kể cả cổng từ chối), hết phiên, đóng màn hình.
+- **Giả định chưa kiểm chứng:** tài khoản thử chỉ có một trang kết quả nên chưa thấy cổng có chấp nhận hay không. **Phòng ngừa:** nếu cổng từ chối khi đổi trang (HTTP 400, sai CAPTCHA) thì app báo "Cổng cần mã xác nhận mới: nhập mã trong ảnh rồi bấm lại", xóa mã đã giữ, không tự gửi lại; người dùng gõ mã mới rồi bấm đổi trang, mã mới thay thế và được giữ cho các trang sau. Nhờ vậy giả định sai không làm hỏng chức năng, chỉ thêm một bước gõ mã.
+- Đổi trang dùng bộ lọc đã áp dụng (không dùng ô đang sửa dở), không tự tải trước trang chưa xem, 10 dòng mỗi trang.
+- **Xuất tất cả các trang** (FT-DVC-08) khả thi theo giả định trên: tải tuần tự có nghỉ giữa các trang (BR-DVC-05); dừng ngay và không ghi tệp dở dang nếu cổng từ chối. Làm sau khi có nguồn thật.
 
 ### 4.4 Cảnh báo tab thuế điện tử
 
@@ -107,7 +109,7 @@ HoSoForm (WinForms) → HoSoSearchSession → HoSoService → IHoSoSource ─►
 |---|---|---|
 | T-DVC03-01 | Chưa đăng nhập ⇒ `HoSoService` từ chối, không gọi nguồn | Unit |
 | T-DVC03-02 | CAPTCHA rỗng, ngày đảo ngược ⇒ chặn trước khi gọi nguồn | Unit |
-| T-DVC03-03 | Sau mỗi lần tìm (thành công, sai CAPTCHA, lỗi mạng) mã CAPTCHA bị xóa và ảnh được tải lại; **không** gửi lại tự động | Unit |
+| T-DVC03-03 | Sau mỗi lần bấm Tìm (thành công, sai CAPTCHA, lỗi mạng) mã trong ô bị xóa, ảnh được tải lại, **không** gửi lại tự động; đổi trang dùng lại mã của lần tìm, quên mã khi tìm mới lỗi, cổng từ chối, đổi tab, đóng | Unit |
 | T-DVC03-04 | Sai CAPTCHA giữ nguyên bộ lọc, trả lỗi `WrongCaptcha` | Unit |
 | T-DVC03-05 | Kết quả rỗng trả trang rỗng hợp lệ kèm thông điệp, không phải lỗi | Unit |
 | T-DVC03-06 | Hết phiên ⇒ `DvcSession` = Expired, dừng, không tự đăng nhập | Unit |

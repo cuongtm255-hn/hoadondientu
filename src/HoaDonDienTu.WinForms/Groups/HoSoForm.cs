@@ -133,7 +133,7 @@ namespace HoaDonDienTu.WinForms.Groups
 
             _source.SelectedIndexChanged += async (s, e) => await OnSourceChangedAsync();
             Shown += (s, e) => { _source.SelectedIndex = 0; };
-            FormClosed += (s, e) => _cancellation.Cancel();
+            FormClosed += (s, e) => { _cancellation.Cancel(); _session.ClearPagingCaptcha(); };
         }
 
         private static void AddLabelled(Control parent, Label label, Control input, int x, int y, int width)
@@ -193,11 +193,12 @@ namespace HoaDonDienTu.WinForms.Groups
 
         private async System.Threading.Tasks.Task GoToAsync(int page)
         {
+            // Đổi trang dùng lại mã của lần tìm này (như trang cổng); chỉ khi cổng từ chối hoặc không còn mã mới cần gõ mã mới.
             string captcha = _captchaBox.Text.Trim();
-            if (captcha.Length == 0)
+            if (captcha.Length == 0 && !_session.CanPageWithoutNewCaptcha)
             {
                 _status.ForeColor = Color.Firebrick;
-                _status.Text = "Nhập mã xác nhận rồi bấm lại.";
+                _status.Text = "Cổng cần mã xác nhận mới: nhập mã trong ảnh rồi bấm lại.";
                 return;
             }
             await RunBusyAsync(async () => await _session.GoToPageAsync(page, captcha, _cancellation.Token));

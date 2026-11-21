@@ -111,18 +111,63 @@ namespace HoaDonDienTu.Application.Tests
         }
 
         [Test]
-        public async Task T_DVC03_03_PreviousCaptcha_IsNeverReused_OnPageChange()
+        public async Task T_DVC03_03_Paging_ReusesTheSearchCaptcha_WithoutAskingAgain()
         {
             await _session.SearchAsync(Query(), CancellationToken.None);
+            Assert.IsTrue(_session.CanPageWithoutNewCaptcha);
 
-            // Không có mã mới ⇒ bị chặn; mã cũ không được tự dùng lại.
-            Assert.IsFalse(await _session.GoToPageAsync(2, null, CancellationToken.None));
+            Assert.IsTrue(await _session.GoToPageAsync(2, CancellationToken.None));
+
+            Assert.AreEqual(Captcha, _source.SearchCalls[1].CaptchaText, "Đổi trang dùng đúng mã của lần tìm (giống trang cổng)");
+            Assert.AreEqual(2, _source.SearchCalls[1].PageNumber);
+            Assert.IsTrue(_session.CanPageWithoutNewCaptcha, "Vẫn đổi trang tiếp được");
+        }
+
+        [Test]
+        public async Task T_DVC03_03_NewSearch_DropsOldPagingCaptcha_UntilItSucceeds()
+        {
+            await _session.SearchAsync(Query(), CancellationToken.None);
+            _source.Throw = new HoSoServiceException(HoSoFailure.WrongCaptcha);
+
+            await _session.SearchAsync(Query(captcha: "sai99"), CancellationToken.None);
+
+            Assert.IsFalse(_session.CanPageWithoutNewCaptcha, "Tìm mới thất bại: không giữ mã cũ");
+            _source.Throw = null;
+            Assert.IsFalse(await _session.GoToPageAsync(2, CancellationToken.None), "Không có mã nào thì không gọi cổng");
             Assert.AreEqual(HoSoFailure.InvalidInput, _session.LastFailure);
-            Assert.AreEqual(1, _source.SearchCalls.Count);
+            Assert.AreEqual(2, _source.SearchCalls.Count);
+        }
 
-            await _session.GoToPageAsync(2, "moi99", CancellationToken.None);
-            Assert.AreEqual("moi99", _source.SearchCalls[1].CaptchaText, "Đổi trang dùng mã MỚI người dùng gõ");
-            Assert.AreNotEqual(Captcha, _source.SearchCalls[1].CaptchaText);
+        [Test]
+        public async Task T_DVC03_03_PagingRejectedByPortal_ForgetsCaptcha_AndAsksForNewOne()
+        {
+            await _session.SearchAsync(Query(), CancellationToken.None);
+            _source.Throw = new HoSoServiceException(HoSoFailure.WrongCaptcha);
+
+            Assert.IsFalse(await _session.GoToPageAsync(2, CancellationToken.None));
+
+            Assert.AreEqual(HoSoFailure.WrongCaptcha, _session.LastFailure);
+            Assert.IsFalse(_session.CanPageWithoutNewCaptcha);
+            Assert.AreEqual(2, _source.SearchCalls.Count, "Không tự gửi lại");
+
+            _source.Throw = null;
+            Assert.IsTrue(await _session.GoToPageAsync(2, "moi99", CancellationToken.None));
+            Assert.AreEqual("moi99", _source.SearchCalls[2].CaptchaText);
+            Assert.IsTrue(_session.CanPageWithoutNewCaptcha);
+        }
+
+        [Test]
+        public async Task T_DVC03_03_PagingCaptcha_IsForgottenOnSourceChange_AndOnClear()
+        {
+            await _session.SearchAsync(Query(), CancellationToken.None);
+            await _session.SelectSourceAsync(HoSoSource.ThueDienTu, CancellationToken.None);
+            Assert.IsFalse(_session.CanPageWithoutNewCaptcha);
+
+            await _session.SelectSourceAsync(HoSoSource.Dvc, CancellationToken.None);
+            await _session.SearchAsync(Query(), CancellationToken.None);
+            Assert.IsTrue(_session.CanPageWithoutNewCaptcha);
+            _session.ClearPagingCaptcha();
+            Assert.IsFalse(_session.CanPageWithoutNewCaptcha);
         }
 
         [Test]

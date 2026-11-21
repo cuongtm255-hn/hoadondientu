@@ -99,7 +99,7 @@ Giống nhóm Hóa đơn: Windows 7 trở lên, .NET Framework 4.5.2, CefSharp 1
 |---|---|
 | BR-DVC-01 | Hai nhóm chức năng độc lập: không chia sẻ phiên đăng nhập, WebView, kho dữ liệu, hàng đợi. Đổi nhóm không tự đăng xuất nhóm kia **[Giả định, cần chốt]**. |
 | BR-DVC-02 | **Chỉ đọc**: ứng dụng không gửi bất kỳ yêu cầu làm thay đổi dữ liệu trên cổng (nộp, sửa, xóa, gửi). Danh sách lệnh/địa chỉ được phép là danh sách trắng cố định trong mã. |
-| BR-DVC-03 | CAPTCHA luôn do người dùng đọc và gõ; ứng dụng không giải, không lưu, không tái dùng mã. Mỗi lần tìm mục có CAPTCHA dùng một mã mới. |
+| BR-DVC-03 | CAPTCHA luôn do người dùng đọc và gõ; ứng dụng không giải và không lưu mã xuống đĩa hay nhật ký. **Mỗi lần bấm Tìm** dùng một mã mới. **Ngoại lệ đã chốt 21/11/2026:** ĐỔI TRANG trong cùng một kết quả dùng lại mã của lần tìm đó (như chính trang cổng), chỉ giữ trong bộ nhớ và bị xóa khi tìm mới, đổi tab, có lỗi, hết phiên hoặc đóng màn hình; nếu cổng từ chối thì hỏi mã mới và không tự gửi lại. |
 | BR-DVC-04 | Mật khẩu chỉ đi từ ô nhập tới lời gọi đăng nhập trong WebView; không lưu, không ghi nhật ký, không vào tham số dòng lệnh hay URL (cùng nguyên tắc ADR 0011). |
 | BR-DVC-05 | Mọi yêu cầu tới cổng thực hiện **tuần tự**, một yêu cầu tại một thời điểm; không tự động thử lại các yêu cầu có CAPTCHA. |
 | BR-DVC-06 | Ứng dụng chỉ giữ **một** trang DVC hoạt động trong WebView; không mở cổng DVC ở cửa sổ/tab thứ hai. |
