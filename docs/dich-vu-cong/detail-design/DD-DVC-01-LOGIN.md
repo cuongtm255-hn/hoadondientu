@@ -57,7 +57,7 @@ DvcLoginForm mở
 
 | Tình huống | Hành vi |
 |---|---|
-| Sai mật khẩu / CAPTCHA | Thông báo rõ, xoá mật khẩu + CAPTCHA, tải mã mới, giữ tên đăng nhập |
+| Sai mật khẩu / CAPTCHA (cổng trả HTTP 200 với `status` khác "200"/"201", ví dụ sai CAPTCHA là `"999"` + `desc`; phân loại theo `desc` chứa "captcha") | Thông báo rõ, xoá mật khẩu + CAPTCHA, tải mã mới, giữ tên đăng nhập |
 | Tài khoản bị khóa | Thông báo, không thử lại tự động |
 | Lấy CAPTCHA thất bại | Gợi ý đăng nhập dự phòng |
 | Cổng đổi tên trường / `doiTuong` | Gợi ý đăng nhập dự phòng, ghi nhật ký **không** có giá trị nhập |
@@ -86,7 +86,7 @@ DvcLoginForm mở
 
 | Cổng | Cần xác nhận | Ảnh hưởng |
 |---|---|---|
-| G-DVC-02 | **Đã xác nhận 21/11/2026**: `POST /tthc/loginLDAP` form urlencoded; `tenDN` nguyên văn, `matKhau` = base64(UTF-8 mật khẩu), `doiTuong` = `DN`, `captcha`; không cần header CSRF; phản hồi `status` "200"/"201" là thành công, khác là lỗi (`desc`). CAPTCHA `GET /tthc/login/getCaptcha?<tem thời gian>`. Còn lại: nội dung lỗi thật (sai CAPTCHA, sai mật khẩu, khóa) | `CefDvcLoginBrowser` làm được; ánh xạ `DvcLoginFailure` theo `desc` cần mẫu lỗi thật |
+| G-DVC-02 | **Đã xác nhận 21/11/2026**: `POST /tthc/loginLDAP` form urlencoded; `tenDN` nguyên văn, `matKhau` = base64(UTF-8 mật khẩu), `doiTuong` = `DN`, `captcha`; không cần header CSRF; phản hồi `status` "200"/"201" là thành công, khác là lỗi (`desc`). CAPTCHA `GET /tthc/login/getCaptcha?<tem thời gian>`. Đã thấy lỗi sai CAPTCHA: HTTP 200, `{"status":"999","desc":"Mã captcha không đúng, vui lòng thử lại."}`. Còn lại: `desc` của sai mật khẩu và khóa tài khoản (không thử để tránh khóa) | `CefDvcLoginBrowser` làm được; ánh xạ `DvcLoginFailure` theo `desc` cần mẫu lỗi thật |
 | G-DVC-06 | WebView nhúng không bị coi là tab thứ hai | Cách giữ WebView ngầm khi đổi nhóm |
 
 Có thể làm trước (không bị chặn): kiểu Domain/Application, `DvcLoginService`, mock browser, form, test.

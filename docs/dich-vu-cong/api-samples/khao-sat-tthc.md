@@ -140,3 +140,16 @@ Bộ ghi request cài vào trang không bắt được gì vì trang chuyển h�
 
 **Hệ quả thiết kế:** app đăng nhập bằng cách đặt các ô `tenDN`, `matKhau`, `ldap`, `captcha` rồi chạy chính `submitLDAP()` của trang (hoặc dựng đúng yêu cầu trên bằng `fetch` cùng gốc, nhớ mã hóa `matKhau` base64 UTF-8), đọc `status`/`desc` từ phản hồi. Mật khẩu chỉ đi qua dạng literal JSON vào script, không ghi nhật ký.
 
+## Bổ sung 21/11/2026 (2): phản hồi khi sai CAPTCHA
+
+Người dùng tự nhập tên đăng nhập, mật khẩu đúng và **CAPTCHA cố ý sai**; bộ ghi trong trang (bọc `XMLHttpRequest` và `showNotify`) chỉ ghi phản hồi, không ghi giá trị đã gõ.
+
+| Mục | Kết quả |
+|---|---|
+| HTTP | **200**, `application/json` (lỗi nghiệp vụ không dùng mã HTTP lỗi) |
+| Thân phản hồi | `{"status":"999","desc":"Mã captcha không đúng, vui lòng thử lại."}` (chỉ hai khóa `status` và `desc`) |
+| Hiển thị của trang | `showNotify('error', desc)`, tải lại ảnh CAPTCHA, xóa ô CAPTCHA, mở lại nút Đăng nhập |
+| Tải lại trang | Không; hộp đăng nhập giữ nguyên, các ô tên đăng nhập và mật khẩu còn nguyên |
+
+Hệ quả: `status` khác `"200"`/`"201"` là lỗi, riêng sai CAPTCHA là `"999"` kèm `desc` tiếng Việt. Chưa biết `status` của sai mật khẩu và khóa tài khoản (có thể cũng `"999"`, khác nhau ở `desc`); vì vậy **phân loại lỗi theo `desc`** (chứa "captcha" ⇒ sai CAPTCHA) và các trường hợp còn lại gộp "đăng nhập không thành công" kèm nguyên văn `desc` của cổng (cắt ngắn, không chứa dữ liệu người dùng).
+
