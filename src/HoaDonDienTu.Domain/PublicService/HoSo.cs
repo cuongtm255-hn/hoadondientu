@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 
 namespace HoaDonDienTu.Domain.PublicService
@@ -105,6 +105,18 @@ namespace HoaDonDienTu.Domain.PublicService
     {
         public HoSoParseException(string message) : base(message)
         {
+            Diagnostic = null;
         }
+
+        /// <param name="diagnostic">
+        /// Chuẩn đoán an toàn để ghi nhật ký: CHỈ lý do, số lượng và hình dạng cấu trúc do bộ phân tích tạo, không bao giờ chứa dữ liệu hồ sơ hay dữ liệu người dùng nhập.
+        /// </param>
+        public HoSoParseException(string message, string diagnostic) : base(message)
+        {
+            Diagnostic = diagnostic;
+        }
+
+        /// <summary>Chuẩn đoán an toàn để ghi nhật ký; null nếu không có.</summary>
+        public string Diagnostic { get; private set; }
     }
 }

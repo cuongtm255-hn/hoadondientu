@@ -77,6 +77,60 @@ namespace HoaDonDienTu.Infrastructure.Tests
             Assert.Throws<HoSoParseException>(() => HoSoHtmlParser.ParseList("<table><thead><tr><th>A</th></tr></thead><tbody><tr><td>1</td></tr></tbody></table>"), "Thiếu dòng tổng");
         }
 
+        [Test]
+        public void T_DVC03_09_Parser_FirstColumnAsTh_And_NoTheadNoTbody_StillParse()
+        {
+            const string html =
+                "<div><span>Trang <span></span>/<span>1</span> - Tổng số bản ghi: <span>1</span></span>" +
+                "<table class='table table-bordered'>" +
+                "<tr><th>STT</th><th>Thao tác</th><th>Mã hồ sơ</th><th>Trạng thái</th></tr>" +
+                "<tr><th scope='row'>1</th><td><i></i></td><td>HS-MAU-1</td><td>Đã chấp nhận</td></tr>" +
+                "</table><ul class='pagination'><li class='page-item active'><a>1</a></li></ul></div>";
+
+            HoSoPage page = HoSoHtmlParser.ParseList(html);
+
+            CollectionAssert.AreEqual(new[] { "Mã hồ sơ", "Trạng thái" }, page.Columns);
+            Assert.AreEqual(1, page.Rows.Count);
+            Assert.AreEqual("HS-MAU-1", page.Rows[0].Cells[0]);
+            Assert.AreEqual(1, page.TotalRecords);
+        }
+
+        [Test]
+        public void T_DVC03_09_ParseError_ExplainsWhy_WithCounts()
+        {
+            var ex = Assert.Throws<HoSoParseException>(() => HoSoHtmlParser.ParseList(
+                "<table><thead><tr><th>A</th><th>B</th></tr></thead><tbody><tr><td>1</td></tr></tbody></table>"));
+
+            StringAssert.Contains("1 ô", ex.Message);
+            StringAssert.Contains("2 cột", ex.Message);
+        }
+
+        [Test]
+        public void DescribeStructure_KeepsShapeOnly_NoRealText()
+        {
+            string html = "<div class='x'><table><tr><td class='c'>Hồ sơ 12345 bí mật</td></tr></table><script>secret()</script></div>";
+
+            string text = HoSoHtmlParser.DescribeStructure(html);
+
+            StringAssert.Contains("table", text);
+            StringAssert.Contains("td.c", text);
+            StringAssert.DoesNotContain("bí mật", text);
+            StringAssert.DoesNotContain("12345", text);
+            StringAssert.DoesNotContain("secret", text);
+            Assert.LessOrEqual(text.Length, 3500);
+        }
+
+        [Test]
+        public void Source_ParseError_CarriesStructureButNoContent()
+        {
+            var runner = new FakeRunner { Reply = Ok("<div>" + new string('x', 400) + " NOIDUNGBIMAT</div>") };
+
+            var ex = Assert.ThrowsAsync<HoSoParseException>(() => new PortalHoSoSource(runner).SearchAsync(Query(), CancellationToken.None));
+
+            StringAssert.Contains("cấu trúc:", ex.Message);
+            StringAssert.DoesNotContain("NOIDUNGBIMAT", ex.Message);
+        }
+
         // ---------------- Nguồn thật (runner giả) ----------------
 
         private sealed class FakeRunner : IDvcPageRunner

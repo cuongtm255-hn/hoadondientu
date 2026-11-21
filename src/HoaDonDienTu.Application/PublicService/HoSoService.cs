@@ -115,9 +115,10 @@ namespace HoaDonDienTu.Application.PublicService
                 _logger.Info(operation + ": hết phiên");
                 throw new HoSoServiceException(HoSoFailure.SessionExpired);
             }
-            catch (HoSoParseException)
+            catch (HoSoParseException ex)
             {
-                _logger.Warning(operation + ": cổng đổi giao diện");
+                // Chỉ ghi Diagnostic (do bộ phân tích tạo: lý do, số lượng, hình dạng cấu trúc), không bao giờ ghi Message của ngoại lệ.
+                _logger.Warning(operation + ": cổng đổi giao diện" + (string.IsNullOrEmpty(ex.Diagnostic) ? string.Empty : ": " + ex.Diagnostic));
                 throw new HoSoServiceException(HoSoFailure.PortalChanged);
             }
             catch (Exception ex)

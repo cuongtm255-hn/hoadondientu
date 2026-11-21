@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
@@ -58,7 +58,17 @@ namespace HoaDonDienTu.Infrastructure.PublicService
             // Cổng có thể trả trang đăng nhập (HTTP 200) khi hết phiên.
             if (result.Value<bool?>("loginPage") == true) throw new DvcSessionExpiredException();
 
-            return HoSoHtmlParser.ParseList(result.Value<string>("body"));
+            string body = result.Value<string>("body");
+            try
+            {
+                return HoSoHtmlParser.ParseList(body);
+            }
+            catch (HoSoParseException ex)
+            {
+                // Kèm cấu trúc HTML (chỉ hình dạng, không có dữ liệu) để biết cổng đổi gì mà sửa bộ phân tích.
+                string diagnostic = (ex.Diagnostic ?? "(không rõ lý do)") + " | cấu trúc: " + HoSoHtmlParser.DescribeStructure(body);
+                throw new HoSoParseException(ex.Message + " | cấu trúc: " + HoSoHtmlParser.DescribeStructure(body), diagnostic);
+            }
         }
 
         private static void RequireSupported(HoSoSource source)
