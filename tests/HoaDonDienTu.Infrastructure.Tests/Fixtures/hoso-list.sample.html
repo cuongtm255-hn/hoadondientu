@@ -1,0 +1,56 @@
+<!-- MẪU DỰNG LẠI (DỮ LIỆU GIẢ "(mẫu)") theo cấu trúc DOM của https://dichvucong.gdt.gov.vn/tthc/tchs, kết quả tìm của tab "hồ sơ đã nộp trên DVC",
+     quan sát ngày 21/11/2026. Mọi mã hồ sơ, tên, cơ quan trong tệp là dữ liệu giả; không có dữ liệu thật của doanh nghiệp nào. Đã bỏ script và giá trị phiên. -->
+<div id="table-container">
+  <section class="main-section mt-5 mb-4">
+    <div class="d-flex justify-content-between">
+      <span>Trang <span></span>/<span>3</span> - Tổng số bản ghi: <span>23</span></span>
+      <nav>
+        <ul class="pagination pagination-sm">
+          <li class="page-item active"><a class="page-link" onclick="onChangePage(1,10)">1</a></li>
+          <li class="page-item"><a class="page-link" onclick="onChangePage(2,10)">2</a></li>
+          <li class="page-item"><a class="page-link" onclick="onChangePage(3,10)">3</a></li>
+        </ul>
+      </nav>
+    </div>
+    <table class="table table-bordered table-hover">
+      <thead>
+        <tr>
+          <th>STT</th><th>Thao tác</th><th>Mã hồ sơ</th><th>Tên TTHC</th><th>Tờ khai</th><th>Kỳ tính thuế</th><th>Loại tờ khai</th>
+          <th>Lần nộp bổ sung</th><th>Lần nộp (Tờ khai)/File số (DLVC)</th><th>Cơ quan thuế tiếp nhận</th><th>Ngày nộp</th><th>Trạng thái</th><th>Hồ sơ đính kèm</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>1</td>
+          <td><i class="bi bi-eye" onclick="viewFile('x')"></i> <i class="bi bi-folder-symlink-fill" onclick="openFolder('x')"></i></td>
+          <td>000.000.00.G00-260101-000000000001</td>
+          <td>1.000001 - Khai thuế mẫu (mẫu)</td>
+          <td>01/MAU - Tờ khai mẫu (Q4/2025)</td>
+          <td>Q4/2025</td>
+          <td>Chính thức</td>
+          <td></td>
+          <td>1</td>
+          <td>00000 - Cơ quan thuế mẫu</td>
+          <td>03/01/2026 15:45</td>
+          <td>Đã chấp nhận</td>
+          <td></td>
+        </tr>
+        <tr>
+          <td>2</td>
+          <td><i class="bi bi-eye" onclick="viewFile('y')"></i></td>
+          <td>000.000.00.G00-260101-000000000002</td>
+          <td>1.000002 - Khai thuế khác (mẫu)</td>
+          <td>02/MAU-BS - Tờ khai bổ sung mẫu (Q3/2025)</td>
+          <td>Q3/2025</td>
+          <td>Bổ sung</td>
+          <td>1</td>
+          <td>2</td>
+          <td>00000 - Cơ quan thuế mẫu</td>
+          <td>05/01/2026 09:10</td>
+          <td>Đang xử lý</td>
+          <td><a href="#">tệp-mẫu.xml</a></td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+</div>

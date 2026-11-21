@@ -149,6 +149,6 @@ Làm trước được (không bị chặn): mô hình Domain, `IHoSoSource`, `H
 | TD03-03 | `HoSoSearchSession` (vòng đời CAPTCHA: bỏ mã sau mỗi lần gửi, tải ảnh mới, không tự gửi lại; tuần tự; giữ bộ lọc đã áp dụng) + T-DVC03-03..07 (13 test đạt) | Xong 21/11/2026 |
 | TD03-04 | `MockHoSoSource` (Debug; CAPTCHA tự vẽ, **dùng một lần**, hai nguồn, 23 bản ghi "(mẫu)", thông điệp rỗng đúng như cổng) | Xong 21/11/2026 |
 | TD03-05 | `HoSoForm` + nút "Hồ sơ đã nộp" ở cửa sổ nhóm DVC (chỉ bật khi đã đăng nhập; Release chưa có nguồn nên khóa) | Xong 21/11/2026, cần thử tay |
-| TD03-06 | Lấy mẫu HTML có dữ liệu + đo giới hạn (người dùng tự đăng nhập; G-DVC-02, 04, 05) | Chưa làm, cần người dùng |
-| TD03-07 | `HoSoHtmlParser` + T-DVC03-09 | Chưa làm, sau TD03-06 |
-| TD03-08 | `PortalHoSoSource` (Release) + T-DVC03-10 | Chưa làm, sau TD03-06 và TD01-05 |
+| TD03-06 | Khảo sát hồ sơ đã nộp tab DVC (người dùng đăng nhập, tự gõ CAPTCHA): endpoint, tham số, 13 cột, phân trang, sai CAPTCHA = HTTP 400. Tab thuế điện tử chưa khảo sát | Xong một phần 21/11/2026 (xem khảo sát mục 3) |
+| TD03-07 | `HoSoHtmlParser` (bỏ cột STT/Thao tác, đọc tổng/số trang/trang hiện tại, thông điệp rỗng, chỉ lấy văn bản) + mẫu giả `hoso-list.sample.html` + T-DVC03-09 | Xong 21/11/2026 |
+| TD03-08 | `PortalHoSoSource` (tab DVC): chạy trong `/tthc/tchs`, lấy CAPTCHA từ ảnh của form, `GET /tthc/ho-so/search` như `onChangePage`, 400 = sai CAPTCHA, hết phiên, danh sách trắng + T-DVC03-10 (15 test đạt); `HoSoFailure.NotSupported` cho tab thuế điện tử; nối vào Release | Xong về mã 21/11/2026, cần người dùng thử với 2 hồ sơ thật |

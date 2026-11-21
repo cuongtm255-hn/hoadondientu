@@ -53,7 +53,7 @@ namespace HoaDonDienTu.WinForms.Groups
             };
 #else
             // Release: một WebView ngầm dùng chung cho tra cứu TTHC công khai và đăng nhập DVC (BR-DVC-06: chỉ một trang DVC).
-            // Hồ sơ đã nộp chưa có nguồn thật (chờ mẫu HTML có dữ liệu) nên nút đó vẫn bị khóa.
+            // Hồ sơ đã nộp (tab Dịch vụ công) đọc thật qua cùng WebView; tab thuế điện tử chưa hỗ trợ ở bản này.
             var runner = new CefDvcPageRunner(m => logger.Info(m));
             var names = new HoaDonDienTu.Infrastructure.Settings.FileDvcUserNameStore(userNameFile);
             return new DvcServices
@@ -61,6 +61,8 @@ namespace HoaDonDienTu.WinForms.Groups
                 Session = session,
                 Login = new DvcLoginService(new HoaDonDienTu.Infrastructure.PublicService.PortalDvcLoginBrowser(runner), session, logger, names),
                 Tthc = new TthcService(new HoaDonDienTu.Infrastructure.PublicService.PortalTthcSource(runner), session, logger),
+                HoSo = new HoSoService(new HoaDonDienTu.Infrastructure.PublicService.PortalHoSoSource(runner), session, logger),
+                HoSoNotice = "Tab thuế điện tử chưa dùng được ở bản này; tab Dịch vụ công đọc dữ liệu thật của cổng.",
                 _disposable = runner
             };
 #endif

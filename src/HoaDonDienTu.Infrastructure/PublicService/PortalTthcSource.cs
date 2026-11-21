@@ -119,7 +119,7 @@ namespace HoaDonDienTu.Infrastructure.PublicService
         }
 
         /// <summary>Chuỗi JSON làm literal JavaScript an toàn; thêm escape cho U+2028/U+2029 và '&lt;' để không thoát khỏi chuỗi hay thẻ script.</summary>
-        internal static string Literal(string value)
+        public static string Literal(string value)
         {
             string json = JsonConvert.SerializeObject(value ?? string.Empty);
             return json.Replace("\u2028", "\\u2028").Replace("\u2029", "\\u2029").Replace("<", "\\u003c");

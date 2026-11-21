@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
 using HoaDonDienTu.Application.Abstractions;
@@ -24,7 +24,10 @@ namespace HoaDonDienTu.Application.PublicService
         SessionExpired,
         WrongCaptcha,
         Network,
-        PortalChanged
+        PortalChanged,
+
+        /// <summary>Nguồn (tab) này chưa dùng được ở bản đang chạy (ví dụ tab thuế điện tử ở bản Release chưa khảo sát).</summary>
+        NotSupported
     }
 
     public sealed class HoSoServiceException : Exception
@@ -102,6 +105,10 @@ namespace HoaDonDienTu.Application.PublicService
                 if (ex.Failure != HoSoFailure.None) _logger.Info(operation + ": " + ex.Failure);
                 throw;
             }
+            catch (NotSupportedException)
+            {
+                throw new HoSoServiceException(HoSoFailure.NotSupported);
+            }
             catch (DvcSessionExpiredException)
             {
                 _session.MarkExpired();
@@ -131,6 +138,7 @@ namespace HoaDonDienTu.Application.PublicService
                 case HoSoFailure.WrongCaptcha: return "Mã xác nhận không đúng. Hãy nhập mã mới.";
                 case HoSoFailure.Network: return "Không kết nối được cổng Dịch vụ công. Kiểm tra mạng rồi thử lại.";
                 case HoSoFailure.PortalChanged: return "Cổng đã đổi giao diện, chức năng này tạm chưa dùng được.";
+                case HoSoFailure.NotSupported: return "Nguồn này chưa dùng được ở bản này. Hãy chọn \"Hồ sơ đã nộp trên Dịch vụ công\".";
                 default: return string.Empty;
             }
         }
