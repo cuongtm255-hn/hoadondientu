@@ -22,3 +22,9 @@ dist/
 *.pfx
 *.p12
 *.snk
+
+# Bộ nhớ đệm do Chromium (CefSharp) sinh ra khi chạy ứng dụng; không đưa vào git
+DawnCache/
+GPUCache/
+**/DawnCache/
+**/GPUCache/
