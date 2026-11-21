@@ -21,7 +21,7 @@
 | FT-DVC-05 | Phản ánh quyết toán gửi CQT | `POST /tthc/tchs/pa/tracuu` | Không | Rỗng | S | DVC-05 |
 | FT-DVC-06 | TTHC đất đai | chưa quan sát | Không | Chưa thử | C | DVC-06 |
 | FT-DVC-07 | Thông báo lệ phí trước bạ | `POST /tthc/tchs/thong-bao-lptb` | Không | Rỗng | S | DVC-07 |
-| FT-DVC-08 | Xuất kết quả tra cứu (Excel) | chưa xác định (trang nạp thư viện `xlsx`) | — | — | C | — |
+| FT-DVC-08 | Xuất kết quả tra cứu (Excel) | app tự xuất từ bảng đã đọc; **đã làm cho danh mục TTHC** ([DD-DVC-02 mục 12](../detail-design/DD-DVC-02-TTHC-CATALOG.md)), các mục khác làm cùng bộ ghi khi có dữ liệu | — | — | C | — |
 | FT-DVC-09 | Các mục "Tra cứu" trong Dịch vụ khác | `/tthc/dich-vu-khac` (liên kết `#`) | ? | Chưa khảo sát | C | DVC-08 |
 
 ## 2. Mô tả

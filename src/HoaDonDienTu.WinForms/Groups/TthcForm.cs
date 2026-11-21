@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.IO;
 using System.Drawing;
 using System.Text;
 using System.Threading;
@@ -29,6 +31,8 @@ namespace HoaDonDienTu.WinForms.Groups
         private readonly KryptonButton _next = new KryptonButton();
         private readonly KryptonTextBox _pageBox = new KryptonTextBox();
         private readonly KryptonButton _go = new KryptonButton();
+        private readonly KryptonButton _exportPage = new KryptonButton();
+        private readonly KryptonButton _exportAll = new KryptonButton();
         private readonly Label _summary = new Label();
         private readonly Label _status = new Label();
 
@@ -98,6 +102,19 @@ namespace HoaDonDienTu.WinForms.Groups
                 int n;
                 if (int.TryParse(_pageBox.Text.Trim(), out n)) await GoToAsync(n);
             };
+            // Xuất Excel (FT-DVC-08): trang đang xem hoặc tất cả các trang của bộ lọc đã áp dụng.
+            _exportPage.SetBounds(690, 6, 120, 32);
+            _exportPage.Values.Text = "Xuất trang này";
+            UiIcons.Apply(_exportPage, UiIcon.Excel);
+            _exportPage.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            _exportPage.Click += async (s, e) => await ExportAsync(false);
+            _exportAll.SetBounds(818, 6, 130, 32);
+            _exportAll.Values.Text = "Xuất tất cả";
+            UiIcons.Apply(_exportAll, UiIcon.Excel);
+            _exportAll.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            _exportAll.Click += async (s, e) => await ExportAsync(true);
+            pager.Controls.Add(_exportPage);
+            pager.Controls.Add(_exportAll);
             pager.Controls.Add(_summary);
             pager.Controls.Add(_prev);
             pager.Controls.Add(_next);
@@ -215,6 +232,7 @@ namespace HoaDonDienTu.WinForms.Groups
             {
                 _summary.Text = "Chưa tìm. Nhập điều kiện rồi bấm Tìm.";
                 _prev.Enabled = _next.Enabled = _go.Enabled = _pageBox.Enabled = false;
+                _exportPage.Enabled = _exportAll.Enabled = false;
                 return;
             }
             _summary.Text = "Trang " + page.PageNumber + "/" + Math.Max(1, page.PageCount)
@@ -222,7 +240,85 @@ namespace HoaDonDienTu.WinForms.Groups
             _prev.Enabled = page.PageNumber > 1;
             _next.Enabled = page.PageNumber < page.PageCount;
             _go.Enabled = _pageBox.Enabled = page.PageCount > 1;
+            _exportPage.Enabled = page.Items.Count > 0;
+            _exportAll.Enabled = page.Items.Count > 0;
             _pageBox.Text = page.PageNumber.ToString();
+        }
+
+        /// <summary>Xuất Excel: một trang đang xem, hoặc tất cả các trang (tải tuần tự, có nghỉ giữa các trang, hủy được bằng cách đóng màn hình).</summary>
+        private async System.Threading.Tasks.Task ExportAsync(bool allPages)
+        {
+            if (_session.IsBusy || _session.Page == null) return;
+
+            string path;
+            using (var dialog = new SaveFileDialog
+            {
+                Title = "Xuất danh mục thủ tục hành chính ra Excel",
+                Filter = "Bảng tính Excel (*.xlsx)|*.xlsx",
+                DefaultExt = "xlsx",
+                FileName = TthcExcelExport.SuggestedFileName(DateTime.Now),
+                InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+                OverwritePrompt = true
+            })
+            {
+                if (dialog.ShowDialog(this) != DialogResult.OK) return;
+                path = dialog.FileName;
+            }
+
+            UseWaitCursor = true;
+            _exportPage.Enabled = _exportAll.Enabled = false;
+            try
+            {
+                TthcPage page = _session.Page;
+                IList<TthcSummary> items;
+                string scope;
+                if (allPages)
+                {
+                    int total = Math.Max(1, page.PageCount);
+                    _status.ForeColor = Color.DimGray;
+                    var progress = new Progress<int>(n => _status.Text = "Đang tải trang " + n + "/" + total + " để xuất Excel...");
+                    items = await _session.FetchAllPagesAsync(progress, _cancellation.Token);
+                    if (items == null)
+                    {
+                        ShowError();
+                        return;
+                    }
+                    scope = "Tất cả các trang (" + total + " trang)";
+                }
+                else
+                {
+                    items = page.Items;
+                    scope = "Trang " + page.PageNumber + "/" + Math.Max(1, page.PageCount);
+                }
+
+                using (var stream = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None))
+                {
+                    TthcExcelExport.Write(stream, items, _session.AppliedFilters, _session.Options, scope, DateTime.Now, null);
+                }
+                _status.ForeColor = Color.DimGray;
+                _status.Text = "Đã xuất " + items.Count + " thủ tục ra " + path;
+            }
+            catch (OperationCanceledException)
+            {
+            }
+            catch (IOException)
+            {
+                _status.ForeColor = Color.Firebrick;
+                _status.Text = "Không ghi được tệp. Kiểm tra tệp có đang mở trong Excel hoặc thư mục có quyền ghi không.";
+            }
+            catch (UnauthorizedAccessException)
+            {
+                _status.ForeColor = Color.Firebrick;
+                _status.Text = "Không có quyền ghi vào vị trí đã chọn. Hãy chọn thư mục khác.";
+            }
+            finally
+            {
+                if (!IsDisposed)
+                {
+                    UseWaitCursor = false;
+                    UpdatePager();
+                }
+            }
         }
 
         private async System.Threading.Tasks.Task OpenDetailAsync(int rowIndex)

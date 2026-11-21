@@ -148,3 +148,15 @@ Lần thử Release đầu tiên bị treo giao diện ~15 giây rồi sập `li
 - **Không phải nguyên nhân:** `Locale`, `PersistSessionCookies`, cờ tắt GPU, hộp thoại modal, vị trí cửa sổ chứa.
 - **Cách làm hiện tại:** `CefDvcPageRunner` dựng WebView ẩn trên **luồng giao diện riêng** (STA, `Application.Run`), địa chỉ truyền trong hàm tạo, chỉ gọi `LoadUrl` khi đổi sang trang khác sau khi đã nạp xong một trang. Log chẩn đoán kỹ thuật ghi vào nhật ký ứng dụng (không có dữ liệu người dùng).
 - **Cảnh báo cho tính năng DVC sau này (đăng nhập thật):** cùng quy tắc: không `LoadUrl` ngay sau `Show()`; kiểm thử WebView bằng trang cục bộ/`example.com`, không chạy spike vào cổng thật.
+
+## 12. Xuất Excel danh mục TTHC (FT-DVC-08, FR-DVC-EXP-002)
+
+- **Hai nút trên thanh phân trang:** "Xuất trang này" (trang đang xem) và "Xuất tất cả" (mọi trang của bộ lọc đã áp dụng). Cả hai bật khi có kết quả; chọn nơi lưu bằng hộp thoại, tên gợi ý `DanhMucTTHC-yyyyMMdd-HHmm.xlsx`.
+- **Nội dung tệp:** dòng 1 tiêu đề; các dòng thông tin: phạm vi (trang x/N hoặc tất cả), **bộ lọc bằng nhãn** (không phải mã nội bộ), số bản ghi trong tệp, thời điểm tra cứu; một dòng trống; tiêu đề cột cố định khi cuộn: STT, Mã, Tên thủ tục, Mức độ, Cơ quan thực hiện. Mọi ô là chuỗi (giữ nguyên số 0 đầu), tự xuống dòng, ký tự điều khiển lạ được bỏ.
+- **Tất cả các trang:** `TthcSearchSession.FetchAllPagesAsync` tải tuần tự theo **bộ lọc đã áp dụng** (không theo ô đang sửa), nghỉ 300 ms giữa các trang (BR-DVC-05), báo tiến độ "Đang tải trang n/N", không đổi trang đang hiển thị, hủy được bằng cách đóng màn hình. **Bất kỳ trang nào lỗi thì không ghi tệp** (không xuất dữ liệu dở dang).
+- **Cài đặt:** `TableExcelWriter` (bộ ghi bảng .xlsx riêng của nhóm DVC, cùng cách làm ADR 0003 nhưng không phụ thuộc bộ ghi hóa đơn) + `TthcExcelExport` (cột, mô tả bộ lọc, tên tệp). Tệp chỉ được ghi khi người dùng chủ động xuất (BR-DVC-07); lỗi ghi (tệp đang mở, không có quyền) báo rõ, không làm hỏng màn hình.
+- **Kiểm thử:** 14 test (gói zip đủ phần và cố định dòng tiêu đề, bố cục, số 0 đầu, ký tự đặc biệt, nhãn bộ lọc, danh sách rỗng, tiến độ, tải tuần tự, lỗi một trang, hủy).
+
+| Task | Nội dung | Trạng thái |
+|---|---|---|
+| TD02-09 | `TableExcelWriter`, `TthcExcelExport`, `FetchAllPagesAsync`, hai nút xuất + test | Xong 21/11/2026, cần thử tay |

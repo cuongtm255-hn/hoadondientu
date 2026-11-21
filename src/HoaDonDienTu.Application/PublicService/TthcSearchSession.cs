@@ -1,4 +1,5 @@
-using System;
+﻿using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using HoaDonDienTu.Domain.PublicService;
@@ -12,13 +13,28 @@ namespace HoaDonDienTu.Application.PublicService
     public sealed class TthcSearchSession
     {
         private readonly TthcService _service;
+        private readonly int _pageDelayMs;
         private TthcQuery _applied;
         private bool _busy;
 
-        public TthcSearchSession(TthcService service)
+        /// <param name="pageDelayMs">Nghỉ giữa các trang khi xuất tất cả các trang, để không dồn dập yêu cầu lên cổng (mặc định 300 ms).</param>
+        public TthcSearchSession(TthcService service, int pageDelayMs = 300)
         {
             if (service == null) throw new ArgumentNullException("service");
             _service = service;
+            _pageDelayMs = Math.Max(0, pageDelayMs);
+        }
+
+        /// <summary>Bộ lọc đã áp dụng lúc bấm Tìm (bản sao, không có số trang); null nếu chưa tìm.</summary>
+        public TthcQuery AppliedFilters
+        {
+            get
+            {
+                if (_applied == null) return null;
+                TthcQuery copy = _applied.Clone();
+                copy.PageNumber = 0;
+                return copy;
+            }
         }
 
         public TthcPage Page { get; private set; }
@@ -91,6 +107,42 @@ namespace HoaDonDienTu.Application.PublicService
             {
                 LastFailure = ex.Failure;
                 return false;
+            }
+            finally
+            {
+                _busy = false;
+            }
+        }
+
+        /// <summary>
+        /// Tải TẤT CẢ các trang của bộ lọc đã áp dụng, tuần tự và có nghỉ giữa các trang (BR-DVC-05), để xuất Excel. Không đổi <see cref="Page"/> đang hiển thị.
+        /// Trả null nếu bận, chưa tìm, hoặc bất kỳ trang nào lỗi (không trả kết quả dở dang; xem <see cref="LastFailure"/>).
+        /// </summary>
+        public async Task<IList<TthcSummary>> FetchAllPagesAsync(IProgress<int> progress, CancellationToken cancellationToken)
+        {
+            if (_busy || _applied == null || Page == null) return null;
+            _busy = true;
+            try
+            {
+                int pageCount = Math.Max(1, Page.PageCount);
+                var all = new List<TthcSummary>();
+                for (int number = 1; number <= pageCount; number++)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (number > 1 && _pageDelayMs > 0) await Task.Delay(_pageDelayMs, cancellationToken).ConfigureAwait(false);
+                    TthcQuery query = _applied.Clone();
+                    query.PageNumber = number;
+                    TthcPage page = await _service.SearchAsync(query, cancellationToken).ConfigureAwait(false);
+                    all.AddRange(page.Items);
+                    if (progress != null) progress.Report(number);
+                }
+                LastFailure = TthcFailure.None;
+                return all;
+            }
+            catch (TthcServiceException ex)
+            {
+                LastFailure = ex.Failure;
+                return null;
             }
             finally
             {
