@@ -215,3 +215,30 @@ G-03/G-09 (PDF) chặn T08-04/05; Excel và ZIP (T09-03/04) không cần thư vi
 | 02/11/2026 | T04-10 và T05-12: tra cứu mua vào theo mẫu thật (CCCD ở cả hai chiều, `ttxly` chỉ 5/6/8, "Tất cả" = tải ba lượt mỗi tháng), cổng giả bắt buộc `ttxly`; 1084 test qua, Release sạch. Còn xác nhận trên cổng thật việc bỏ `ttxly` |
 | 03/11/2026 | T06-03 và T05-02: repository SQLite cho hóa đơn và phiên tải nối vào `CompositionRoot` (Debug và Release); Release bật engine tải (đăng nhập thật vẫn chờ G-01); ADR 0004 hết hiệu lực. Còn: truy vấn SQL cho Kho hóa đơn (T07-02), khôi phục phiên lúc khởi động (T05-09), `company.db` trong gói sao lưu |
 | 03/11/2026 | T07-02 và T07-08: Kho hóa đơn lọc/sắp xếp/đếm bằng SQL (migration 2: `number_key`, `counterparty_sort`, `current_path`, `version_count`), chỉ nạp đầy đủ một trang; 100.000 hóa đơn giả mở trang đầu ≈ 0,5 s. Còn: khôi phục phiên lúc khởi động (T05-09), `company.db` trong gói sao lưu, đo `File.Exists` thật trên kho lớn |
+| 16/11/2026 | **Nhóm chức năng Dịch vụ công (DVC)** tách riêng khỏi nhóm Hóa đơn: khảo sát cổng `dichvucong.gdt.gov.vn/tthc/` (htmx, không có JSON API), tài liệu riêng ở [docs/dich-vu-cong/](../dich-vu-cong/README.md) (SRS-DVC, FEATURE-LIST, ADR DVC-0001, khảo sát, mockup đã che MST/tên). Màn chọn nhóm khi mở phần mềm |
+| 16/11/2026 | DD-DVC-00/01 và code: chọn nhóm (`GroupNavigator`), Đổi nhóm giữ phiên, form đăng nhập DVC (mô phỏng ở Debug) |
+| 18/11/2026 | DD-DVC-02 và code: danh mục TTHC (mô hình, `TthcService`, `TthcHtmlParser`, nguồn thật qua WebView ngầm); **sửa treo/sập CefSharp** (không `LoadUrl` ngay sau `Show()`, WebView trên luồng riêng); đã thử Release với cổng thật |
+| 21/11/2026 | Xuất Excel danh mục TTHC; đăng nhập DVC thật (cần header CSRF; `doiTuong` DN, `matKhau` base64); DD-DVC-03 hồ sơ đã nộp (tab DVC) đọc thật, bảng đọc bằng DOM của trình duyệt; xuất Excel hồ sơ; quyết định đổi trang không cần CAPTCHA mới. Rule giao diện: mọi button mới có icon. Chi tiết: [ghi chú bàn giao](../progress/2026-11-21-dvc-group.md) |
+
+
+## 8. Nhóm chức năng Dịch vụ công (DVC)
+
+Nhóm thứ hai của phần mềm, tài liệu và tiến độ tách riêng ở [docs/dich-vu-cong/](../dich-vu-cong/README.md). Phần mềm mở ra màn chọn nhóm: **Tra cứu hóa đơn** hoặc **Tra cứu Dịch vụ công thuế**; mỗi nhóm có phiên, WebView và dữ liệu riêng (một mã kích hoạt cho cả hai).
+
+| Tính năng | Tài liệu | Trạng thái | Kiểm chứng |
+|---|---|---|---|
+| FT-DVC-00 Chọn nhóm, Đổi nhóm | [DD-DVC-00](../dich-vu-cong/detail-design/DD-DVC-00-GROUP-CHOOSER.md) | ✅ (TD00-01..04); còn TD00-05 sửa SRS/FT-01 nhóm Hóa đơn (chờ duyệt) | Đã thử tay |
+| FT-DVC-01 Đăng nhập DVC | [DD-DVC-01](../dich-vu-cong/detail-design/DD-DVC-01-LOGIN.md) | ✅ Debug giả + Release thật (TD01-01..05) | Đã thử Release với tài khoản thật. Chưa thử đăng xuất |
+| FT-DVC-02 Danh mục TTHC + chi tiết | [DD-DVC-02](../dich-vu-cong/detail-design/DD-DVC-02-TTHC-CATALOG.md) | ✅ (TD02-01..09) | Đã thử Release với cổng thật. Chưa thử khi đang đăng nhập |
+| FT-DVC-03 Hồ sơ đã nộp | [DD-DVC-03](../dich-vu-cong/detail-design/DD-DVC-03-SUBMITTED-FILES.md) | 🟡 Tab Dịch vụ công ✅ (TD03-01..09); tab thuế điện tử ⬜ (chưa khảo sát) | Đã thử Release với hồ sơ thật (1 trang). **Chưa thử đổi trang nhiều trang** (giả định không cần CAPTCHA mới) |
+| FT-DVC-08 Xuất Excel | DD-DVC-02 mục 12, DD-DVC-03 mục 11 | ✅ cho TTHC và hồ sơ đã nộp | Đã thử tay |
+| FT-DVC-04 Lưu tạm, 05 Phản ánh, 07 LPTB, 06 TTHC đất đai, 09 Dịch vụ khác | [FEATURE-LIST](../dich-vu-cong/requirements/FEATURE-LIST.md) | ⬜ Chưa có DD; đã thấy các đường dẫn menu | Cần khảo sát có dữ liệu thật |
+
+**Quyết định đã chốt** ([SRS-DVC mục 18](../dich-vu-cong/requirements/SRS-DVC.md)): một mã kích hoạt cho cả hai nhóm; màn chọn nhóm luôn hiện, chọn sẵn nhóm gần nhất; đổi nhóm giữ phiên; v1 chỉ đăng nhập Thuế điện tử – Doanh nghiệp; không lưu cục bộ danh mục TTHC; "Dịch vụ khác" ngoài phạm vi v1; tên đăng nhập điền sẵn MST nhưng cho sửa. Ngày 21/11/2026: đổi trang hồ sơ đã nộp dùng lại mã CAPTCHA của lần tìm (ngoại lệ có điều kiện của BR-DVC-03; cổng từ chối thì hỏi mã mới).
+
+**Cổng kỹ thuật:** G-DVC-01..03 đã xác nhận bằng khảo sát và thử Release (đăng nhập, CSRF, gửi form). G-DVC-04 (HTML có dữ liệu) xong cho hồ sơ đã nộp tab DVC; còn lưu tạm, phản ánh, LPTB, đất đai, tab thuế điện tử. G-DVC-05 (đổi trang, giới hạn ngày/tần suất) và G-DVC-06 (một tab) còn mở một phần.
+
+**Rủi ro còn mở:** (1) đổi trang nhiều trang với cổng thật; (2) tra cứu TTHC công khai khi đang đăng nhập có thể bị chuyển hướng; (3) cổng đổi giao diện (các bộ phân tích có báo lỗi rõ và ghi cấu trúc không dữ liệu vào nhật ký); (4) bài học CefSharp: truyền địa chỉ trong hàm tạo, không `LoadUrl` ngay sau `Show()` (DD-DVC-02 mục 11).
+
+**Thứ tự đề xuất tiếp theo:** khảo sát và làm tab thuế điện tử của hồ sơ đã nộp; DD cho lưu tạm, phản ánh, LPTB (cần đăng nhập và dữ liệu thật); kiểm chứng đổi trang khi có tài khoản nhiều hồ sơ; thử đăng xuất và TTHC khi đang đăng nhập.
+
