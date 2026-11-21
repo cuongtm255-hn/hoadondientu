@@ -230,7 +230,7 @@ Nhóm thứ hai của phần mềm, tài liệu và tiến độ tách riêng �
 | FT-DVC-00 Chọn nhóm, Đổi nhóm | [DD-DVC-00](../dich-vu-cong/detail-design/DD-DVC-00-GROUP-CHOOSER.md) | ✅ (TD00-01..04); còn TD00-05 sửa SRS/FT-01 nhóm Hóa đơn (chờ duyệt) | Đã thử tay |
 | FT-DVC-01 Đăng nhập DVC | [DD-DVC-01](../dich-vu-cong/detail-design/DD-DVC-01-LOGIN.md) | ✅ Debug giả + Release thật (TD01-01..05) | Đã thử Release với tài khoản thật. Chưa thử đăng xuất |
 | FT-DVC-02 Danh mục TTHC + chi tiết | [DD-DVC-02](../dich-vu-cong/detail-design/DD-DVC-02-TTHC-CATALOG.md) | ✅ (TD02-01..09) | Đã thử Release với cổng thật. Chưa thử khi đang đăng nhập |
-| FT-DVC-03 Hồ sơ đã nộp | [DD-DVC-03](../dich-vu-cong/detail-design/DD-DVC-03-SUBMITTED-FILES.md) | ✅ Tab Dịch vụ công (TD03-01..09); 🟡 tab thuế điện tử đã khảo sát và làm về mã (TD03-10), chờ thử Release | Đã thử Release với hồ sơ thật (1 trang). **Chưa thử đổi trang nhiều trang** (giả định không cần CAPTCHA mới) |
+| FT-DVC-03 Hồ sơ đã nộp | [DD-DVC-03](../dich-vu-cong/detail-design/DD-DVC-03-SUBMITTED-FILES.md) | ✅ Tab Dịch vụ công (TD03-01..09); ✅ tab thuế điện tử (TD03-10, đã thử Release) | Đã thử Release với hồ sơ thật (1 trang). **Chưa thử đổi trang nhiều trang** (giả định không cần CAPTCHA mới) |
 | FT-DVC-08 Xuất Excel | DD-DVC-02 mục 12, DD-DVC-03 mục 11 | ✅ cho TTHC và hồ sơ đã nộp | Đã thử tay |
 | FT-DVC-04 Lưu tạm, 05 Phản ánh, 07 LPTB, 06 TTHC đất đai, 09 Dịch vụ khác | [FEATURE-LIST](../dich-vu-cong/requirements/FEATURE-LIST.md) | ⬜ Chưa có DD; đã thấy các đường dẫn menu | Cần khảo sát có dữ liệu thật |
 

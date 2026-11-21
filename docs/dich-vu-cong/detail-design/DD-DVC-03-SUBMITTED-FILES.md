@@ -174,5 +174,5 @@ Làm trước được (không bị chặn): mô hình Domain, `IHoSoSource`, `H
 
 | Task | Nội dung | Trạng thái |
 |---|---|---|
-| TD03-10 | Khảo sát tab thuế điện tử + `PortalHoSoSource` hỗ trợ `ThueDienTu` (bỏ `NotSupported` khỏi đường chạy) | Xong về mã 21/11/2026, cần người dùng thử Release |
+| TD03-10 | Khảo sát tab thuế điện tử + \`PortalHoSoSource\` hỗ trợ \`ThueDienTu\`; sửa ảnh CAPTCHA (gọi \`refreshCaptcha\` của trang), khung rỗng của tab là kết quả rỗng, thông điệp "Không có dữ liệu" lớn | Xong 21/11/2026, **đã thử Release (người dùng xác nhận tìm thành công và thông báo rỗng OK)** |
 
