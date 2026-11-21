@@ -165,3 +165,14 @@ Làm trước được (không bị chặn): mô hình Domain, `IHoSoSource`, `H
 | Task | Nội dung | Trạng thái |
 |---|---|---|
 | TD03-09 | `HoSoExcelExport`, `FetchAllPagesAsync`, hai nút xuất + test | Xong 21/11/2026, đã thử tay (người dùng xác nhận xuất OK) |
+
+## 12. Tab thuế điện tử (khảo sát 21/11/2026)
+
+- **Nguồn thật:** `PortalHoSoSource` hỗ trợ cả hai nguồn. Tab thuế điện tử: `POST /tthc/tchs/thuedientu` (urlencoded, header `X-XSRF-TOKEN` từ meta) với giá trị của `form_search_tdt` (ghi đè `maToKhai_tdt`, `maGiaoDichTthc_tdt`, `tuNgay_tdt`, `denNgay_tdt`, `scope_tdt2` = `SELF`, `mstUyQuyen_tdt2`, `captcha`, `page`, `size`); ảnh CAPTCHA từ `#form_search_tdt`; bảng 11 cột (bỏ STT và Thao tác → 9 cột dữ liệu) do trình duyệt đọc như tab DVC. Sai CAPTCHA mặc định coi là HTTP 400 (chưa thử riêng).
+- **Hạn chế:** `scope_tdt2` luôn `SELF` (chưa có lựa chọn "Khai thay theo hợp đồng DLT"); ô "Tờ khai" là chữ gõ (cổng cần mã trong ô chọn 484 lựa chọn, chưa đọc danh sách); chỉ có tờ khai nộp trước 01/07/2025.
+- **Kiểm thử:** 6 test mới với runner giả (địa chỉ, trường, CSRF, cột, kết quả rỗng, 400/401, nguồn CAPTCHA, danh sách trắng và literal).
+
+| Task | Nội dung | Trạng thái |
+|---|---|---|
+| TD03-10 | Khảo sát tab thuế điện tử + `PortalHoSoSource` hỗ trợ `ThueDienTu` (bỏ `NotSupported` khỏi đường chạy) | Xong về mã 21/11/2026, cần người dùng thử Release |
+

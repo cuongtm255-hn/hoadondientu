@@ -335,16 +335,124 @@ namespace HoaDonDienTu.Infrastructure.Tests
             Assert.ThrowsAsync<HoSoParseException>(() => new PortalHoSoSource(runner).SearchAsync(Query(), CancellationToken.None));
         }
 
-        [Test]
-        public void ETaxSource_IsNotSupported_AndNeverReachesRunner()
+        private static HoSoQuery ETaxQuery(int page = 1)
         {
-            var runner = new FakeRunner();
-            var q = Query();
-            q.Source = HoSoSource.ThueDienTu;
+            return new HoSoQuery
+            {
+                Source = HoSoSource.ThueDienTu,
+                FromDate = new DateTime(2025, 1, 1),
+                ToDate = new DateTime(2025, 1, 31),
+                CaptchaText = "kY7Q2",
+                TransactionCode = "GD-MAU-0001",
+                Declaration = "01",
+                AuthorizedTaxCode = "0109999999",
+                PageNumber = page
+            };
+        }
 
-            Assert.Throws<NotSupportedException>(() => new PortalHoSoSource(runner).SearchAsync(q, CancellationToken.None).GetAwaiter().GetResult());
-            Assert.Throws<NotSupportedException>(() => new PortalHoSoSource(runner).GetCaptchaAsync(HoSoSource.ThueDienTu, CancellationToken.None).GetAwaiter().GetResult());
-            Assert.AreEqual(0, runner.Scripts.Count);
+        private static readonly string[] ETaxHeads =
+        {
+            "STT", "Mã giao dịch", "Tờ khai/Phụ lục", "Kỳ tính thuế", "Loại tờ khai", "Lần nộp", "Lần bổ sung", "Ngày nộp", "Nơi nộp",
+            "Tiến trình giải quyết hồ sơ (Trạng thái)", "Thao tác"
+        };
+
+        [Test]
+        public async Task ETax_Search_PostsTheFormToTheETaxEndpoint_WithCsrfAndFields()
+        {
+            var runner = new FakeRunner { Reply = DomReply(new { heads = ETaxHeads, rows = new string[0][] }, new[] { "1", "1", "0" }) };
+
+            await new PortalHoSoSource(runner).SearchAsync(ETaxQuery(2), CancellationToken.None);
+
+            string script = runner.Scripts[0];
+            Assert.AreEqual(PortalHoSoSource.PagePath, runner.Paths[0]);
+            StringAssert.Contains("form_search_tdt", script);
+            StringAssert.Contains("/tthc/tchs/thuedientu", script);
+            StringAssert.Contains("method:'POST'", script);
+            StringAssert.Contains("application/x-www-form-urlencoded", script);
+            StringAssert.Contains("bangKetQuaTraCuu_tdt", script);
+            StringAssert.Contains("csrf-header", script);
+            StringAssert.Contains("csrf-token", script);
+            StringAssert.Contains("\"tuNgay_tdt\":\"01/01/2025\"", script);
+            StringAssert.Contains("\"denNgay_tdt\":\"31/01/2025\"", script);
+            StringAssert.Contains("\"maGiaoDichTthc_tdt\":\"GD-MAU-0001\"", script);
+            StringAssert.Contains("\"maToKhai_tdt\":\"01\"", script);
+            StringAssert.Contains("\"scope_tdt2\":\"SELF\"", script);
+            StringAssert.Contains("\"mstUyQuyen_tdt2\":\"0109999999\"", script);
+            StringAssert.Contains("\"captcha\":\"kY7Q2\"", script);
+            StringAssert.Contains("\"page\":\"2\"", script);
+            StringAssert.Contains("\"size\":\"10\"", script);
+            StringAssert.DoesNotContain("document.cookie", script);
+            StringAssert.DoesNotContain("localStorage", script);
+        }
+
+        [Test]
+        public async Task ETax_Table_IsParsed_With9DataColumns()
+        {
+            var row = new[] { "1", "9999", "01/MAU - Tờ khai mẫu", "Q4/2024", "Chính thức", "1", "0", "10/01/2025 09:15:00", "Thuế cơ sở mẫu", "Cơ quan thuế chấp nhận hồ sơ", "" };
+            var runner = new FakeRunner { Reply = DomReply(new { heads = ETaxHeads, rows = new[] { row } }, new[] { "1", "1", "1" }, "") };
+
+            HoSoPage page = await new PortalHoSoSource(runner).SearchAsync(ETaxQuery(), CancellationToken.None);
+
+            CollectionAssert.AreEqual(
+                new[] { "Mã giao dịch", "Tờ khai/Phụ lục", "Kỳ tính thuế", "Loại tờ khai", "Lần nộp", "Lần bổ sung", "Ngày nộp", "Nơi nộp", "Tiến trình giải quyết hồ sơ (Trạng thái)" },
+                page.Columns);
+            Assert.AreEqual("9999", page.Rows[0].Cells[0]);
+            Assert.AreEqual("10/01/2025 09:15:00", page.Rows[0].Cells[6]);
+            Assert.AreEqual(1, page.TotalRecords);
+            Assert.AreEqual(1, page.PageNumber, "Ô trang trống thì lấy từ dòng tổng");
+        }
+
+        [Test]
+        public async Task ETax_EmptyResult_NoTable_IsFriendlyEmptyPage()
+        {
+            var runner = new FakeRunner { Reply = DomReply(null, new[] { "", "0", "0" }, "", "Trang /0 - Tổng số bản ghi: 0") };
+
+            HoSoPage page = await new PortalHoSoSource(runner).SearchAsync(ETaxQuery(), CancellationToken.None);
+
+            Assert.AreEqual(0, page.Rows.Count);
+            Assert.AreEqual("Không có dữ liệu", page.EmptyMessage);
+        }
+
+        [Test]
+        public void ETax_Http400_IsWrongCaptcha_And401IsSessionExpired()
+        {
+            var bad = new FakeRunner { Reply = JsonConvert.SerializeObject(new { http = 400, loginPage = false, body = "" }) };
+            var ex = Assert.ThrowsAsync<HoSoServiceException>(() => new PortalHoSoSource(bad).SearchAsync(ETaxQuery(), CancellationToken.None));
+            Assert.AreEqual(HoSoFailure.WrongCaptcha, ex.Failure);
+
+            var gone = new FakeRunner { Reply = JsonConvert.SerializeObject(new { http = 401, loginPage = false, body = "" }) };
+            Assert.ThrowsAsync<DvcSessionExpiredException>(() => new PortalHoSoSource(gone).SearchAsync(ETaxQuery(), CancellationToken.None));
+        }
+
+        [Test]
+        public async Task ETax_Captcha_ComesFromTheETaxFormImage()
+        {
+            var runner = new FakeRunner { Reply = JsonConvert.SerializeObject(new { png = "data:image/png;base64," + Convert.ToBase64String(new byte[] { 5, 6 }) }) };
+
+            byte[] bytes = await new PortalHoSoSource(runner).GetCaptchaAsync(HoSoSource.ThueDienTu, CancellationToken.None);
+
+            CollectionAssert.AreEqual(new byte[] { 5, 6 }, bytes);
+            StringAssert.Contains("form_search_tdt", runner.Scripts[0]);
+            StringAssert.DoesNotContain("form-search-advanced", runner.Scripts[0]);
+        }
+
+        [Test]
+        public async Task ETax_Script_UsesOnlyTheWhitelistedUrl_AndUserValuesAreLiterals()
+        {
+            var runner = new FakeRunner { Reply = DomReply(new { heads = ETaxHeads, rows = new string[0][] }, new[] { "1", "1", "0" }) };
+            var q = ETaxQuery();
+            q.CaptchaText = "\"; alert(1); //";
+            q.TransactionCode = "</script><script>x</script>\n";
+
+            await new PortalHoSoSource(runner).SearchAsync(q, CancellationToken.None);
+
+            string script = runner.Scripts[0];
+            StringAssert.DoesNotContain("</script", script);
+            StringAssert.DoesNotContain("\n", script);
+            foreach (System.Text.RegularExpressions.Match m in System.Text.RegularExpressions.Regex.Matches(script, @"fetch\((""[^""]*"")"))
+            {
+                Assert.AreEqual("/tthc/tchs/thuedientu", JsonConvert.DeserializeObject<string>(m.Groups[1].Value));
+            }
         }
 
         [Test]

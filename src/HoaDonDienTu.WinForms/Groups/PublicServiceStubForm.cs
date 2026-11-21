@@ -62,7 +62,7 @@ namespace HoaDonDienTu.WinForms.Groups
                 Login = new DvcLoginService(new HoaDonDienTu.Infrastructure.PublicService.PortalDvcLoginBrowser(runner), session, logger, names),
                 Tthc = new TthcService(new HoaDonDienTu.Infrastructure.PublicService.PortalTthcSource(runner), session, logger),
                 HoSo = new HoSoService(new HoaDonDienTu.Infrastructure.PublicService.PortalHoSoSource(runner), session, logger),
-                HoSoNotice = "Tab thuế điện tử chưa dùng được ở bản này; tab Dịch vụ công đọc dữ liệu thật của cổng.",
+                HoSoNotice = "Đọc dữ liệu thật của cổng. Mỗi lần Tìm cần gõ mã xác nhận mới; đổi trang dùng lại mã của lần tìm.",
                 _disposable = runner
             };
 #endif

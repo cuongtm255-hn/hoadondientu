@@ -169,3 +169,18 @@ Quan sát bằng Chrome, một tab, ghi sự kiện htmx của trang (tên tham 
 
 **Quyết định của chủ sản phẩm (21/11/2026): chốt đổi trang KHÔNG cần CAPTCHA mới**, tức dùng lại mã của lần tìm đã ra kết quả, giống hành vi của chính trang cổng. Đây là giả định chưa kiểm chứng (tài khoản thử không đủ dữ liệu để phân trang); xem BR-DVC-03 và DD-DVC-03 mục 4.3 về cách phòng ngừa nếu cổng từ chối.
 
+## Bổ sung 21/11/2026 (4): tra cứu hồ sơ đã nộp, tab thuế điện tử (đã đăng nhập, người dùng tự gõ CAPTCHA)
+
+Đọc mã nguồn công khai của trang `/tthc/tchs` (nút `#btnSearch_tdt`, `changePage_tdt`, `goToPage_tdt`) và ghi sự kiện htmx khi người dùng tìm. Tài khoản thử có 1 hồ sơ trong 01/2025 (không có trong 06/2025).
+
+| Mục | Kết quả |
+|---|---|
+| Form | `form_search_tdt`, `method=post`, `action=/tthc/tchs/thuedientu`. Trường: `_csrf`, `page`, `size` (ẩn), `maToKhai_tdt` (ô chọn, 484 lựa chọn), `maGiaoDichTthc_tdt`, `tuNgay_tdt`, `denNgay_tdt` (**mặc định 01/06/2025 đến 30/06/2025**, `dd/MM/yyyy`), `scope_tdt2` (`SELF`, `PROXY`), `mstUyQuyen_tdt2`, `captcha`. Ảnh CAPTCHA `#image-capt-tdt`, đổi mã `refreshCaptcha('image-capt-tdt')`. Lưu ý của cổng: chỉ hỗ trợ tờ khai nộp **trước 01/07/2025** |
+| Tìm | Bấm nút gọi `htmx.ajax('POST', <action của form>, {source:'#form_search_tdt', target:'#bangKetQuaTraCuu_tdt', values: htmx.values(form)})`. Yêu cầu thật: `POST /tthc/tchs/thuedientu`, `Content-Type` form urlencoded, header htmx + `accept` + **`X-XSRF-TOKEN`**; tham số gồm toàn bộ trường form kèm `btnSearch_tdt` (rỗng). Lần tìm đầu `page` và `size` rỗng. Kiểm tra phía trang: bắt buộc nhập CAPTCHA, kiểm tra loại tờ khai/ngày (`validLoaiTKhai_TDT`) |
+| Kết quả | HTTP 200, mảnh HTML. **Rỗng:** ~0,9 KB, chỉ có khung phân trang (có chú thích HTML), không có bảng. **Có dữ liệu:** dòng "Trang x/ N — Tổng số bản ghi: n", ô nhảy trang `goToPage_tdt` (thuộc tính `max`), `.pagination`, bảng `table.table-bordered.table-hover` có `thead` và `tbody`, mỗi dòng đúng số ô bằng số tiêu đề (khác tab DVC) |
+| Cột bảng (11) | STT; Mã giao dịch; Tờ khai/Phụ lục (`tên (kỳ)(mã)`); Kỳ tính thuế (vd `Q4/2024`); Loại tờ khai ("Chính thức"); Lần nộp; Lần bổ sung; Ngày nộp (`dd/MM/yyyy HH:mm:ss`); Nơi nộp; Tiến trình giải quyết hồ sơ (Trạng thái); Thao tác (biểu tượng) |
+| Phân trang | Liên kết `a` có `onclick` và `data-page`, `data-size`; `changePage_tdt(el)` đặt `page`, `size` vào form rồi POST lại **cùng toàn bộ giá trị form, kể cả ô CAPTCHA**; `goToPage_tdt()` tương tự. Giống tab DVC |
+| Lỗi CAPTCHA | Có bộ nghe `htmx:responseError` (lỗi HTTP) hiển thị nội dung phản hồi hoặc "Mã captcha không chính xác"; tương tự tab DVC (HTTP 400). **Chưa thử sai CAPTCHA ở tab này** |
+
+Bổ sung cho tab DVC: sau **mỗi** yêu cầu trang gọi `refreshCaptcha('image-capt')` (ảnh mới, mã máy chủ đổi), nhưng đổi trang vẫn gửi chữ đang có trong ô. Nếu cổng chấp nhận được hay không vẫn chưa kiểm chứng (cần tài khoản nhiều hồ sơ).
+
