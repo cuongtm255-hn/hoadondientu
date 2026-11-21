@@ -118,3 +118,25 @@ Quan sát bằng Chrome (một tab, chưa đăng nhập) bằng cách ghi sự k
 | Cookie | Trang đặt cookie phiên (đọc được qua JS 8 cookie; tên và giá trị không ghi nhận) |
 
 **Hệ quả thiết kế:** gửi trong trang bằng chính cơ chế của cổng là đủ, app không phải tự xử lý token: dựng `FormData` từ `#form_search` (đã có `_csrf`), thêm `page`/`size`, gọi `fetch` cùng gốc (same-origin) với header `accept: text/html-partial`, `X-XSRF-TOKEN` đọc từ meta ngay lúc gửi, `HX-Request: true`. Hoặc gọi `htmx.ajax` của trang. Không sao chép cookie/token ra ngoài WebView.
+
+## Bổ sung 21/11/2026: luồng đăng nhập thật (G-DVC-02), đọc từ mã nguồn của trang
+
+Bộ ghi request cài vào trang không bắt được gì vì trang chuyển hướng giữa các bước làm mất nó. Thay vào đó đọc **mã JavaScript công khai** của trang `/tthc/login` (hàm `submitLDAP`, `processChonDT`, `reloadCaptcha`) sau khi người dùng tự đăng nhập; **không** đọc, ghi hay gửi bất kỳ giá trị đăng nhập nào. Không ghi token/cookie vào tài liệu.
+
+| Mục | Kết quả |
+|---|---|
+| Chọn loại tài khoản | Ba thẻ: Thuế điện tử, Định danh điện tử, Công chức thuế. Thuế điện tử → hộp chọn đối tượng: `processChonDT('CN' hoặc 'DN', …)`; giá trị được ghi vào ô ẩn `input[name=ldap]` |
+| **`doiTuong`** | **`DN`** = Doanh nghiệp, **`CN`** = Cá nhân (đóng G-DVC-02). Với Cá nhân tên đăng nhập có thêm gợi ý "/CCCD" |
+| Ảnh CAPTCHA | **`GET /tthc/login/getCaptcha?<thời gian>`** (sửa lại: trước đây ghi nhầm là `/tthc/getCaptcha`). Nút đổi mã đặt `src` của `#image-capt` tới địa chỉ này với tem thời gian mới |
+| Gửi đăng nhập | jQuery `$.ajax` **`POST /tthc/loginLDAP`**, dạng **form urlencoded** (mặc định của jQuery, **không phải JSON**). Trường: `tenDN` (nguyên văn), **`matKhau` = base64 của mật khẩu UTF-8** (`btoa(unescape(encodeURIComponent(matKhau)))`, chỉ là mã hóa base64, không phải mã hóa bảo mật), `doiTuong` (`DN`/`CN`), `captcha` |
+| CSRF của lần đăng nhập | **Không** gửi header CSRF cho `loginLDAP` (không có `ajaxSetup`/`beforeSend` cho jQuery); header `X-XSRF-TOKEN` chỉ dùng cho htmx và cho `POST /tthc/logout` (dạng JSON). Trang đăng nhập có `meta csrf-token`/`csrf-header` |
+| Kiểm tra phía trang trước khi gửi | Thiếu tên/mật khẩu/CAPTCHA thì báo lỗi ngay (không gọi mạng); tên đăng nhập có khoảng trắng bị từ chối "Thông tin tên đăng nhập hoặc mật khẩu chưa đúng". Gửi xong nút đăng nhập bị khóa cho tới khi có phản hồi |
+| Phản hồi | JSON có `status` (chuỗi): **`"200"`** thành công, trang chuyển tới `/tthc/home`; **`"201"`** thành công kèm `value` (chuyển tới `/tthc/` + `value`, hộp đánh giá dịch vụ ở trang chủ); **giá trị khác**: lỗi, thông báo lấy từ trường **`desc`**, trang tải lại CAPTCHA và xóa ô CAPTCHA. Lỗi HTTP/mạng: "Đã có lỗi hệ thống xảy ra!" |
+| Sau đăng nhập | Tên tổ chức nằm ở `span.ten_dn` (trong `.user-name`), MST ở mục menu `.user-name.dropdown-item` |
+| Đăng xuất | `POST /tthc/logout` (JSON, header `X-XSRF-TOKEN` lấy từ meta) |
+| Cổng chặn nhiều tab | Cả trang đăng nhập hiện "Tài khoản hiện đang được sử dụng trên một tab khác" khi có tab khác của cùng hồ sơ Chrome (khóa `localStorage.APP_SINGLE_TAB_ACTIVE`); đóng tab kia là hết |
+
+**Chưa biết (cần thử lỗi thật, chưa làm):** nội dung `desc` và giá trị `status` khi sai CAPTCHA/sai mật khẩu/khóa tài khoản; giá trị `value` của `"201"`; thời hạn phiên; tên cookie phiên; giới hạn thử sai.
+
+**Hệ quả thiết kế:** app đăng nhập bằng cách đặt các ô `tenDN`, `matKhau`, `ldap`, `captcha` rồi chạy chính `submitLDAP()` của trang (hoặc dựng đúng yêu cầu trên bằng `fetch` cùng gốc, nhớ mã hóa `matKhau` base64 UTF-8), đọc `status`/`desc` từ phản hồi. Mật khẩu chỉ đi qua dạng literal JSON vào script, không ghi nhật ký.
+

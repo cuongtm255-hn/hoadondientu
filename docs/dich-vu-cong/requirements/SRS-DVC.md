@@ -121,9 +121,9 @@ Giống nhóm Hóa đơn: Windows 7 trở lên, .NET Framework 4.5.2, CefSharp 1
 ### 8.2 Đăng nhập cổng DVC (FR-DVC-AUTH) — FT-DVC-01
 
 - FR-DVC-AUTH-001: Form đăng nhập riêng của app (chỉ loại Thuế điện tử – Doanh nghiệp ở v1): tên đăng nhập (điền sẵn MST doanh nghiệp đang chọn, cho sửa; app chỉ nhớ tên đăng nhập, không nhớ mật khẩu), mật khẩu (che ký tự, có nút hiện/ẩn), ảnh CAPTCHA, nút đổi mã, nút Đăng nhập. Mật khẩu và CAPTCHA do người dùng tự gõ.
-- FR-DVC-AUTH-002: App nạp trang cổng trong WebView ngầm, lấy ảnh CAPTCHA (`GET /tthc/getCaptcha?<tem thời gian>`) và hiển thị trên form riêng **[Giả định]**; nếu lấy ảnh thất bại, đề nghị dùng đăng nhập trực tiếp trên trang cổng.
-- FR-DVC-AUTH-003: Khi bấm Đăng nhập, app gọi `POST /tthc/loginLDAP` **trong trang** với 4 trường `tenDN`, `matKhau`, `doiTuong`, `captcha` **[Đã thấy]**; giá trị `doiTuong` cho Doanh nghiệp xác định ở G-DVC-02.
-- FR-DVC-AUTH-004: Thành công khi phản hồi JSON có `status` biểu thị thành công và trang chuyển về `/tthc/home` **[Đã thấy một phần; giá trị `status` cần xác nhận]**. Hiển thị tên tổ chức do cổng trả để người dùng đối chiếu.
+- FR-DVC-AUTH-002: App nạp trang cổng trong WebView ngầm, lấy ảnh CAPTCHA (`GET /tthc/login/getCaptcha?<tem thời gian>`) và hiển thị trên form riêng **[Giả định]**; nếu lấy ảnh thất bại, đề nghị dùng đăng nhập trực tiếp trên trang cổng.
+- FR-DVC-AUTH-003: Khi bấm Đăng nhập, app gọi `POST /tthc/loginLDAP` **trong trang**, dạng **form urlencoded**, 4 trường `tenDN`, `matKhau` (**base64 của mật khẩu UTF-8**), `doiTuong` (`DN` cho Doanh nghiệp), `captcha` **[Đã xác nhận 21/11/2026]**.
+- FR-DVC-AUTH-004: Thành công khi phản hồi JSON có `status` = `"200"` (về `/tthc/home`) hoặc `"201"` (kèm `value`); giá trị khác là lỗi, thông báo ở `desc` **[Đã xác nhận 21/11/2026; nội dung `desc` cụ thể chưa thấy]**. Hiển thị tên tổ chức do cổng trả để người dùng đối chiếu.
 - FR-DVC-AUTH-005: Thất bại (sai mật khẩu/CAPTCHA, khóa tài khoản, lỗi mạng): hiển thị thông báo rõ, xóa ô mật khẩu và CAPTCHA, tải CAPTCHA mới.
 - FR-DVC-AUTH-006: Phương án dự phòng: nút "Đăng nhập trên trang cổng" hiển thị WebView thường (chọn Thuế điện tử → Doanh nghiệp) để người dùng tự thao tác.
 - FR-DVC-AUTH-007: Phát hiện hết phiên hoặc bị đá do tab khác: khi trang trả về trang đăng nhập hoặc thông báo "đang được sử dụng trên một tab khác" thì dừng tác vụ, báo người dùng và mời đăng nhập lại; không tự đăng nhập lại.
@@ -322,7 +322,7 @@ Nhóm DVC dùng chung cơ chế bản quyền (ADR 0010): một mã kích hoạt
 | Cổng | Nội dung | Đầu ra |
 |---|---|---|
 | G-DVC-01 | Xác nhận gọi `loginLDAP` được từ trang trong WebView ngầm (giá trị `status`, thông báo lỗi, thời hạn phiên) | ADR/ghi chú, mẫu đã làm sạch |
-| G-DVC-02 | Giá trị `doiTuong` (Doanh nghiệp/Cá nhân), kiểu thân gửi (JSON/form) | cập nhật FR-DVC-AUTH-003 |
+| G-DVC-02 | Giá trị `doiTuong` (Doanh nghiệp/Cá nhân), kiểu thân gửi (JSON/form) | **Đã xác nhận 21/11/2026**: `DN`/`CN`, form urlencoded, `matKhau` base64 UTF-8, phản hồi `status` "200"/"201", lỗi ở `desc` (xem khảo sát). Còn lại: nội dung lỗi thật, thời hạn phiên |
 | G-DVC-03 | Cơ chế CSRF và header/cookie bắt buộc của htmx | **Đã xác nhận 18/11/2026 cho trang công khai TTHC** (header `X-XSRF-TOKEN` từ meta, `accept: text/html-partial`, trường `_csrf`); xem khảo sát mục (2). Còn lại cho các mục sau đăng nhập |
 | G-DVC-04 | Mẫu HTML **có dữ liệu** cho hồ sơ đã nộp, lưu tạm, phản ánh, LPTB (hai chế độ), đất đai; cột bảng; phân trang | thiết kế bảng, bộ phân tích |
 | G-DVC-05 | Cổng có nút xuất Excel/PDF không; giới hạn khoảng ngày; giới hạn tần suất/CAPTCHA sai | cập nhật FR-DVC-EXP, BR-DVC-05 |

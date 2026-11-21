@@ -86,7 +86,7 @@ DvcLoginForm mở
 
 | Cổng | Cần xác nhận | Ảnh hưởng |
 |---|---|---|
-| G-DVC-02 | Giá trị `doiTuong` cho Doanh nghiệp; kiểu thân gửi (JSON/form); CSRF; giá trị `status` | Cách gọi `SubmitAsync`; đến lúc đó cài đặt `CefDvcLoginBrowser` dựa vào phương án dự phòng |
+| G-DVC-02 | **Đã xác nhận 21/11/2026**: `POST /tthc/loginLDAP` form urlencoded; `tenDN` nguyên văn, `matKhau` = base64(UTF-8 mật khẩu), `doiTuong` = `DN`, `captcha`; không cần header CSRF; phản hồi `status` "200"/"201" là thành công, khác là lỗi (`desc`). CAPTCHA `GET /tthc/login/getCaptcha?<tem thời gian>`. Còn lại: nội dung lỗi thật (sai CAPTCHA, sai mật khẩu, khóa) | `CefDvcLoginBrowser` làm được; ánh xạ `DvcLoginFailure` theo `desc` cần mẫu lỗi thật |
 | G-DVC-06 | WebView nhúng không bị coi là tab thứ hai | Cách giữ WebView ngầm khi đổi nhóm |
 
 Có thể làm trước (không bị chặn): kiểu Domain/Application, `DvcLoginService`, mock browser, form, test.
@@ -99,4 +99,4 @@ Có thể làm trước (không bị chặn): kiểu Domain/Application, `DvcLog
 | TD01-02 | `IDvcLoginBrowser`, `DvcLoginService` + T-DVC01-01..06 (trình duyệt giả trong test; `MockDvcLoginBrowser` Debug làm cùng `DvcLoginForm`) | Xong 16/11/2026 |
 | TD01-03 | `IDvcUserNameStore` + `FileDvcUserNameStore` + test | Xong 16/11/2026 |
 | TD01-04 | `DvcLoginForm` (code-only), `MockDvcLoginBrowser` (`#if DEBUG`, gắn nhãn MÔ PHỎNG), `DvcLoginMessages`; cửa sổ nhóm DVC có nút Đăng nhập + trạng thái phiên. Release build không chứa mock, nút Đăng nhập bị khóa | Xong 16/11/2026, đã thử tay (người dùng xác nhận đăng nhập mô phỏng OK) |
-| TD01-05 | `CefDvcLoginBrowser` (Release), sau G-DVC-02/06 | Chưa làm, bị chặn |
+| TD01-05 | `CefDvcLoginBrowser` (Release): chạy trong trang `/tthc/login` qua `IDvcPageRunner`/luồng WebView riêng: lấy ảnh CAPTCHA, đặt ô `tenDN`/`matKhau`/`ldap`/`captcha` rồi chạy `submitLDAP()` hoặc `fetch` form urlencoded với `matKhau` base64 UTF-8; đọc `status`/`desc`; ánh xạ lỗi (sai CAPTCHA/mật khẩu/khóa) cần mẫu lỗi thật. Quy tắc WebView: địa chỉ truyền trong hàm tạo, không `LoadUrl` ngay sau `Show()` (DD-DVC-02 mục 11) | Chưa làm; **hết chặn G-DVC-02**, còn G-DVC-06 (thử với WebView thật) và mẫu lỗi |
