@@ -284,6 +284,33 @@ namespace HoaDonDienTu.Application.Tests
             Assert.AreEqual(HoSoFailure.PortalChanged, _session.LastFailure);
         }
 
+        [Test]
+        public async Task Draft_Search_NeedsNoCaptcha_NoImage_AndDatesMayBeIgnored()
+        {
+            await _session.SelectSourceAsync(HoSoSource.LuuTam, CancellationToken.None);
+            Assert.AreEqual(0, _source.CaptchaCalls - 1, "Chỉ lần chọn nguồn Dvc ở SetUp tải ảnh; lưu tạm không tải");
+
+            bool ok = await _session.SearchAsync(new HoSoQuery { IgnoreDates = true, FromDate = new DateTime(2026, 12, 1), ToDate = new DateTime(2026, 1, 1) }, CancellationToken.None);
+
+            Assert.IsTrue(ok);
+            Assert.AreEqual(HoSoFailure.None, _session.LastFailure);
+            Assert.AreEqual(HoSoSource.LuuTam, _source.SearchCalls[0].Source);
+            Assert.IsNull(_session.CaptchaImage);
+            Assert.IsTrue(_session.CanPageWithoutNewCaptcha);
+        }
+
+        [Test]
+        public async Task Draft_Search_WithDates_StillRejectsFromAfterTo()
+        {
+            await _session.SelectSourceAsync(HoSoSource.LuuTam, CancellationToken.None);
+
+            bool ok = await _session.SearchAsync(new HoSoQuery { FromDate = new DateTime(2026, 12, 1), ToDate = new DateTime(2026, 1, 1) }, CancellationToken.None);
+
+            Assert.IsFalse(ok);
+            Assert.AreEqual(HoSoFailure.InvalidInput, _session.LastFailure);
+            Assert.AreEqual(0, _source.SearchCalls.Count);
+        }
+
         private sealed class FakeSource : IHoSoSource
         {
             public readonly List<HoSoQuery> SearchCalls = new List<HoSoQuery>();

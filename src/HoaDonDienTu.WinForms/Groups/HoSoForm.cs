@@ -43,6 +43,8 @@ namespace HoaDonDienTu.WinForms.Groups
         private readonly Label _status = new Label();
         private readonly Label _warning = new Label();
         private readonly Label _empty = new Label();
+        private readonly Label _authLabel = new Label { AutoSize = true, Text = "MST ủy quyền (nếu có)" };
+        private readonly Label _captchaLabel = new Label { AutoSize = true, Text = "Mã xác nhận (nhập lại cho mỗi lần tìm)" };
         private readonly string _notice;
 
         public HoSoForm(HoSoSearchSession session, string notice)
@@ -60,6 +62,7 @@ namespace HoaDonDienTu.WinForms.Groups
 
             _source.Items.Add("Hồ sơ đã nộp trên Dịch vụ công");
             _source.Items.Add("Hồ sơ đã nộp trên thuế điện tử");
+            _source.Items.Add("Hồ sơ lưu tạm (chưa nộp)");
 
             var filters = new Panel { Dock = DockStyle.Top, Height = 228 };
             AddLabelled(filters, new Label { AutoSize = true, Text = "Nguồn" }, _source, 10, 6, 300);
@@ -68,10 +71,10 @@ namespace HoaDonDienTu.WinForms.Groups
             AddLabelled(filters, _codeLabel, _code, 770, 6, 200);
             AddLabelled(filters, new Label { AutoSize = true, Text = "Từ ngày" }, _from, 10, 58, 130);
             AddLabelled(filters, new Label { AutoSize = true, Text = "Đến ngày" }, _to, 150, 58, 130);
-            AddLabelled(filters, new Label { AutoSize = true, Text = "MST ủy quyền (nếu có)" }, _authorized, 330, 58, 220);
+            AddLabelled(filters, _authLabel, _authorized, 330, 58, 220);
 
             // Hàng CAPTCHA: ảnh, Đổi mã, ô nhập mã và nút Tìm cùng căn giữa theo chiều dọc.
-            AddLabelled(filters, new Label { AutoSize = true, Text = "Mã xác nhận (nhập lại cho mỗi lần tìm)" }, _captchaBox, 330, 110, 170);
+            AddLabelled(filters, _captchaLabel, _captchaBox, 330, 110, 170);
             _captchaImage.SetBounds(10, 124, 140, 44);
             _refresh.SetBounds(158, 124, 100, 44);
             _refresh.Values.Text = "Đổi mã";
@@ -169,17 +172,27 @@ namespace HoaDonDienTu.WinForms.Groups
 
         private HoSoSource CurrentSource
         {
-            get { return _source.SelectedIndex == 1 ? HoSoSource.ThueDienTu : HoSoSource.Dvc; }
+            get { return _source.SelectedIndex == 2 ? HoSoSource.LuuTam : (_source.SelectedIndex == 1 ? HoSoSource.ThueDienTu : HoSoSource.Dvc); }
         }
 
         private async System.Threading.Tasks.Task OnSourceChangedAsync()
         {
             bool dvc = CurrentSource == HoSoSource.Dvc;
-            _nameLabel.Visible = _name.Visible = dvc;
+            bool draft = CurrentSource == HoSoSource.LuuTam;
+            _nameLabel.Visible = _name.Visible = dvc || draft;
+            _nameLabel.Text = draft ? "Mã TTHC (nếu có)" : "Tên TTHC";
+            _declLabel.Text = draft ? "Mã tờ khai (nếu có)" : "Tờ khai";
+            _codeLabel.Visible = _code.Visible = !draft;
+            _authLabel.Visible = _authorized.Visible = !draft;
+            // Hồ sơ lưu tạm không có mã xác nhận.
+            _captchaLabel.Visible = _captchaBox.Visible = _captchaImage.Visible = _refresh.Visible = !draft;
             _codeLabel.Text = dvc ? "Mã hồ sơ" : "Mã giao dịch";
             DateTime today = DateTime.Today;
-            _from.Value = dvc ? new DateTime(today.Year, today.Month, 1) : new DateTime(2025, 6, 1);
-            _to.Value = dvc ? today : new DateTime(2025, 6, 30);
+            // Hồ sơ lưu tạm: ngày để trống (không giới hạn) trừ khi tích cả hai ô.
+            _from.ShowCheckBox = _to.ShowCheckBox = draft;
+            _from.Checked = _to.Checked = !draft;
+            _from.Value = dvc || draft ? new DateTime(today.Year, today.Month, 1) : new DateTime(2025, 6, 1);
+            _to.Value = dvc || draft ? today : new DateTime(2025, 6, 30);
             _name.Clear();
             _declaration.Clear();
             _code.Clear();
@@ -190,7 +203,9 @@ namespace HoaDonDienTu.WinForms.Groups
             _status.ForeColor = Color.DimGray;
             _status.Text = _notice;
             _warning.Visible = !dvc;
-            _warning.Text = dvc ? string.Empty : "Lưu ý của cổng: chỉ hỗ trợ tờ khai nộp trước ngày 01/07/2025.";
+            _warning.Text = draft
+                ? "Hồ sơ lưu tạm: tên cột và phân trang chưa kiểm chứng với dữ liệu thật; chỉ hiện trang đầu. Tích hai ô ngày để lọc theo ngày."
+                : "Lưu ý của cổng: chỉ hỗ trợ tờ khai nộp trước ngày 01/07/2025.";
             UpdatePager();
             await RunBusyAsync(async () =>
             {
@@ -201,8 +216,10 @@ namespace HoaDonDienTu.WinForms.Groups
 
         private async System.Threading.Tasks.Task SearchAsync()
         {
+            bool draft = CurrentSource == HoSoSource.LuuTam;
             var query = new HoSoQuery
             {
+                IgnoreDates = draft && !(_from.Checked && _to.Checked),
                 FromDate = _from.Value.Date,
                 ToDate = _to.Value.Date,
                 AuthorizedTaxCode = _authorized.Text.Trim(),

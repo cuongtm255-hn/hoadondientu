@@ -129,7 +129,7 @@ namespace HoaDonDienTu.Application.PublicService
             }
 
             string captcha = string.IsNullOrWhiteSpace(captchaText) ? _pagingCaptcha : captchaText;
-            if (string.IsNullOrWhiteSpace(captcha))
+            if (string.IsNullOrWhiteSpace(captcha) && Source != HoSoSource.LuuTam)
             {
                 LastFailure = HoSoFailure.InvalidInput;
                 return null;
@@ -170,7 +170,7 @@ namespace HoaDonDienTu.Application.PublicService
         /// <summary>Có thể đổi trang mà không cần gõ mã mới (còn mã của lần tìm hiện tại).</summary>
         public bool CanPageWithoutNewCaptcha
         {
-            get { return !string.IsNullOrEmpty(_pagingCaptcha); }
+            get { return Source == HoSoSource.LuuTam || !string.IsNullOrEmpty(_pagingCaptcha); }
         }
 
         /// <summary>Quên mã dùng cho đổi trang (đóng màn hình, hết phiên...).</summary>
@@ -228,6 +228,12 @@ namespace HoaDonDienTu.Application.PublicService
 
         private async Task<bool> LoadCaptchaCoreAsync(CancellationToken cancellationToken)
         {
+            // Hồ sơ lưu tạm không có CAPTCHA: không tải ảnh, luôn coi là sẵn sàng.
+            if (Source == HoSoSource.LuuTam)
+            {
+                CaptchaImage = null;
+                return true;
+            }
             try
             {
                 CaptchaImage = await _service.GetCaptchaAsync(Source, cancellationToken).ConfigureAwait(false);

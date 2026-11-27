@@ -17,6 +17,14 @@ namespace HoaDonDienTu.Infrastructure.PublicService
 
         public static HoSoPage ToPage(JObject table, JArray summary, string pageInput)
         {
+            return ToPage(table, summary, pageInput, false);
+        }
+
+        /// <param name="lenient">
+        /// Cho nguồn CHƯA kiểm chứng (hồ sơ lưu tạm): thiếu dòng tổng thì coi là một trang với số dòng đang có, thay vì báo cổng đổi giao diện.
+        /// </param>
+        public static HoSoPage ToPage(JObject table, JArray summary, string pageInput, bool lenient)
+        {
             if (table == null || table.Type != JTokenType.Object) throw new HoSoParseException("Không có bảng.");
 
             List<string> heads = Strings(table["heads"]);
@@ -43,6 +51,10 @@ namespace HoaDonDienTu.Infrastructure.PublicService
             }
 
             int pages = 0, total = 0, page = 1;
+            if (lenient && (summary == null || summary.Count < 3))
+            {
+                return new HoSoPage(keep.Select(i => heads[i]).ToList(), rows, rows.Count, 1, 1, null);
+            }
             if (summary == null || summary.Count < 3) throw new HoSoParseException("Không thấy dòng tổng số bản ghi.", "Không thấy dòng tổng số bản ghi (" + rows.Count + " dòng, " + heads.Count + " cột).");
             pages = Int(summary[1]);
             total = Int(summary[2]);

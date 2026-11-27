@@ -10,7 +10,10 @@ namespace HoaDonDienTu.Domain.PublicService
         Dvc = 0,
 
         /// <summary>Hồ sơ (tờ khai) đã nộp trên thuế điện tử, chỉ trước 01/07/2025.</summary>
-        ThueDienTu = 1
+        ThueDienTu = 1,
+
+        /// <summary>Hồ sơ lưu tạm (chưa nộp) trên Dịch vụ công: không có CAPTCHA, chỉ đọc. Cột và phân trang CHƯA kiểm chứng (tài khoản thử không có hồ sơ lưu tạm).</summary>
+        LuuTam = 2
     }
 
     /// <summary>
@@ -24,6 +27,9 @@ namespace HoaDonDienTu.Domain.PublicService
         public DateTime FromDate { get; set; }
 
         public DateTime ToDate { get; set; }
+
+        /// <summary>Không gửi khoảng ngày (để trống như ô ngày của cổng). Chỉ dùng cho hồ sơ lưu tạm.</summary>
+        public bool IgnoreDates { get; set; }
 
         /// <summary>MST ủy quyền (nếu có).</summary>
         public string AuthorizedTaxCode { get; set; }

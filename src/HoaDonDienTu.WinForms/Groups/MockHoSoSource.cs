@@ -23,6 +23,24 @@ namespace HoaDonDienTu.WinForms.Groups
         private string _captcha;
         private string _lastGood; // mã của lần tìm thành công gần nhất: đổi trang dùng lại được (giả định đã chốt, giống trang cổng)
 
+        /// <summary>Hồ sơ lưu tạm GIẢ: không CAPTCHA, ba dòng mẫu, cột do mô phỏng đặt (cột thật chưa kiểm chứng).</summary>
+        private static HoSoPage SearchDraft(HoSoQuery query)
+        {
+            IList<string> columns = new[] { "Tên TTHC", "Tờ khai", "Ngày lưu", "Trạng thái" };
+            var rows = new List<string[]>
+            {
+                new[] { "Thủ tục mẫu 1", "Tờ khai mẫu 01 (mô phỏng)", "05/11/2026", "Đã kiểm tra thông tin kê khai (mẫu)" },
+                new[] { "Thủ tục mẫu 2", "Tờ khai mẫu 02 (mô phỏng)", "12/11/2026", "Chưa kiểm tra (mẫu)" },
+                new[] { "Thủ tục mẫu 3", "Tờ khai mẫu 01 (mô phỏng)", "20/11/2026", "Chưa kiểm tra (mẫu)" }
+            };
+            if (!string.IsNullOrWhiteSpace(query.Declaration))
+            {
+                rows = rows.Where(r => r[1].IndexOf(query.Declaration.Trim(), StringComparison.OrdinalIgnoreCase) >= 0).ToList();
+            }
+            if (rows.Count == 0) return new HoSoPage(columns, null, 0, 1, 0, "Không có dữ liệu");
+            return new HoSoPage(columns, rows.Select(r => new HoSoRow(r)).ToList(), rows.Count, 1, 1, null);
+        }
+
         public Task<byte[]> GetCaptchaAsync(HoSoSource source, CancellationToken cancellationToken)
         {
             const string alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -46,6 +64,8 @@ namespace HoaDonDienTu.WinForms.Groups
 
         public Task<HoSoPage> SearchAsync(HoSoQuery query, CancellationToken cancellationToken)
         {
+            if (query.Source == HoSoSource.LuuTam) return Task.FromResult(SearchDraft(query));
+
             // Tìm mới: mã chỉ dùng một lần, đúng hay sai đều hết hiệu lực. Đổi trang (trang > 1): chấp nhận lại mã của lần tìm thành công trước.
             string expected = _captcha;
             _captcha = null;

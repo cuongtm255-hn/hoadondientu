@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -29,7 +29,7 @@ namespace HoaDonDienTu.Application.PublicService
             {
                 "Nguồn: " + SourceLabel(filters == null ? HoSoSource.Dvc : filters.Source),
                 "Phạm vi: " + (scopeText ?? string.Empty),
-                "Khoảng ngày: " + (filters == null ? "không rõ" : "từ " + Date(filters.FromDate) + " đến " + Date(filters.ToDate)),
+                "Khoảng ngày: " + (filters == null ? "không rõ" : filters.IgnoreDates ? "không giới hạn" : "từ " + Date(filters.FromDate) + " đến " + Date(filters.ToDate)),
                 "Bộ lọc khác: " + DescribeFilters(filters),
                 "Số bản ghi trong tệp: " + rows.Count,
                 "Thời điểm tra cứu: " + queriedAt.ToString("dd/MM/yyyy HH:mm", CultureInfo.InvariantCulture)
@@ -42,6 +42,7 @@ namespace HoaDonDienTu.Application.PublicService
 
         public static string SourceLabel(HoSoSource source)
         {
+            if (source == HoSoSource.LuuTam) return "Hồ sơ lưu tạm trên Dịch vụ công";
             return source == HoSoSource.ThueDienTu ? "Hồ sơ đã nộp trên thuế điện tử" : "Hồ sơ đã nộp trên Dịch vụ công";
         }
 

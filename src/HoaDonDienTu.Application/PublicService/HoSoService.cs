@@ -65,6 +65,8 @@ namespace HoaDonDienTu.Application.PublicService
         public Task<byte[]> GetCaptchaAsync(HoSoSource source, CancellationToken cancellationToken)
         {
             RequireLogin();
+            // Hồ sơ lưu tạm không có CAPTCHA.
+            if (source == HoSoSource.LuuTam) return Task.FromResult(new byte[0]);
             return Guard("Lấy CAPTCHA hồ sơ", () => _source.GetCaptchaAsync(source, cancellationToken));
         }
 
@@ -85,8 +87,9 @@ namespace HoaDonDienTu.Application.PublicService
 
         private static void Validate(HoSoQuery query)
         {
-            if (string.IsNullOrWhiteSpace(query.CaptchaText)) throw new HoSoServiceException(HoSoFailure.InvalidInput);
-            if (query.FromDate.Date > query.ToDate.Date) throw new HoSoServiceException(HoSoFailure.InvalidInput);
+            bool draft = query.Source == HoSoSource.LuuTam;
+            if (!draft && string.IsNullOrWhiteSpace(query.CaptchaText)) throw new HoSoServiceException(HoSoFailure.InvalidInput);
+            if (!query.IgnoreDates && query.FromDate.Date > query.ToDate.Date) throw new HoSoServiceException(HoSoFailure.InvalidInput);
             if (query.PageNumber < 1 || query.PageNumber > MaxPage) throw new HoSoServiceException(HoSoFailure.InvalidInput);
         }
 

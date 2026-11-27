@@ -305,6 +305,65 @@ namespace HoaDonDienTu.Infrastructure.Tests
             Assert.ThrowsAsync<HoSoParseException>(() => new PortalHoSoSource(runner).SearchAsync(Query(), CancellationToken.None));
         }
 
+        // ---------------- Hồ sơ lưu tạm (chưa kiểm chứng với dữ liệu thật: mọi mẫu ở đây là GIẢ) ----------------
+
+        private static HoSoQuery DraftQuery()
+        {
+            return new HoSoQuery { Source = HoSoSource.LuuTam, FromDate = new DateTime(2026, 1, 1), ToDate = new DateTime(2026, 1, 31), IgnoreDates = true, Declaration = "1135", ProcedureName = "1.007037", PageNumber = 1 };
+        }
+
+        [Test]
+        public async Task Draft_Script_PostsTheDraftForm_WithoutCaptcha_AndUsesTheDraftPage()
+        {
+            var runner = new FakeRunner { Reply = DomReply(null, null, "", "Không có dữ liệu") };
+
+            await new PortalHoSoSource(runner).SearchAsync(DraftQuery(), CancellationToken.None);
+
+            Assert.AreEqual("/tthc/tchs/draft", runner.Paths[0]);
+            string script = runner.Scripts[0];
+            StringAssert.Contains("form_search", script);
+            StringAssert.Contains("method:'POST'", script);
+            StringAssert.Contains("\"maToKhai\":\"1135\"", script);
+            StringAssert.Contains("\"maTTHC\":\"1.007037\"", script);
+            StringAssert.Contains("\"tuNgay\":\"\"", script, "Bỏ ngày khi IgnoreDates");
+            StringAssert.DoesNotContain("captcha", script);
+        }
+
+        [Test]
+        public async Task Draft_ShortFragment_WithMessage_IsAnEmptyResult_WithThePortalsOwnText()
+        {
+            var runner = new FakeRunner { Reply = JsonConvert.SerializeObject(new { http = 200, loginPage = false, sum = (string[])null, pageInput = "", table = (object)null, text = "Không có dữ liệu", body = "<div><!-- paging --><div>Không có dữ liệu</div></div>" }) };
+
+            HoSoPage page = await new PortalHoSoSource(runner).SearchAsync(DraftQuery(), CancellationToken.None);
+
+            Assert.AreEqual(0, page.Rows.Count);
+            Assert.AreEqual("Không có dữ liệu", page.EmptyMessage);
+        }
+
+        [Test]
+        public async Task Draft_Table_WithoutSummary_IsOnePage_ShowingAllRowsRead()
+        {
+            var heads = new[] { "STT", "Tên TTHC", "Tờ khai", "Thao tác" };
+            var rows = new[] { new[] { "1", "Thủ tục mẫu", "Tờ khai mẫu", "" }, new[] { "2", "Thủ tục mẫu 2", "Tờ khai mẫu 2", "" } };
+            var runner = new FakeRunner { Reply = DomReply(new { heads, rows }, null, "", "x") };
+
+            HoSoPage page = await new PortalHoSoSource(runner).SearchAsync(DraftQuery(), CancellationToken.None);
+
+            CollectionAssert.AreEqual(new[] { "Tên TTHC", "Tờ khai" }, page.Columns);
+            Assert.AreEqual(2, page.Rows.Count);
+            Assert.AreEqual(2, page.TotalRecords);
+            Assert.AreEqual(1, page.PageCount);
+        }
+
+        [Test]
+        public void Draft_LongUnknownFragment_IsStillAParseError()
+        {
+            string longBody = "<div>" + new string('x', 4000) + "</div>";
+            var runner = new FakeRunner { Reply = JsonConvert.SerializeObject(new { http = 200, loginPage = false, sum = (string[])null, pageInput = "", table = (object)null, text = "x", body = longBody }) };
+
+            Assert.ThrowsAsync<HoSoParseException>(() => new PortalHoSoSource(runner).SearchAsync(DraftQuery(), CancellationToken.None));
+        }
+
         [Test]
         public async Task Dom_PageInput_GivesTheCurrentPage()
         {

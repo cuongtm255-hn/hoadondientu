@@ -23,6 +23,8 @@ namespace HoaDonDienTu.Infrastructure.PublicService
         public const string DvcFormId = "form-search-advanced";
         public const string ETaxPath = "/tthc/tchs/thuedientu";
         public const string ETaxFormId = "form_search_tdt";
+        public const string DraftPath = "/tthc/tchs/draft";
+        public const string DraftFormId = "form_search";
         public const int PageSize = 10;
 
         private readonly IDvcPageRunner _runner;
@@ -37,7 +39,7 @@ namespace HoaDonDienTu.Infrastructure.PublicService
         public async Task<byte[]> GetCaptchaAsync(HoSoSource source, CancellationToken cancellationToken)
         {
             RequireSupported(source);
-            JObject result = await RunAsync(BuildCaptchaScript(FormIdFor(source)), cancellationToken).ConfigureAwait(false);
+            JObject result = await RunAsync(PagePathFor(source), BuildCaptchaScript(FormIdFor(source)), cancellationToken).ConfigureAwait(false);
             RequireLoggedIn(result);
             string png = result.Value<string>("png");
             const string prefix = "data:image/png;base64,";
@@ -51,9 +53,17 @@ namespace HoaDonDienTu.Infrastructure.PublicService
             RequireSupported(query.Source);
             if (query.PageNumber < 1) throw new ArgumentOutOfRangeException("query", "Số trang phải từ 1.");
 
-            JObject result = await RunAsync(BuildSearchScript(query), cancellationToken).ConfigureAwait(false);
+            JObject result = await RunAsync(PagePathFor(query.Source), BuildSearchScript(query), cancellationToken).ConfigureAwait(false);
             RequireLoggedIn(result);
+            return PageFromResult(result, query.Source == HoSoSource.LuuTam);
+        }
 
+        /// <summary>
+        /// Dựng trang kết quả từ JSON do script trả về (đã kiểm tra đăng nhập). <paramref name="lenient"/> cho nguồn chưa kiểm chứng (hồ sơ lưu tạm):
+        /// thiếu dòng tổng thì coi là một trang; mảnh ngắn không có bảng là kết quả rỗng và lấy chữ của cổng làm thông điệp.
+        /// </summary>
+        internal static HoSoPage PageFromResult(JObject result, bool lenient)
+        {
             int http = result.Value<int?>("http") ?? -1;
             if (http == 400) throw new HoSoServiceException(HoSoFailure.WrongCaptcha);
             if (http == 401 || http == 403) throw new DvcSessionExpiredException();
@@ -68,7 +78,7 @@ namespace HoaDonDienTu.Infrastructure.PublicService
             {
                 try
                 {
-                    return HoSoDomTable.ToPage(table, summary, result.Value<string>("pageInput"));
+                    return HoSoDomTable.ToPage(table, summary, result.Value<string>("pageInput"), lenient);
                 }
                 catch (HoSoParseException ex)
                 {
@@ -84,9 +94,12 @@ namespace HoaDonDienTu.Infrastructure.PublicService
             // thì là cấu trúc lạ, đi tiếp sang bộ phân tích dự phòng (báo lỗi nếu không nhận ra).
             string visibleText = result.Value<string>("text");
             bool noSummaryAndNoText = summary == null && visibleText != null && visibleText.Trim().Length == 0;
-            if (saysZero || noSummaryAndNoText)
+            // Hồ sơ lưu tạm: mảnh ngắn (đã thấy ~130 ký tự "Không có dữ liệu") không bảng, không dòng tổng là kết quả rỗng.
+            bool shortLenient = lenient && summary == null && body != null && body.Length < 1500;
+            if (saysZero || noSummaryAndNoText || shortLenient)
             {
-                return new HoSoPage(null, null, 0, 1, 0, "Không có dữ liệu");
+                string message = shortLenient && !string.IsNullOrWhiteSpace(visibleText) ? visibleText.Trim() : "Không có dữ liệu";
+                return new HoSoPage(null, null, 0, 1, 0, message);
             }
 
             try
@@ -101,13 +114,19 @@ namespace HoaDonDienTu.Infrastructure.PublicService
             }
         }
 
+        private static string PagePathFor(HoSoSource source)
+        {
+            return source == HoSoSource.LuuTam ? DraftPath : PagePath;
+        }
+
         private static void RequireSupported(HoSoSource source)
         {
-            if (source != HoSoSource.Dvc && source != HoSoSource.ThueDienTu) throw new NotSupportedException("Nguồn hồ sơ chưa hỗ trợ.");
+            if (source != HoSoSource.Dvc && source != HoSoSource.ThueDienTu && source != HoSoSource.LuuTam) throw new NotSupportedException("Nguồn hồ sơ chưa hỗ trợ.");
         }
 
         private static string FormIdFor(HoSoSource source)
         {
+            if (source == HoSoSource.LuuTam) return DraftFormId;
             return source == HoSoSource.ThueDienTu ? ETaxFormId : DvcFormId;
         }
 
@@ -117,12 +136,12 @@ namespace HoaDonDienTu.Infrastructure.PublicService
             if (result.Value<bool?>("noForm") == true) throw new DvcSessionExpiredException();
         }
 
-        private async Task<JObject> RunAsync(string script, CancellationToken cancellationToken)
+        private async Task<JObject> RunAsync(string pagePath, string script, CancellationToken cancellationToken)
         {
             await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
             {
-                string raw = await _runner.RunOnPageAsync(PagePath, script, cancellationToken).ConfigureAwait(false);
+                string raw = await _runner.RunOnPageAsync(pagePath, script, cancellationToken).ConfigureAwait(false);
                 try
                 {
                     return JObject.Parse(raw ?? string.Empty);
@@ -165,6 +184,7 @@ namespace HoaDonDienTu.Infrastructure.PublicService
 
         internal static string BuildSearchScript(HoSoQuery q)
         {
+            if (q.Source == HoSoSource.LuuTam) return BuildDraftSearchScript(q);
             return q.Source == HoSoSource.ThueDienTu ? BuildETaxSearchScript(q) : BuildDvcSearchScript(q);
         }
 
@@ -239,6 +259,29 @@ namespace HoaDonDienTu.Infrastructure.PublicService
                 "var h={'Content-Type':'application/x-www-form-urlencoded; charset=UTF-8','HX-Request':'true','HX-Target':'bangKetQuaTraCuu_tdt','accept':'text/html-partial'};" +
                 "var hn=m('csrf-header'),tk=m('csrf-token');if(hn&&tk)h[hn]=tk;" +
                 "var r=await fetch(" + PortalTthcSource.Literal(ETaxPath) + ",{method:'POST',credentials:'same-origin',headers:h,body:p.toString()});" +
+                ReadResultScript;
+        }
+
+        /// <summary>
+        /// Hồ sơ lưu tạm: <c>POST /tthc/tchs/draft</c> multipart (như htmx) với toàn bộ giá trị của <c>form_search</c> (gồm trường ẩn và <c>_csrf</c>),
+        /// ghi đè bốn ô lọc; không CAPTCHA. Ngày bỏ trống khi <see cref="HoSoQuery.IgnoreDates"/>. Chưa kiểm chứng cột/phân trang với dữ liệu thật.
+        /// </summary>
+        private static string BuildDraftSearchScript(HoSoQuery q)
+        {
+            string fields = Fields(
+                "maToKhai", q.Declaration,
+                "maTTHC", CodeOrEmpty(q.ProcedureName),
+                "tuNgay", q.IgnoreDates ? string.Empty : Date(q.FromDate),
+                "denNgay", q.IgnoreDates ? string.Empty : Date(q.ToDate));
+
+            return "(async function(){" +
+                "var f=document.getElementById(" + PortalTthcSource.Literal(DraftFormId) + ");if(!f)return JSON.stringify({noForm:true});" +
+                "var fd=new FormData(f);var v=" + fields + ";" +
+                "Object.keys(v).forEach(function(k){fd.set(k,v[k]);});" +
+                "var m=function(n){var e=document.querySelector('meta[name=\\\"'+n+'\\\"]');return e?e.getAttribute('content'):null;};" +
+                "var h={'HX-Request':'true','HX-Target':'resultTable','accept':'text/html-partial'};" +
+                "var hn=m('csrf-header'),tk=m('csrf-token');if(hn&&tk)h[hn]=tk;" +
+                "var r=await fetch(" + PortalTthcSource.Literal(DraftPath) + ",{method:'POST',credentials:'same-origin',headers:h,body:fd});" +
                 ReadResultScript;
         }
 
