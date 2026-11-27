@@ -233,3 +233,18 @@ Bổ sung cho tab DVC: sau **mỗi** yêu cầu trang gọi `refreshCaptcha('ima
 
 **Hệ quả:** làm được nguồn đọc nhưng khác ba nguồn trước: gửi **JSON** thay vì form (cần script riêng), bảng rỗng có tiêu đề nhưng không dòng nào, nên bộ đọc phải coi "bảng không dòng" là kết quả rỗng (bộ đọc hiện có báo thiếu dòng tổng ở chế độ nghiêm; chế độ lỏng đã xử lý được). Cột và phân trang cần tài khoản có thông báo LPTB để kiểm chứng.
 
+## Bổ sung 27/11/2026: tra cứu TTHC đất đai (`/tthc/tchs/ho-so-nha-dat`, đã đăng nhập, không có CAPTCHA)
+
+Chỉ đọc cấu trúc form và mã nguồn công khai của trang. **Không gửi tra cứu**: đây là tra cứu trạng thái MỘT hồ sơ đã biết mã, không có danh sách, và tôi không có mã hồ sơ hợp lệ của doanh nghiệp để thử (không dùng dữ liệu của người khác).
+
+| Mục | Kết quả |
+|---|---|
+| Bản chất | Tra cứu trạng thái một hồ sơ nhà đất: nhập mã hồ sơ cụ thể, không có chế độ liệt kê |
+| Ô nhập | `maHoSo` (bắt buộc: "Mã hồ sơ không được để trống!"), `mst` và `soGiayTo` (phải có ít nhất một: "Yêu cầu nhập thông tin Mã số thuế hoặc Số giấy tờ!"). Kiểm tra ở phía trình duyệt (`traCuuHoSoNhaDat()`), trước khi gửi |
+| Yêu cầu | `POST /tthc/tchs/ho-so-nha-dat`, **thân JSON** `{maHoSo, mst, soGiayTo}` (chuỗi rỗng nếu không nhập), `Content-Type: application/json`, header CSRF của trang (jQuery `ajaxSend`). **Không có `page`/`size`** |
+| Phản hồi | JSON, không phải mảnh HTML: `status` (`"00"` là thành công) và `data` (trình duyệt gọi `fillDataView(data)` để điền ba bảng: thông tin người nhận, người giao, trạng thái chi tiết); lỗi thì `message` hiện bằng thông báo của trang |
+| CAPTCHA | Không (ảnh `image-capt-cbt` ẩn, `src` rỗng) |
+| Chưa biết | Tên các trường của `data` và cột ba bảng (cần một mã hồ sơ thật) |
+
+**Hệ quả:** khác hẳn bốn mục trước (không phải danh sách, trả JSON, cần biết mã hồ sơ). Đề xuất **chưa làm bản đọc** (giá trị thấp, thiếu dữ liệu để kiểm chứng) cho tới khi có một mã hồ sơ nhà đất hợp lệ của chính doanh nghiệp để khảo sát phản hồi; khi đó làm màn hình riêng (ba ô nhập, hiện ba bảng), không dùng màn hồ sơ dạng danh sách.
+
