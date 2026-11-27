@@ -16,7 +16,10 @@ namespace HoaDonDienTu.Domain.PublicService
         LuuTam = 2,
 
         /// <summary>Phản ánh quyết toán gửi cơ quan thuế (kênh DVC hoặc Thuế điện tử, xem <see cref="HoSoQuery.FeedbackOnETax"/>): không CAPTCHA, chỉ đọc. Cột và phân trang CHƯA kiểm chứng.</summary>
-        PhanAnh = 3
+        PhanAnh = 3,
+
+        /// <summary>Thông báo lệ phí trước bạ của chính người nộp thuế: không CAPTCHA, chỉ đọc (không nộp tiền, OTP, ký số). Gửi JSON. Dòng dữ liệu và phân trang CHƯA kiểm chứng.</summary>
+        Lptb = 4
     }
 
     /// <summary>Đặc điểm theo nguồn dùng chung cho dịch vụ, phiên tìm và nguồn dữ liệu.</summary>
@@ -25,7 +28,7 @@ namespace HoaDonDienTu.Domain.PublicService
         /// <summary>Hai nguồn hồ sơ đã nộp có CAPTCHA cho mỗi lần tìm; lưu tạm và phản ánh thì không.</summary>
         public static bool RequiresCaptcha(HoSoSource source)
         {
-            return source != HoSoSource.LuuTam && source != HoSoSource.PhanAnh;
+            return source != HoSoSource.LuuTam && source != HoSoSource.PhanAnh && source != HoSoSource.Lptb;
         }
 
         /// <summary>Nguồn chưa kiểm chứng với dữ liệu thật: bộ đọc bảng chạy chế độ lỏng.</summary>
@@ -55,6 +58,18 @@ namespace HoaDonDienTu.Domain.PublicService
 
         /// <summary>Phản ánh: true = "đã gửi trên Thuế điện tử", false = "đã gửi trên DVC".</summary>
         public bool FeedbackOnETax { get; set; }
+
+        /// <summary>Thông báo LPTB: mã trạng thái (00 đến 06), rỗng là tất cả.</summary>
+        public string StatusCode { get; set; }
+
+        /// <summary>Thông báo LPTB: MST người bán (nếu lọc).</summary>
+        public string SellerTaxCode { get; set; }
+
+        /// <summary>Thông báo LPTB: số hóa đơn (nếu lọc).</summary>
+        public string InvoiceNumber { get; set; }
+
+        /// <summary>Thông báo LPTB: ký hiệu hóa đơn (nếu lọc).</summary>
+        public string InvoiceSymbol { get; set; }
 
         /// <summary>MST ủy quyền (nếu có).</summary>
         public string AuthorizedTaxCode { get; set; }

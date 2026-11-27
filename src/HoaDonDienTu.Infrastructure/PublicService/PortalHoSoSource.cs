@@ -28,6 +28,7 @@ namespace HoaDonDienTu.Infrastructure.PublicService
         public const string FeedbackPath = "/tthc/tchs/pa";
         public const string FeedbackSearchPath = "/tthc/tchs/pa/tracuu";
         public const string FeedbackFormId = "form_search";
+        public const string LptbPath = "/tthc/tchs/thong-bao-lptb";
         public const int PageSize = 10;
 
         private readonly IDvcPageRunner _runner;
@@ -120,18 +121,20 @@ namespace HoaDonDienTu.Infrastructure.PublicService
         private static string PagePathFor(HoSoSource source)
         {
             if (source == HoSoSource.PhanAnh) return FeedbackPath;
+            if (source == HoSoSource.Lptb) return LptbPath;
             return source == HoSoSource.LuuTam ? DraftPath : PagePath;
         }
 
         private static void RequireSupported(HoSoSource source)
         {
-            if (source != HoSoSource.Dvc && source != HoSoSource.ThueDienTu && source != HoSoSource.LuuTam && source != HoSoSource.PhanAnh) throw new NotSupportedException("Nguồn hồ sơ chưa hỗ trợ.");
+            if (source != HoSoSource.Dvc && source != HoSoSource.ThueDienTu && source != HoSoSource.LuuTam && source != HoSoSource.PhanAnh && source != HoSoSource.Lptb) throw new NotSupportedException("Nguồn hồ sơ chưa hỗ trợ.");
         }
 
         private static string FormIdFor(HoSoSource source)
         {
             if (source == HoSoSource.LuuTam) return DraftFormId;
             if (source == HoSoSource.PhanAnh) return FeedbackFormId;
+            if (source == HoSoSource.Lptb) return string.Empty;
             return source == HoSoSource.ThueDienTu ? ETaxFormId : DvcFormId;
         }
 
@@ -191,6 +194,7 @@ namespace HoaDonDienTu.Infrastructure.PublicService
         {
             if (q.Source == HoSoSource.LuuTam) return BuildDraftSearchScript(q);
             if (q.Source == HoSoSource.PhanAnh) return BuildFeedbackSearchScript(q);
+            if (q.Source == HoSoSource.Lptb) return BuildLptbSearchScript(q);
             return q.Source == HoSoSource.ThueDienTu ? BuildETaxSearchScript(q) : BuildDvcSearchScript(q);
         }
 
@@ -314,6 +318,33 @@ namespace HoaDonDienTu.Infrastructure.PublicService
                 "var h={'Content-Type':'application/x-www-form-urlencoded; charset=UTF-8','HX-Request':'true','HX-Target':'table-container','accept':'text/html-partial'};" +
                 "var hn=m('csrf-header'),tk=m('csrf-token');if(hn&&tk)h[hn]=tk;" +
                 "var r=await fetch(" + PortalTthcSource.Literal(FeedbackSearchPath) + ",{method:'POST',credentials:'same-origin',headers:h,body:p.toString()});" +
+                ReadResultScript;
+        }
+
+        /// <summary>
+        /// Thông báo LPTB: trang này KHÔNG dùng htmx; hàm của trang gửi XHR <c>POST /tthc/tchs/thong-bao-lptb</c> với thân JSON (<c>loaiTraCuu</c> 01 = của chính
+        /// người nộp thuế, luôn cố định; <c>mst</c> lấy từ ô có sẵn của trang, không do người dùng nhập), header CSRF và <c>X-Requested-With</c>. Chỉ đọc.
+        /// Kiểu 02 (người nộp thuế khác, từng qua OTP) không hỗ trợ. Chưa kiểm chứng dòng dữ liệu/phân trang với dữ liệu thật.
+        /// </summary>
+        private static string BuildLptbSearchScript(HoSoQuery q)
+        {
+            string fields = Fields(
+                "maHoSo", q.FileCode,
+                "soHoaDon", q.InvoiceNumber,
+                "kyHieuHoaDon", q.InvoiceSymbol,
+                "mstNguoiBan", q.SellerTaxCode,
+                "trangThai", q.StatusCode,
+                "tuNgay", Date(q.FromDate),
+                "denNgay", Date(q.ToDate));
+
+            return "(async function(){" +
+                "var g=function(n){var e=document.querySelector('[name=\\\"'+n+'\\\"]');return e?e.value:'';};" +
+                "if(!document.getElementById('btnSearch'))return JSON.stringify({noForm:true});" +
+                "var v=" + fields + ";v.loaiTraCuu='01';v.mst=g('mst');v.pageNumber=" + Page(q) + ";v.pageSize=" + Size() + ";" +
+                "var m=function(n){var e=document.querySelector('meta[name=\\\"'+n+'\\\"]');return e?e.getAttribute('content'):null;};" +
+                "var h={'Content-Type':'application/json','X-Requested-With':'XMLHttpRequest','accept':'text/html-partial'};" +
+                "var hn=m('csrf-header'),tk=m('csrf-token');if(hn&&tk)h[hn]=tk;" +
+                "var r=await fetch(" + PortalTthcSource.Literal(LptbPath) + ",{method:'POST',credentials:'same-origin',headers:h,body:JSON.stringify(v)});" +
                 ReadResultScript;
         }
 

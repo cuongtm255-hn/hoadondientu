@@ -39,10 +39,18 @@ namespace HoaDonDienTu.Infrastructure.PublicService
             var rows = new List<HoSoRow>();
             JArray rawRows = table["rows"] as JArray ?? new JArray();
             int number = 0;
+            string emptyText = null;
             foreach (JToken rowToken in rawRows)
             {
                 number++;
                 List<string> cells = Strings(rowToken);
+                // Nguồn chưa kiểm chứng: dòng một ô duy nhất (colspan) là dòng thông báo "không có dữ liệu" của cổng, không phải bản ghi.
+                if (lenient && cells.Count == 1 && heads.Count > 1)
+                {
+                    emptyText = cells[0];
+                    continue;
+                }
+                if (lenient && cells.Count == 0) continue;
                 string diag = "Dòng hồ sơ " + number + " có " + cells.Count + " ô, tiêu đề có " + heads.Count + " cột.";
                 // Ô cuối rỗng có thể bị cổng bỏ khỏi HTML: bù ô rỗng ở cuối. Thừa ô hoặc thiếu nhiều hơn một thì coi là cấu trúc lạ.
                 if (cells.Count > heads.Count || heads.Count - cells.Count > 1) throw new HoSoParseException(diag, diag);
@@ -53,7 +61,7 @@ namespace HoaDonDienTu.Infrastructure.PublicService
             int pages = 0, total = 0, page = 1;
             if (lenient && (summary == null || summary.Count < 3))
             {
-                return new HoSoPage(keep.Select(i => heads[i]).ToList(), rows, rows.Count, 1, 1, null);
+                return new HoSoPage(keep.Select(i => heads[i]).ToList(), rows, rows.Count, 1, rows.Count == 0 ? 0 : 1, rows.Count == 0 ? (string.IsNullOrWhiteSpace(emptyText) ? "Không có dữ liệu" : emptyText) : null);
             }
             if (summary == null || summary.Count < 3) throw new HoSoParseException("Không thấy dòng tổng số bản ghi.", "Không thấy dòng tổng số bản ghi (" + rows.Count + " dòng, " + heads.Count + " cột).");
             pages = Int(summary[1]);

@@ -329,12 +329,26 @@ namespace HoaDonDienTu.Application.Tests
         }
 
         [Test]
+        public async Task Lptb_Search_NeedsNoCaptcha()
+        {
+            await _session.SelectSourceAsync(HoSoSource.Lptb, CancellationToken.None);
+
+            bool ok = await _session.SearchAsync(new HoSoQuery { FromDate = new DateTime(2026, 11, 1), ToDate = new DateTime(2026, 11, 30), StatusCode = "02" }, CancellationToken.None);
+
+            Assert.IsTrue(ok);
+            Assert.AreEqual(HoSoSource.Lptb, _source.SearchCalls[0].Source);
+            Assert.AreEqual("02", _source.SearchCalls[0].StatusCode);
+            Assert.IsNull(_session.CaptchaImage);
+        }
+
+        [Test]
         public void HoSoSources_OnlyTheTwoSubmittedFileSourcesRequireCaptcha()
         {
             Assert.IsTrue(HoSoSources.RequiresCaptcha(HoSoSource.Dvc));
             Assert.IsTrue(HoSoSources.RequiresCaptcha(HoSoSource.ThueDienTu));
             Assert.IsFalse(HoSoSources.RequiresCaptcha(HoSoSource.LuuTam));
             Assert.IsFalse(HoSoSources.RequiresCaptcha(HoSoSource.PhanAnh));
+            Assert.IsFalse(HoSoSources.RequiresCaptcha(HoSoSource.Lptb));
         }
 
         private sealed class FakeSource : IHoSoSource

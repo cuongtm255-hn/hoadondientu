@@ -44,6 +44,7 @@ namespace HoaDonDienTu.Application.PublicService
         {
             if (source == HoSoSource.LuuTam) return "Hồ sơ lưu tạm trên Dịch vụ công";
             if (source == HoSoSource.PhanAnh) return "Phản ánh quyết toán gửi CQT";
+            if (source == HoSoSource.Lptb) return "Thông báo lệ phí trước bạ";
             return source == HoSoSource.ThueDienTu ? "Hồ sơ đã nộp trên thuế điện tử" : "Hồ sơ đã nộp trên Dịch vụ công";
         }
 
@@ -62,6 +63,8 @@ namespace HoaDonDienTu.Application.PublicService
             Add(parts, "Tờ khai", q.Declaration);
             Add(parts, "Mã hồ sơ", q.FileCode);
             Add(parts, "Mã giao dịch", q.TransactionCode);
+            Add(parts, "Trạng thái (mã)", q.StatusCode);
+            Add(parts, "MST người bán", q.SellerTaxCode);
             Add(parts, "MST ủy quyền", q.AuthorizedTaxCode);
             return parts.Count == 0 ? "Không" : string.Join("; ", parts);
         }

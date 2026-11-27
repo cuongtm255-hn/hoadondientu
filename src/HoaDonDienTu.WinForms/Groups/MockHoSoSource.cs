@@ -56,6 +56,24 @@ namespace HoaDonDienTu.WinForms.Groups
             return new HoSoPage(columns, rows.Select(r => new HoSoRow(r)).ToList(), rows.Count, 1, 1, null);
         }
 
+        /// <summary>Thông báo LPTB GIẢ: không CAPTCHA, cột theo tiêu đề thật của cổng, dòng "(mẫu)"; lọc theo mã trạng thái.</summary>
+        private static HoSoPage SearchLptb(HoSoQuery query)
+        {
+            IList<string> columns = new[] { "Mã giao dịch điện tử", "Mã số thuế", "Tên người nộp thuế", "Loại tài sản", "Số khung", "Số máy", "Số tiền nộp LPTB", "Trạng thái thông báo", "Trạng thái nộp tiền", "Thông báo LPTB", "Tình trạng giá", "Hướng dẫn" };
+            var rows = new List<string[]>
+            {
+                new[] { "GD-LPTB-MAU-001", "0100000001", "Người nộp thuế mẫu", "Ô tô con (mẫu)", "KHUNG-MAU-001", "MAY-MAU-001", "12.000.000", "Chờ xác nhận", "Chưa nộp", "(mẫu)", "Có giá", "" },
+                new[] { "GD-LPTB-MAU-002", "0100000001", "Người nộp thuế mẫu", "Xe máy (mẫu)", "KHUNG-MAU-002", "MAY-MAU-002", "1.500.000", "Đã xác nhận", "Đã nộp", "(mẫu)", "Có giá", "" }
+            };
+            if (!string.IsNullOrWhiteSpace(query.StatusCode))
+            {
+                string wanted = query.StatusCode.Trim() == "01" ? "Chờ xác nhận" : (query.StatusCode.Trim() == "02" ? "Đã xác nhận" : "?");
+                rows = rows.Where(r => r[7] == wanted).ToList();
+            }
+            if (rows.Count == 0) return new HoSoPage(columns, null, 0, 1, 0, "Không có dữ liệu");
+            return new HoSoPage(columns, rows.Select(r => new HoSoRow(r)).ToList(), rows.Count, 1, 1, null);
+        }
+
         public Task<byte[]> GetCaptchaAsync(HoSoSource source, CancellationToken cancellationToken)
         {
             const string alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -81,6 +99,7 @@ namespace HoaDonDienTu.WinForms.Groups
         {
             if (query.Source == HoSoSource.LuuTam) return Task.FromResult(SearchDraft(query));
             if (query.Source == HoSoSource.PhanAnh) return Task.FromResult(SearchFeedback(query));
+            if (query.Source == HoSoSource.Lptb) return Task.FromResult(SearchLptb(query));
 
             // Tìm mới: mã chỉ dùng một lần, đúng hay sai đều hết hiệu lực. Đổi trang (trang > 1): chấp nhận lại mã của lần tìm thành công trước.
             string expected = _captcha;

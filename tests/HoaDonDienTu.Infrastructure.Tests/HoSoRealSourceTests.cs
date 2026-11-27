@@ -411,6 +411,71 @@ namespace HoaDonDienTu.Infrastructure.Tests
             Assert.AreEqual("Không có dữ liệu", page.EmptyMessage);
         }
 
+        // ---------------- Thông báo LPTB (chưa kiểm chứng với dữ liệu thật: mọi mẫu ở đây là GIẢ) ----------------
+
+        private static HoSoQuery LptbQuery(int page = 1)
+        {
+            return new HoSoQuery { Source = HoSoSource.Lptb, FromDate = new DateTime(2026, 11, 1), ToDate = new DateTime(2026, 11, 30), StatusCode = "01", SellerTaxCode = "0100000002", FileCode = "HS-MAU-1", PageNumber = page };
+        }
+
+        private static readonly string[] LptbHeads = { "STT", "Chọn", "Mã giao dịch điện tử", "Mã số thuế", "Tên người nộp thuế", "Loại tài sản", "Số khung", "Số máy", "Số tiền nộp LPTB", "Trạng thái thông báo", "Trạng thái nộp tiền", "Thông báo LPTB", "Tình trạng giá", "Hướng dẫn" };
+
+        [Test]
+        public async Task Lptb_Script_PostsJson_WithFixedOwnLookupType_AndNoCaptcha()
+        {
+            var runner = new FakeRunner { Reply = DomReply(new { heads = LptbHeads, rows = new string[0][] }, null, "", "x") };
+
+            await new PortalHoSoSource(runner).SearchAsync(LptbQuery(2), CancellationToken.None);
+
+            Assert.AreEqual("/tthc/tchs/thong-bao-lptb", runner.Paths[0]);
+            string script = runner.Scripts[0];
+            StringAssert.Contains("'Content-Type':'application/json'", script);
+            StringAssert.Contains("JSON.stringify(v)", script);
+            StringAssert.Contains("v.loaiTraCuu='01'", script, "Chỉ tra cứu của chính mình, không có kiểu OTP");
+            StringAssert.Contains("v.mst=g('mst')", script, "MST lấy từ ô có sẵn của trang, không do người dùng nhập");
+            StringAssert.Contains("v.pageNumber=2", script);
+            StringAssert.Contains("\"trangThai\":\"01\"", script);
+            StringAssert.Contains("\"mstNguoiBan\":\"0100000002\"", script);
+            StringAssert.Contains("\"tuNgay\":\"01/11/2026\"", script);
+            StringAssert.DoesNotContain("captcha", script);
+            StringAssert.DoesNotContain("btnNopThueNgay", script);
+        }
+
+        [Test]
+        public async Task Lptb_HeaderOnlyTable_IsAnEmptyResult_WithTheNoDataMessage()
+        {
+            var runner = new FakeRunner { Reply = DomReply(new { heads = LptbHeads, rows = new string[0][] }, null, "", "x") };
+
+            HoSoPage page = await new PortalHoSoSource(runner).SearchAsync(LptbQuery(), CancellationToken.None);
+
+            Assert.AreEqual(0, page.Rows.Count);
+            Assert.AreEqual("Không có dữ liệu", page.EmptyMessage);
+        }
+
+        [Test]
+        public async Task Lptb_SingleCellMessageRow_IsTheNoDataMessage_NotARecord()
+        {
+            var runner = new FakeRunner { Reply = DomReply(new { heads = LptbHeads, rows = new[] { new[] { "Không có dữ liệu" } } }, null, "", "x") };
+
+            HoSoPage page = await new PortalHoSoSource(runner).SearchAsync(LptbQuery(), CancellationToken.None);
+
+            Assert.AreEqual(0, page.Rows.Count);
+            Assert.AreEqual("Không có dữ liệu", page.EmptyMessage);
+        }
+
+        [Test]
+        public async Task Lptb_Rows_AreRead_DroppingSttAndSelectColumns()
+        {
+            var row = new[] { "1", "", "GD-MAU-1", "0100000001", "NNT mẫu", "Ô tô (mẫu)", "K1", "M1", "1.000.000", "Chờ xác nhận", "Chưa nộp", "", "Có giá", "" };
+            var runner = new FakeRunner { Reply = DomReply(new { heads = LptbHeads, rows = new[] { row } }, null, "", "x") };
+
+            HoSoPage page = await new PortalHoSoSource(runner).SearchAsync(LptbQuery(), CancellationToken.None);
+
+            Assert.AreEqual(1, page.Rows.Count);
+            Assert.AreEqual("GD-MAU-1", page.Rows[0].Cells[page.Columns.IndexOf("Mã giao dịch điện tử")]);
+            Assert.AreEqual(1, page.TotalRecords);
+        }
+
         [Test]
         public async Task Dom_PageInput_GivesTheCurrentPage()
         {
