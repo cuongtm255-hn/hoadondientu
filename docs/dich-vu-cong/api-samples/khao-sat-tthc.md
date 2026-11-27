@@ -216,3 +216,20 @@ Bổ sung cho tab DVC: sau **mỗi** yêu cầu trang gọi `refreshCaptcha('ima
 
 **Hệ quả:** dựng được nguồn đọc như hồ sơ lưu tạm (POST form, đọc bảng bằng DOM, chế độ lỏng) với thêm bộ lọc năm quyết toán, MST tổ chức và nguồn. Cột và phân trang cần tài khoản có phản ánh để kiểm chứng.
 
+## Bổ sung 27/11/2026: thông báo lệ phí trước bạ (`/tthc/tchs/thong-bao-lptb`, đã đăng nhập, không có CAPTCHA)
+
+Đọc form, bấm "Tra cứu" với bộ lọc mặc định. **Tài khoản thử không có thông báo nào** nên chưa thấy dòng dữ liệu.
+
+| Mục | Kết quả |
+|---|---|
+| Cách gọi | **Không phải htmx**: nút `btnSearch` gọi hàm `traCuuThongBaoLPTB()` của trang, gửi **XHR `POST /tthc/tchs/thong-bao-lptb` với thân JSON** (`Content-Type: application/json`, header `X-XSRF-TOKEN` và `X-Requested-With`). Kết quả là mảnh HTML đổ vào `#resultTable` |
+| Thân JSON | `loaiTraCuu`, `maHoSo`, `mst`, `soHoaDon`, `kyHieuHoaDon`, `mstNguoiBan`, `trangThai`, `tuNgay`, `denNgay`, `pageNumber` (bắt đầu 1), `pageSize` (10). `mst` mặc định là MST của người đăng nhập. Ngày mặc định là 30 ngày gần nhất (`DD/MM/YYYY`) |
+| `loaiTraCuu` | `01` = thông báo của chính người nộp thuế (mặc định); `02` = của người nộp thuế khác. Mã nguồn trang để lại chú thích: `02` từng đi qua bước gửi OTP (`sendOtpForSearch`, đang bị vô hiệu); ngoài phạm vi, **không thử** |
+| Ô lọc | Mã hồ sơ, MST, ký hiệu và số hóa đơn, MST người bán, trạng thái, từ/đến ngày. Trạng thái: rỗng = tất cả, `00` Hệ thống đang xử lý, `01` Chờ xác nhận, `02` Đã xác nhận, `03` Đã đề nghị miễn giảm, `04` Đã lựa chọn không xác nhận, `05` Đã trả kết quả, `06` Dừng giải quyết |
+| Cột của bảng | STT, Chọn, Mã giao dịch điện tử, Mã số thuế, Tên người nộp thuế, Loại tài sản, Số khung, Số máy, Số tiền nộp LPTB, Trạng thái thông báo, Trạng thái nộp tiền, Thông báo LPTB, Tình trạng giá, Hướng dẫn |
+| Phản hồi khi rỗng | HTTP 200, mảnh khoảng 2,4 KB: tiêu đề cột và chữ "Không có dữ liệu" (có bảng nhưng không có dòng, không thấy dòng tổng dạng "Trang x/y") |
+| Thao tác ghi trên trang | Có nút nộp tiền ngay (`btnNopThueNgay`), gửi OTP, ký số và chọn nhiều hồ sơ (cột "Chọn"). **Đều ngoài phạm vi, app chỉ đọc**, tôi không bấm |
+| Chưa biết | Dòng dữ liệu thật, cách phân trang khi có dữ liệu (có `pageNumber`/`pageSize` trong thân JSON), ngày sai định dạng |
+
+**Hệ quả:** làm được nguồn đọc nhưng khác ba nguồn trước: gửi **JSON** thay vì form (cần script riêng), bảng rỗng có tiêu đề nhưng không dòng nào, nên bộ đọc phải coi "bảng không dòng" là kết quả rỗng (bộ đọc hiện có báo thiếu dòng tổng ở chế độ nghiêm; chế độ lỏng đã xử lý được). Cột và phân trang cần tài khoản có thông báo LPTB để kiểm chứng.
+

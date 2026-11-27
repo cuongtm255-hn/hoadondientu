@@ -234,7 +234,8 @@ Nhóm thứ hai của phần mềm, tài liệu và tiến độ tách riêng �
 | FT-DVC-08 Xuất Excel | DD-DVC-02 mục 12, DD-DVC-03 mục 11 | ✅ cho TTHC và hồ sơ đã nộp | Đã thử tay |
 | FT-DVC-04 Hồ sơ lưu tạm | [DD-DVC-04](../dich-vu-cong/detail-design/DD-DVC-04-DRAFTS.md) | ✅ Bản đọc chung (TD04-01..04) | **Chưa kiểm chứng cột/phân trang** (tài khoản thử không có hồ sơ lưu tạm); chỉ trang đầu |
 | FT-DVC-05 Phản ánh quyết toán | [DD-DVC-05](../dich-vu-cong/detail-design/DD-DVC-05-FEEDBACK.md) | ✅ Bản đọc chung (TD05-01..04) | **Chưa kiểm chứng cột/phân trang** (tài khoản thử không có phản ánh) |
-| FT-DVC-07 LPTB, 06 TTHC đất đai, 09 Dịch vụ khác | [FEATURE-LIST](../dich-vu-cong/requirements/FEATURE-LIST.md) | ⬜ Chưa có DD; đã thấy các đường dẫn menu | Cần khảo sát có dữ liệu thật |
+| FT-DVC-07 Thông báo LPTB | [khảo sát 27/11/2026](../dich-vu-cong/api-samples/khao-sat-tthc.md) | ⬜ Đã khảo sát (`POST` JSON `/tthc/tchs/thong-bao-lptb`, không CAPTCHA, kết quả rỗng); chưa có DD | Cần tài khoản có thông báo LPTB; có nút nộp tiền/OTP/ký số ngoài phạm vi |
+| FT-DVC-06 TTHC đất đai, 09 Dịch vụ khác | [FEATURE-LIST](../dich-vu-cong/requirements/FEATURE-LIST.md) | ⬜ Chưa có DD; đã thấy các đường dẫn menu | Cần khảo sát có dữ liệu thật |
 
 **Quyết định đã chốt** ([SRS-DVC mục 18](../dich-vu-cong/requirements/SRS-DVC.md)): một mã kích hoạt cho cả hai nhóm; màn chọn nhóm luôn hiện, chọn sẵn nhóm gần nhất; đổi nhóm giữ phiên; v1 chỉ đăng nhập Thuế điện tử – Doanh nghiệp; không lưu cục bộ danh mục TTHC; "Dịch vụ khác" ngoài phạm vi v1; tên đăng nhập điền sẵn MST nhưng cho sửa. Ngày 21/11/2026: đổi trang hồ sơ đã nộp dùng lại mã CAPTCHA của lần tìm (ngoại lệ có điều kiện của BR-DVC-03; cổng từ chối thì hỏi mã mới).
 
