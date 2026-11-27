@@ -25,6 +25,7 @@ namespace HoaDonDienTu.WinForms.Groups
         private readonly KryptonComboBox _declaration = NewCombo();
         private readonly KryptonComboBox _level = NewCombo();
         private readonly KryptonComboBox _taxpayer = NewCombo();
+        private readonly Label _taxpayerLabel = new Label { Text = "Loại người nộp thuế", AutoSize = true, Location = new Point(730, 8) };
         private readonly KryptonButton _search = new KryptonButton();
         private readonly DataGridView _grid = new DataGridView();
         private readonly KryptonButton _prev = new KryptonButton();
@@ -54,7 +55,8 @@ namespace HoaDonDienTu.WinForms.Groups
             AddField(filters, "Loại TTHC", _procedureType, 260, 8, 170);
             AddField(filters, "Tờ khai", _declaration, 440, 8, 150);
             AddField(filters, "Mức độ", _level, 600, 8, 120);
-            AddField(filters, "Loại người nộp thuế", _taxpayer, 730, 8, 160);
+            AddField(filters, null, _taxpayer, 730, 8, 160);
+            filters.Controls.Add(_taxpayerLabel);
             _search.SetBounds(10, 54, 110, 32);
             _search.Values.Text = "Tìm";
             UiIcons.Apply(_search, UiIcon.Search);
@@ -144,7 +146,7 @@ namespace HoaDonDienTu.WinForms.Groups
 
         private static void AddField(Control parent, string label, Control input, int x, int y, int width)
         {
-            parent.Controls.Add(new Label { Text = label, AutoSize = true, Location = new Point(x, y) });
+            if (label != null) parent.Controls.Add(new Label { Text = label, AutoSize = true, Location = new Point(x, y) });
             input.SetBounds(x, y + 20, width, 27);
             parent.Controls.Add(input);
         }
@@ -171,6 +173,8 @@ namespace HoaDonDienTu.WinForms.Groups
             Fill(_declaration, _session.Options.Declarations);
             Fill(_level, _session.Options.Levels);
             Fill(_taxpayer, _session.Options.TaxpayerTypes);
+            // Cổng không có ô này ở trang công khai (danh sách rỗng): ẩn đi thay vì để một ô chỉ có "(Tất cả)".
+            _taxpayerLabel.Visible = _taxpayer.Visible = _session.Options.TaxpayerTypes.Count > 0;
         }
 
         private async System.Threading.Tasks.Task SearchAsync()

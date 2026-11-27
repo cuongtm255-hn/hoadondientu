@@ -160,3 +160,5 @@ Lần thử Release đầu tiên bị treo giao diện ~15 giây rồi sập `li
 | Task | Nội dung | Trạng thái |
 |---|---|---|
 | TD02-09 | `TableExcelWriter`, `TthcExcelExport`, `FetchAllPagesAsync`, hai nút xuất + test | Xong 21/11/2026, đã thử tay (người dùng xác nhận xuất Excel OK) |
+
+**Thử Release 27/11/2026 (đang đăng nhập):** tìm TTHC chạy đúng và đổi trang hiện các dòng 31–40. Ô "Loại người nộp thuế" chỉ có "(Tất cả)" vì cổng không có danh sách cho ô này: màn hình **ẩn ô** khi danh sách rỗng.
