@@ -200,3 +200,19 @@ Bổ sung cho tab DVC: sau **mỗi** yêu cầu trang gọi `refreshCaptcha('ima
 
 **Hệ quả:** có thể dựng nguồn đọc dùng chung cách làm của hồ sơ đã nộp (POST form, trình duyệt đọc bảng bằng DOM); tên cột và phân trang phải kiểm chứng với tài khoản có hồ sơ lưu tạm trước khi coi là xong.
 
+## Bổ sung 27/11/2026: tra cứu phản ánh quyết toán (`/tthc/tchs/pa`, đã đăng nhập, không có CAPTCHA)
+
+Đọc form, bấm "Tìm kiếm" với bộ lọc để trống ở cả hai nguồn. **Tài khoản thử không có phản ánh nào** nên chưa thấy bảng, cột hay phân trang có dữ liệu.
+
+| Mục | Kết quả |
+|---|---|
+| Form | `form_search`, `action="/tthc/tchs/pa/tracuu"`, `method` post, urlencoded; nút `btnSearch` (gọi hàm trong `onclick`), kết quả vào `#table-container` |
+| Ô lọc | `namQuyetToan` (ô chọn 2025 đến 2021), `mstToChuc` (chữ), `tuNgay`, `denNgay` (chữ ngày), `switchData` (`0` = "Phản ánh đã gửi trên DVC", `1` = "Phản ánh đã gửi trên Thuế điện tử") |
+| Trường ẩn | `_csrf` (hai ô), `page` (`1`), `size` (`10`) |
+| Yêu cầu thật | `POST /tthc/tchs/pa/tracuu`, htmx (`target=table-container`), tham số: `_csrf`, `page`, `size`, `namQuyetToan`, `mstToChuc`, `tuNgay`, `denNgay`, `switchData` |
+| CAPTCHA | **Không dùng**: ảnh `image-capt-cbt` có trong trang nhưng ẩn, `src` rỗng, yêu cầu không gửi tham số mã (người dùng xác nhận trên màn hình) |
+| Phản hồi khi rỗng (cả hai nguồn) | HTTP 200, mảnh khoảng 1,1 KB: dòng tổng `Trang  /0 - Tổng số bản ghi: 0`, ô phân trang, chữ "Không có dữ liệu". Cùng dạng với hồ sơ đã nộp tab DVC nên bộ đọc hiện có nhận được |
+| Chưa biết | Cột của bảng khi có dữ liệu, phân trang nhiều trang (có `page`/`size` như hồ sơ đã nộp), thông báo khi ngày sai |
+
+**Hệ quả:** dựng được nguồn đọc như hồ sơ lưu tạm (POST form, đọc bảng bằng DOM, chế độ lỏng) với thêm bộ lọc năm quyết toán, MST tổ chức và nguồn. Cột và phân trang cần tài khoản có phản ánh để kiểm chứng.
+

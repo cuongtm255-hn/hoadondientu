@@ -233,7 +233,8 @@ Nhóm thứ hai của phần mềm, tài liệu và tiến độ tách riêng �
 | FT-DVC-03 Hồ sơ đã nộp | [DD-DVC-03](../dich-vu-cong/detail-design/DD-DVC-03-SUBMITTED-FILES.md) | ✅ Tab Dịch vụ công (TD03-01..09); ✅ tab thuế điện tử (TD03-10, đã thử Release) | Đã thử Release với hồ sơ thật (1 trang). **Chưa thử đổi trang nhiều trang** (giả định không cần CAPTCHA mới) |
 | FT-DVC-08 Xuất Excel | DD-DVC-02 mục 12, DD-DVC-03 mục 11 | ✅ cho TTHC và hồ sơ đã nộp | Đã thử tay |
 | FT-DVC-04 Hồ sơ lưu tạm | [DD-DVC-04](../dich-vu-cong/detail-design/DD-DVC-04-DRAFTS.md) | ✅ Bản đọc chung (TD04-01..04) | **Chưa kiểm chứng cột/phân trang** (tài khoản thử không có hồ sơ lưu tạm); chỉ trang đầu |
-| FT-DVC-05 Phản ánh, 07 LPTB, 06 TTHC đất đai, 09 Dịch vụ khác | [FEATURE-LIST](../dich-vu-cong/requirements/FEATURE-LIST.md) | ⬜ Chưa có DD; đã thấy các đường dẫn menu | Cần khảo sát có dữ liệu thật |
+| FT-DVC-05 Phản ánh quyết toán | [khảo sát 27/11/2026](../dich-vu-cong/api-samples/khao-sat-tthc.md) | ⬜ Đã khảo sát form (`POST /tthc/tchs/pa/tracuu`, không CAPTCHA, kết quả rỗng); chưa có DD | Cần tài khoản có phản ánh để kiểm chứng cột/phân trang |
+| FT-DVC-07 LPTB, 06 TTHC đất đai, 09 Dịch vụ khác | [FEATURE-LIST](../dich-vu-cong/requirements/FEATURE-LIST.md) | ⬜ Chưa có DD; đã thấy các đường dẫn menu | Cần khảo sát có dữ liệu thật |
 
 **Quyết định đã chốt** ([SRS-DVC mục 18](../dich-vu-cong/requirements/SRS-DVC.md)): một mã kích hoạt cho cả hai nhóm; màn chọn nhóm luôn hiện, chọn sẵn nhóm gần nhất; đổi nhóm giữ phiên; v1 chỉ đăng nhập Thuế điện tử – Doanh nghiệp; không lưu cục bộ danh mục TTHC; "Dịch vụ khác" ngoài phạm vi v1; tên đăng nhập điền sẵn MST nhưng cho sửa. Ngày 21/11/2026: đổi trang hồ sơ đã nộp dùng lại mã CAPTCHA của lần tìm (ngoại lệ có điều kiện của BR-DVC-03; cổng từ chối thì hỏi mã mới).
 
