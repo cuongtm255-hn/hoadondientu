@@ -364,6 +364,53 @@ namespace HoaDonDienTu.Infrastructure.Tests
             Assert.ThrowsAsync<HoSoParseException>(() => new PortalHoSoSource(runner).SearchAsync(DraftQuery(), CancellationToken.None));
         }
 
+        // ---------------- Phản ánh quyết toán (chưa kiểm chứng với dữ liệu thật: mọi mẫu ở đây là GIẢ) ----------------
+
+        private static HoSoQuery FeedbackQuery(bool eTax = false, int page = 1)
+        {
+            return new HoSoQuery { Source = HoSoSource.PhanAnh, FromDate = new DateTime(2026, 1, 1), ToDate = new DateTime(2026, 1, 31), IgnoreDates = true, SettlementYear = "2025", AuthorizedTaxCode = "0100000001", FeedbackOnETax = eTax, PageNumber = page };
+        }
+
+        [Test]
+        public async Task Feedback_Script_PostsToTheLookupPath_WithFilters_Channel_AndPaging_NoCaptcha()
+        {
+            var runner = new FakeRunner { Reply = DomReply(null, new[] { "", "0", "0" }, "", "Trang /0 - Tổng số bản ghi: 0") };
+
+            await new PortalHoSoSource(runner).SearchAsync(FeedbackQuery(true, 2), CancellationToken.None);
+
+            Assert.AreEqual("/tthc/tchs/pa", runner.Paths[0]);
+            string script = runner.Scripts[0];
+            StringAssert.Contains("/tthc/tchs/pa/tracuu", script);
+            StringAssert.Contains("method:'POST'", script);
+            StringAssert.Contains("\"namQuyetToan\":\"2025\"", script);
+            StringAssert.Contains("\"mstToChuc\":\"0100000001\"", script);
+            StringAssert.Contains("\"switchData\":\"1\"", script, "Thuế điện tử là kênh 1");
+            StringAssert.Contains("\"page\":\"2\"", script);
+            StringAssert.Contains("\"tuNgay\":\"\"", script);
+            StringAssert.DoesNotContain("captcha", script);
+        }
+
+        [Test]
+        public async Task Feedback_DvcChannel_IsSwitchData0()
+        {
+            var runner = new FakeRunner { Reply = DomReply(null, new[] { "", "0", "0" }, "", "Không có dữ liệu") };
+
+            await new PortalHoSoSource(runner).SearchAsync(FeedbackQuery(false), CancellationToken.None);
+
+            StringAssert.Contains("\"switchData\":\"0\"", runner.Scripts[0]);
+        }
+
+        [Test]
+        public async Task Feedback_EmptyResult_WithZeroSummary_IsTheNormalNoDataAnswer()
+        {
+            var runner = new FakeRunner { Reply = DomReply(null, new[] { "", "0", "0" }, "", "Trang /0 - Tổng số bản ghi: 0 Không có dữ liệu") };
+
+            HoSoPage page = await new PortalHoSoSource(runner).SearchAsync(FeedbackQuery(), CancellationToken.None);
+
+            Assert.AreEqual(0, page.Rows.Count);
+            Assert.AreEqual("Không có dữ liệu", page.EmptyMessage);
+        }
+
         [Test]
         public async Task Dom_PageInput_GivesTheCurrentPage()
         {

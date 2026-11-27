@@ -25,6 +25,9 @@ namespace HoaDonDienTu.Infrastructure.PublicService
         public const string ETaxFormId = "form_search_tdt";
         public const string DraftPath = "/tthc/tchs/draft";
         public const string DraftFormId = "form_search";
+        public const string FeedbackPath = "/tthc/tchs/pa";
+        public const string FeedbackSearchPath = "/tthc/tchs/pa/tracuu";
+        public const string FeedbackFormId = "form_search";
         public const int PageSize = 10;
 
         private readonly IDvcPageRunner _runner;
@@ -55,7 +58,7 @@ namespace HoaDonDienTu.Infrastructure.PublicService
 
             JObject result = await RunAsync(PagePathFor(query.Source), BuildSearchScript(query), cancellationToken).ConfigureAwait(false);
             RequireLoggedIn(result);
-            return PageFromResult(result, query.Source == HoSoSource.LuuTam);
+            return PageFromResult(result, HoSoSources.IsUnverified(query.Source));
         }
 
         /// <summary>
@@ -116,17 +119,19 @@ namespace HoaDonDienTu.Infrastructure.PublicService
 
         private static string PagePathFor(HoSoSource source)
         {
+            if (source == HoSoSource.PhanAnh) return FeedbackPath;
             return source == HoSoSource.LuuTam ? DraftPath : PagePath;
         }
 
         private static void RequireSupported(HoSoSource source)
         {
-            if (source != HoSoSource.Dvc && source != HoSoSource.ThueDienTu && source != HoSoSource.LuuTam) throw new NotSupportedException("Nguồn hồ sơ chưa hỗ trợ.");
+            if (source != HoSoSource.Dvc && source != HoSoSource.ThueDienTu && source != HoSoSource.LuuTam && source != HoSoSource.PhanAnh) throw new NotSupportedException("Nguồn hồ sơ chưa hỗ trợ.");
         }
 
         private static string FormIdFor(HoSoSource source)
         {
             if (source == HoSoSource.LuuTam) return DraftFormId;
+            if (source == HoSoSource.PhanAnh) return FeedbackFormId;
             return source == HoSoSource.ThueDienTu ? ETaxFormId : DvcFormId;
         }
 
@@ -185,6 +190,7 @@ namespace HoaDonDienTu.Infrastructure.PublicService
         internal static string BuildSearchScript(HoSoQuery q)
         {
             if (q.Source == HoSoSource.LuuTam) return BuildDraftSearchScript(q);
+            if (q.Source == HoSoSource.PhanAnh) return BuildFeedbackSearchScript(q);
             return q.Source == HoSoSource.ThueDienTu ? BuildETaxSearchScript(q) : BuildDvcSearchScript(q);
         }
 
@@ -282,6 +288,32 @@ namespace HoaDonDienTu.Infrastructure.PublicService
                 "var h={'HX-Request':'true','HX-Target':'resultTable','accept':'text/html-partial'};" +
                 "var hn=m('csrf-header'),tk=m('csrf-token');if(hn&&tk)h[hn]=tk;" +
                 "var r=await fetch(" + PortalTthcSource.Literal(DraftPath) + ",{method:'POST',credentials:'same-origin',headers:h,body:fd});" +
+                ReadResultScript;
+        }
+
+        /// <summary>
+        /// Phản ánh quyết toán: <c>POST /tthc/tchs/pa/tracuu</c> urlencoded (như htmx) với giá trị của <c>form_search</c> (có <c>_csrf</c>) ghi đè năm quyết toán,
+        /// MST tổ chức, ngày, kênh (<c>switchData</c>: 0 = DVC, 1 = Thuế điện tử), <c>page</c>, <c>size</c>; không CAPTCHA. Chưa kiểm chứng cột/phân trang với dữ liệu thật.
+        /// </summary>
+        private static string BuildFeedbackSearchScript(HoSoQuery q)
+        {
+            string fields = Fields(
+                "namQuyetToan", q.SettlementYear,
+                "mstToChuc", q.AuthorizedTaxCode,
+                "tuNgay", q.IgnoreDates ? string.Empty : Date(q.FromDate),
+                "denNgay", q.IgnoreDates ? string.Empty : Date(q.ToDate),
+                "switchData", q.FeedbackOnETax ? "1" : "0",
+                "page", Page(q),
+                "size", Size());
+
+            return "(async function(){" +
+                "var f=document.getElementById(" + PortalTthcSource.Literal(FeedbackFormId) + ");if(!f)return JSON.stringify({noForm:true});" +
+                "var p=new URLSearchParams(new FormData(f));var v=" + fields + ";" +
+                "Object.keys(v).forEach(function(k){if(v[k]!==''||k==='tuNgay'||k==='denNgay'||k==='mstToChuc')p.set(k,v[k]);});" +
+                "var m=function(n){var e=document.querySelector('meta[name=\\\"'+n+'\\\"]');return e?e.getAttribute('content'):null;};" +
+                "var h={'Content-Type':'application/x-www-form-urlencoded; charset=UTF-8','HX-Request':'true','HX-Target':'table-container','accept':'text/html-partial'};" +
+                "var hn=m('csrf-header'),tk=m('csrf-token');if(hn&&tk)h[hn]=tk;" +
+                "var r=await fetch(" + PortalTthcSource.Literal(FeedbackSearchPath) + ",{method:'POST',credentials:'same-origin',headers:h,body:p.toString()});" +
                 ReadResultScript;
         }
 

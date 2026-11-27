@@ -311,6 +311,32 @@ namespace HoaDonDienTu.Application.Tests
             Assert.AreEqual(0, _source.SearchCalls.Count);
         }
 
+        [Test]
+        public async Task Feedback_Search_NeedsNoCaptcha_AndPagingNeedsNoCode()
+        {
+            await _session.SelectSourceAsync(HoSoSource.PhanAnh, CancellationToken.None);
+
+            bool ok = await _session.SearchAsync(new HoSoQuery { IgnoreDates = true, SettlementYear = "2025", FeedbackOnETax = true }, CancellationToken.None);
+            bool paged = await _session.GoToPageAsync(2, CancellationToken.None);
+
+            Assert.IsTrue(ok);
+            Assert.IsTrue(paged, "Đổi trang không cần mã");
+            Assert.AreEqual(HoSoSource.PhanAnh, _source.SearchCalls[1].Source);
+            Assert.AreEqual(2, _source.SearchCalls[1].PageNumber);
+            Assert.IsTrue(_source.SearchCalls[1].FeedbackOnETax);
+            Assert.AreEqual("2025", _source.SearchCalls[1].SettlementYear);
+            Assert.IsNull(_session.CaptchaImage);
+        }
+
+        [Test]
+        public void HoSoSources_OnlyTheTwoSubmittedFileSourcesRequireCaptcha()
+        {
+            Assert.IsTrue(HoSoSources.RequiresCaptcha(HoSoSource.Dvc));
+            Assert.IsTrue(HoSoSources.RequiresCaptcha(HoSoSource.ThueDienTu));
+            Assert.IsFalse(HoSoSources.RequiresCaptcha(HoSoSource.LuuTam));
+            Assert.IsFalse(HoSoSources.RequiresCaptcha(HoSoSource.PhanAnh));
+        }
+
         private sealed class FakeSource : IHoSoSource
         {
             public readonly List<HoSoQuery> SearchCalls = new List<HoSoQuery>();

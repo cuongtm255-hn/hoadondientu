@@ -43,6 +43,7 @@ namespace HoaDonDienTu.Application.PublicService
         public static string SourceLabel(HoSoSource source)
         {
             if (source == HoSoSource.LuuTam) return "Hồ sơ lưu tạm trên Dịch vụ công";
+            if (source == HoSoSource.PhanAnh) return "Phản ánh quyết toán gửi CQT";
             return source == HoSoSource.ThueDienTu ? "Hồ sơ đã nộp trên thuế điện tử" : "Hồ sơ đã nộp trên Dịch vụ công";
         }
 
@@ -51,6 +52,11 @@ namespace HoaDonDienTu.Application.PublicService
         {
             if (q == null) return "Không rõ";
             var parts = new List<string>();
+            if (q.Source == HoSoSource.PhanAnh)
+            {
+                parts.Add("Kênh gửi = " + (q.FeedbackOnETax ? "Thuế điện tử" : "Dịch vụ công"));
+                Add(parts, "Năm quyết toán", q.SettlementYear);
+            }
             Add(parts, "Tên TTHC", q.ProcedureName);
             Add(parts, "Loại TTHC", q.ProcedureType);
             Add(parts, "Tờ khai", q.Declaration);

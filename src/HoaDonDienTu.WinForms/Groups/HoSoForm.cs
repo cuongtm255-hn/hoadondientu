@@ -63,6 +63,8 @@ namespace HoaDonDienTu.WinForms.Groups
             _source.Items.Add("Hồ sơ đã nộp trên Dịch vụ công");
             _source.Items.Add("Hồ sơ đã nộp trên thuế điện tử");
             _source.Items.Add("Hồ sơ lưu tạm (chưa nộp)");
+            _source.Items.Add("Phản ánh quyết toán đã gửi trên Dịch vụ công");
+            _source.Items.Add("Phản ánh quyết toán đã gửi trên Thuế điện tử");
 
             var filters = new Panel { Dock = DockStyle.Top, Height = 228 };
             AddLabelled(filters, new Label { AutoSize = true, Text = "Nguồn" }, _source, 10, 6, 300);
@@ -172,29 +174,37 @@ namespace HoaDonDienTu.WinForms.Groups
 
         private HoSoSource CurrentSource
         {
-            get { return _source.SelectedIndex == 2 ? HoSoSource.LuuTam : (_source.SelectedIndex == 1 ? HoSoSource.ThueDienTu : HoSoSource.Dvc); }
+            get
+            {
+                if (_source.SelectedIndex >= 3) return HoSoSource.PhanAnh;
+                return _source.SelectedIndex == 2 ? HoSoSource.LuuTam : (_source.SelectedIndex == 1 ? HoSoSource.ThueDienTu : HoSoSource.Dvc);
+            }
         }
 
         private async System.Threading.Tasks.Task OnSourceChangedAsync()
         {
             bool dvc = CurrentSource == HoSoSource.Dvc;
             bool draft = CurrentSource == HoSoSource.LuuTam;
+            bool feedback = CurrentSource == HoSoSource.PhanAnh;
+            bool noCaptcha = draft || feedback;
             _nameLabel.Visible = _name.Visible = dvc || draft;
             _nameLabel.Text = draft ? "Mã TTHC (nếu có)" : "Tên TTHC";
-            _declLabel.Text = draft ? "Mã tờ khai (nếu có)" : "Tờ khai";
-            _codeLabel.Visible = _code.Visible = !draft;
+            _declLabel.Text = draft ? "Mã tờ khai (nếu có)" : (feedback ? "Năm quyết toán (2021–2025)" : "Tờ khai");
+            _authLabel.Text = feedback ? "MST tổ chức (nếu có)" : "MST ủy quyền (nếu có)";
+            _codeLabel.Visible = _code.Visible = !noCaptcha;
             _authLabel.Visible = _authorized.Visible = !draft;
-            // Hồ sơ lưu tạm không có mã xác nhận.
-            _captchaLabel.Visible = _captchaBox.Visible = _captchaImage.Visible = _refresh.Visible = !draft;
+            // Hồ sơ lưu tạm và phản ánh không có mã xác nhận.
+            _captchaLabel.Visible = _captchaBox.Visible = _captchaImage.Visible = _refresh.Visible = !noCaptcha;
             _codeLabel.Text = dvc ? "Mã hồ sơ" : "Mã giao dịch";
             DateTime today = DateTime.Today;
             // Hồ sơ lưu tạm: ngày để trống (không giới hạn) trừ khi tích cả hai ô.
-            _from.ShowCheckBox = _to.ShowCheckBox = draft;
-            _from.Checked = _to.Checked = !draft;
-            _from.Value = dvc || draft ? new DateTime(today.Year, today.Month, 1) : new DateTime(2025, 6, 1);
-            _to.Value = dvc || draft ? today : new DateTime(2025, 6, 30);
+            _from.ShowCheckBox = _to.ShowCheckBox = noCaptcha;
+            _from.Checked = _to.Checked = !noCaptcha;
+            _from.Value = dvc || noCaptcha ? new DateTime(today.Year, today.Month, 1) : new DateTime(2025, 6, 1);
+            _to.Value = dvc || noCaptcha ? today : new DateTime(2025, 6, 30);
             _name.Clear();
             _declaration.Clear();
+            if (feedback) _declaration.Text = (today.Year - 1).ToString();
             _code.Clear();
             _captchaBox.Clear();
             _grid.Rows.Clear();
@@ -205,7 +215,9 @@ namespace HoaDonDienTu.WinForms.Groups
             _warning.Visible = !dvc;
             _warning.Text = draft
                 ? "Hồ sơ lưu tạm: tên cột và phân trang chưa kiểm chứng với dữ liệu thật; chỉ hiện trang đầu. Tích hai ô ngày để lọc theo ngày."
-                : "Lưu ý của cổng: chỉ hỗ trợ tờ khai nộp trước ngày 01/07/2025.";
+                : (feedback
+                    ? "Phản ánh quyết toán: tên cột chưa kiểm chứng với dữ liệu thật (tài khoản thử không có phản ánh). Tích hai ô ngày để lọc theo ngày."
+                    : "Lưu ý của cổng: chỉ hỗ trợ tờ khai nộp trước ngày 01/07/2025.");
             UpdatePager();
             await RunBusyAsync(async () =>
             {
@@ -216,10 +228,13 @@ namespace HoaDonDienTu.WinForms.Groups
 
         private async System.Threading.Tasks.Task SearchAsync()
         {
-            bool draft = CurrentSource == HoSoSource.LuuTam;
+            bool noCaptcha = !HoSoSources.RequiresCaptcha(CurrentSource);
+            bool feedback = CurrentSource == HoSoSource.PhanAnh;
             var query = new HoSoQuery
             {
-                IgnoreDates = draft && !(_from.Checked && _to.Checked),
+                FeedbackOnETax = feedback && _source.SelectedIndex == 4,
+                SettlementYear = feedback ? _declaration.Text.Trim() : null,
+                IgnoreDates = noCaptcha && !(_from.Checked && _to.Checked),
                 FromDate = _from.Value.Date,
                 ToDate = _to.Value.Date,
                 AuthorizedTaxCode = _authorized.Text.Trim(),

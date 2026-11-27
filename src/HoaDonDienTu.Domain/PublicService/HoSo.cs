@@ -13,7 +13,26 @@ namespace HoaDonDienTu.Domain.PublicService
         ThueDienTu = 1,
 
         /// <summary>Hồ sơ lưu tạm (chưa nộp) trên Dịch vụ công: không có CAPTCHA, chỉ đọc. Cột và phân trang CHƯA kiểm chứng (tài khoản thử không có hồ sơ lưu tạm).</summary>
-        LuuTam = 2
+        LuuTam = 2,
+
+        /// <summary>Phản ánh quyết toán gửi cơ quan thuế (kênh DVC hoặc Thuế điện tử, xem <see cref="HoSoQuery.FeedbackOnETax"/>): không CAPTCHA, chỉ đọc. Cột và phân trang CHƯA kiểm chứng.</summary>
+        PhanAnh = 3
+    }
+
+    /// <summary>Đặc điểm theo nguồn dùng chung cho dịch vụ, phiên tìm và nguồn dữ liệu.</summary>
+    public static class HoSoSources
+    {
+        /// <summary>Hai nguồn hồ sơ đã nộp có CAPTCHA cho mỗi lần tìm; lưu tạm và phản ánh thì không.</summary>
+        public static bool RequiresCaptcha(HoSoSource source)
+        {
+            return source != HoSoSource.LuuTam && source != HoSoSource.PhanAnh;
+        }
+
+        /// <summary>Nguồn chưa kiểm chứng với dữ liệu thật: bộ đọc bảng chạy chế độ lỏng.</summary>
+        public static bool IsUnverified(HoSoSource source)
+        {
+            return !RequiresCaptcha(source);
+        }
     }
 
     /// <summary>
@@ -30,6 +49,12 @@ namespace HoaDonDienTu.Domain.PublicService
 
         /// <summary>Không gửi khoảng ngày (để trống như ô ngày của cổng). Chỉ dùng cho hồ sơ lưu tạm.</summary>
         public bool IgnoreDates { get; set; }
+
+        /// <summary>Năm quyết toán (phản ánh), ví dụ "2025"; rỗng thì để cổng dùng mặc định.</summary>
+        public string SettlementYear { get; set; }
+
+        /// <summary>Phản ánh: true = "đã gửi trên Thuế điện tử", false = "đã gửi trên DVC".</summary>
+        public bool FeedbackOnETax { get; set; }
 
         /// <summary>MST ủy quyền (nếu có).</summary>
         public string AuthorizedTaxCode { get; set; }

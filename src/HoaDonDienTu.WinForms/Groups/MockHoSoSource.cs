@@ -41,6 +41,21 @@ namespace HoaDonDienTu.WinForms.Groups
             return new HoSoPage(columns, rows.Select(r => new HoSoRow(r)).ToList(), rows.Count, 1, 1, null);
         }
 
+        /// <summary>Phản ánh quyết toán GIẢ: không CAPTCHA, cột do mô phỏng đặt (cột thật chưa kiểm chứng); lọc theo năm.</summary>
+        private static HoSoPage SearchFeedback(HoSoQuery query)
+        {
+            IList<string> columns = new[] { "MST tổ chức", "Năm quyết toán", "Nội dung phản ánh", "Ngày gửi", "Kênh gửi" };
+            string channel = query.FeedbackOnETax ? "Thuế điện tử (mô phỏng)" : "Dịch vụ công (mô phỏng)";
+            var rows = new List<string[]>
+            {
+                new[] { "0100000001 (mẫu)", "2025", "Phản ánh mẫu về số thuế (mô phỏng)", "10/11/2026", channel },
+                new[] { "0100000001 (mẫu)", "2024", "Phản ánh mẫu về giảm trừ (mô phỏng)", "02/11/2026", channel }
+            };
+            if (!string.IsNullOrWhiteSpace(query.SettlementYear)) rows = rows.Where(r => r[1] == query.SettlementYear.Trim()).ToList();
+            if (rows.Count == 0) return new HoSoPage(columns, null, 0, 1, 0, "Không có dữ liệu");
+            return new HoSoPage(columns, rows.Select(r => new HoSoRow(r)).ToList(), rows.Count, 1, 1, null);
+        }
+
         public Task<byte[]> GetCaptchaAsync(HoSoSource source, CancellationToken cancellationToken)
         {
             const string alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -65,6 +80,7 @@ namespace HoaDonDienTu.WinForms.Groups
         public Task<HoSoPage> SearchAsync(HoSoQuery query, CancellationToken cancellationToken)
         {
             if (query.Source == HoSoSource.LuuTam) return Task.FromResult(SearchDraft(query));
+            if (query.Source == HoSoSource.PhanAnh) return Task.FromResult(SearchFeedback(query));
 
             // Tìm mới: mã chỉ dùng một lần, đúng hay sai đều hết hiệu lực. Đổi trang (trang > 1): chấp nhận lại mã của lần tìm thành công trước.
             string expected = _captcha;
