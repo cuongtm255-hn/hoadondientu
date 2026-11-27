@@ -184,3 +184,19 @@ Quan sát bằng Chrome, một tab, ghi sự kiện htmx của trang (tên tham 
 
 Bổ sung cho tab DVC: sau **mỗi** yêu cầu trang gọi `refreshCaptcha('image-capt')` (ảnh mới, mã máy chủ đổi), nhưng đổi trang vẫn gửi chữ đang có trong ô. Nếu cổng chấp nhận được hay không vẫn chưa kiểm chứng (cần tài khoản nhiều hồ sơ).
 
+## Bổ sung 27/11/2026: tra cứu hồ sơ lưu tạm (đã đăng nhập, không có CAPTCHA)
+
+Đọc cấu trúc form và mã nguồn công khai của trang `/tthc/tchs/draft`, ghi sự kiện htmx khi người dùng bấm "Tra cứu" với bộ lọc để trống. **Tài khoản thử không có hồ sơ lưu tạm** nên chưa thấy bảng kết quả, cột hay phân trang.
+
+| Mục | Kết quả |
+|---|---|
+| Form | `form_search`, `hx-post="/tthc/tchs/draft"`, `hx-target="#resultTable"`, `hx-swap="innerHTML"`, `enctype="multipart/form-data"` (htmx gửi `multipart`). Nút "Tra cứu" là nút submit thường. **Không có CAPTCHA** |
+| Ô lọc người dùng | `maToKhai` (ô chọn Tờ khai, 7 lựa chọn, mã số như `1135`), `maTTHC` (ô chọn Tên TTHC, 7 lựa chọn, mã dạng `1.007037`), `tuNgay`, `denNgay` (ô chữ `DD/MM/YYYY`, để trống được) |
+| Trường ẩn mặc định đi kèm | `pathSubmit` (đường dẫn nộp hồ sơ, dùng cho nút nộp), `maTkhai`, `maGiaoDich`, `maTthc`, `isValidate` (`N`), `dataFile` (rỗng), `isNextDkem` (`true`), `loaiFile`, `fileName`, `newSystem` (`Y`), `_csrf`. Phần lớn phục vụ thao tác "Nộp hồ sơ" (ngoài phạm vi, chỉ đọc) |
+| Yêu cầu thật | `POST /tthc/tchs/draft`; header: các `HX-*`, `accept`, **`X-XSRF-TOKEN`**; tham số: toàn bộ trường form (kể cả các trường ẩn ở trên) cùng `maToKhai`, `maTTHC`, `tuNgay`, `denNgay` |
+| Phản hồi khi rỗng | HTTP 200, mảnh ngắn (~130 ký tự): `<div><!-- paging --><div class="text-center fw-bold mt-3 mb-3">Không có dữ liệu</div></div>`. Không có bảng, không có dòng tổng |
+| Lưu ý của cổng | "Người nộp thuế chỉ thực hiện nút \"Nộp hồ sơ\" khi hồ sơ có trạng thái \"Đã kiểm tra thông tin kê khai\"" |
+| Chưa biết | Cột của bảng khi có dữ liệu, cách phân trang (trang không có hàm đổi trang riêng; có thể nằm trong mảnh kết quả, dòng chú thích `<!-- paging -->` gợi ý có), có/không có phân trang, thông báo khi ngày sai định dạng |
+
+**Hệ quả:** có thể dựng nguồn đọc dùng chung cách làm của hồ sơ đã nộp (POST form, trình duyệt đọc bảng bằng DOM); tên cột và phân trang phải kiểm chứng với tài khoản có hồ sơ lưu tạm trước khi coi là xong.
+
