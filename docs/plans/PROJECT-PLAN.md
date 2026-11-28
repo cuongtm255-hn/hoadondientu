@@ -245,3 +245,5 @@ Nhóm thứ hai của phần mềm, tài liệu và tiến độ tách riêng �
 **Rủi ro còn mở:** (1) đổi trang nhiều trang với cổng thật; (2) tra cứu TTHC công khai khi đang đăng nhập có thể bị chuyển hướng; (3) cổng đổi giao diện (các bộ phân tích có báo lỗi rõ và ghi cấu trúc không dữ liệu vào nhật ký); (4) bài học CefSharp: truyền địa chỉ trong hàm tạo, không `LoadUrl` ngay sau `Show()` (DD-DVC-02 mục 11).
 
 **Thứ tự đề xuất tiếp theo:** thử tab thuế điện tử ở Release; DD cho lưu tạm, phản ánh, LPTB (cần đăng nhập và dữ liệu thật); kiểm chứng đổi trang khi có tài khoản nhiều hồ sơ; thử đăng xuất và TTHC khi đang đăng nhập.
+
+**Cập nhật 28/11/2026:** thử Release xong phần có thể thử. Đổi trang nhiều trang và hồ sơ lưu tạm thiếu dữ liệu để kiểm; chủ sản phẩm chốt coi giả định hiện tại là đúng (vẫn là rủi ro chưa kiểm chứng). Phản ánh, LPTB, đất đai: cột/dòng dữ liệu cũng chưa kiểm chứng vì tài khoản thử không có bản ghi.

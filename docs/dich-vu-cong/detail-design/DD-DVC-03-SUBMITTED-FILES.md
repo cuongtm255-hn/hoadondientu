@@ -176,3 +176,4 @@ Làm trước được (không bị chặn): mô hình Domain, `IHoSoSource`, `H
 |---|---|---|
 | TD03-10 | Khảo sát tab thuế điện tử + `PortalHoSoSource` hỗ trợ `ThueDienTu`; sửa ảnh CAPTCHA (gọi `refreshCaptcha` của trang), khung rỗng của tab là kết quả rỗng, thông điệp "Không có dữ liệu" lớn | Xong 21/11/2026, **đã thử Release (người dùng xác nhận tìm thành công và thông báo rỗng OK)** |
 
+**Chốt 28/11/2026:** thử Release không đủ bản ghi để kiểm đổi trang nhiều trang. Chủ sản phẩm quyết định **coi giả định "đổi trang dùng lại mã của lần tìm" là đúng**; nếu cổng từ chối thì app đã có đường lui (quên mã, báo nhập mã mới, không tự gửi lại). Vẫn ghi là **chưa kiểm chứng bằng dữ liệu thật**. Hồ sơ lưu tạm ([DD-DVC-04](DD-DVC-04-DRAFTS.md)) cũng thiếu dữ liệu để kiểm cột và phân trang.
